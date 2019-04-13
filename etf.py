@@ -2,8 +2,9 @@ import math
 import pandas as pd
 import numpy as np
 import pyfolio as pf
+from typing import Optional, List, Dict
 
-def etf(portfolio):
+def etf(portfolio : pd.DataFrame) -> pd.Series:
     """
     Returns a time series representing the investment of $1 in a basket of instruments weighted proportionally by the given weights.
 
@@ -18,7 +19,7 @@ def etf(portfolio):
     hodls = np.zeros(portfolio.loc['Open'].shape)
 
     for t in range(1, etf.shape[0]):
-        portfolio_sum = 0
+        portfolio_sum : float = 0
 
         for i in portfolio.columns:
             # Calculate the absolute change of asset i from time t to t - 1.
@@ -40,20 +41,19 @@ def etf(portfolio):
         etf[t] = etf[t - 1] + portfolio_sum
     return etf
 
-def portfolio_to_returns(portfolio):
+def portfolio_to_returns(portfolio : pd.DataFrame) -> pd.Series:
     index = portfolio.index.levels[1].tz_localize('America/New_York')
     prices = pd.Series(etf(portfolio), index=index)
     return prices_to_daily_returns(prices)
 
-def prices_to_daily_returns(prices):
+def prices_to_daily_returns(prices : pd.Series) -> pd.Series:
     """
     Calculates daily returns for a Series of prices.
     Note: drops the first value of the given Series.
     """
     return (prices / prices.shift(1) - 1)[1:]
 
-# FIXME: Define a get_historical_prices function
-def universe_to_returns(universe, start_date=None, end_date=None):
+def universe_to_returns(universe : str, start_date: Optional[str] = None, end_date : Optional[str] = None) -> pd.Series:
     start_date = start_date if start_date != None else "1990-01-01"
     end_date = end_date if end_date != None else "2019-01-11"
 
@@ -67,7 +67,11 @@ def universe_to_returns(universe, start_date=None, end_date=None):
     prices = pd.Series(closes.loc[:,ID].values, index=index) # Turn dataframe into series of prices
     return prices_to_daily_returns(prices)
 
-def tear_sheet_from_returns(returns, benchmark, start_date=None, end_date=None, live_start_date='2018-01-01'):
+# FIXME: Finish this function
+def get_historical_prices(universe : str, start_date : Optional[str] = None, end_date : Optional[str] = None, fields : List[str] = []) -> pd.DataFrame:
+    return pd.DataFrame({})
+
+def tear_sheet_from_returns(returns : pd.Series, benchmark : str, start_date : Optional[str] = None, end_date : Optional[str] = None, live_start_date : str ='2018-01-01') -> None:
     start_date = start_date if start_date != None else returns.index[0].strftime('%Y-%m-%d')
     end_date = end_date if end_date != None else returns.index[-1].strftime('%Y-%m-%d')
     benchmark_returns = universe_to_returns(benchmark, start_date=start_date, end_date=end_date)
@@ -75,13 +79,14 @@ def tear_sheet_from_returns(returns, benchmark, start_date=None, end_date=None, 
     pf.create_returns_tear_sheet(returns, benchmark_rets = benchmark_returns, live_start_date=live_start_date)
     pf.create_returns_tear_sheet(benchmark_returns, live_start_date=live_start_date)
 
-def holdings(val, hodls, i, t, aum_t):
+def holdings(val : pd.DataFrame, hodls : np.ndarray, i : pd.DataFrame, t : int, aum_t : int) -> float:
     open_price = val[i].loc['Open'][t]
 
     # If the open price is NaN, this instrument's open wasn't recorded at time t.
     # So let's use the previous day's calculation.
     if math.isnan(open_price):
-        return hodls[t-1][val.columns.get_loc(i)]
+        prev_day : float = hodls[t-1][val.columns.get_loc(i)]
+        return prev_day
     else:
         # TODO: make the exchange rate flexible. This should generally be the dollar value of 1 point of instrument i.
         exchange_rate = 1
@@ -93,22 +98,24 @@ def holdings(val, hodls, i, t, aum_t):
         # If open prices are unavailable, then the last close price at t will work too.
         next_open = val[i].loc['Close'][t]
         if math.isnan(next_open):
-            return hodls[t-1][val.columns.get_loc(i)]
+            last_close_price : float = hodls[t-1][val.columns.get_loc(i)]
+            return last_close_price
 
-        return val[i].loc['Weight'][t] * aum_t / next_open * exchange_rate * sum_of_weights
+        weighted_holding : float = val[i].loc['Weight'][t] * aum_t / next_open * exchange_rate * sum_of_weights
+        return weighted_holding
 
-def delta(val, i, t):
+def delta(val : pd.DataFrame, i : str, t : int) -> float:
     """
     This function measures the change in market value from t - 1 to t.
     """
-    before = val[i].loc["Close"][t - 1]
-    after = val[i].loc["Close"][t]
+    before : float = val[i].loc["Close"][t - 1]
+    after : float = val[i].loc["Close"][t]
     if (math.isnan(before) or math.isnan(after)):
         return 0
 
     return after - before
 
-def etfs_and_components_to_portfolio(etfs, xs, weights):
+def etfs_and_components_to_portfolio(etfs : pd.DataFrame, xs : Dict[str, float], weights : Dict[str, float]) -> pd.DataFrame:
     components = []
     for key, val in etfs.items():
         prices = get_historical_prices(val, fields=["Open","High","Low","Close", "Volume"])
