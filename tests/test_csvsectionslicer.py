@@ -141,35 +141,42 @@ class TestVanguardSections(unittest.TestCase):
             sections = parseSectionsForCSV(csvfile, [criterion])
 
             self.assertEqual(sections[0].criterion, criterion)
-            self.assertEqual(len(sections[0].rows), 6)
+            self.assertEqual(len(sections[0].rows), 8)
 
             self.assertEqual(
                 sections[0].rows[0],
-                "VANGUARD TOTAL WORLD STOCK ETF,VT,10,74.81,7481.00".split(
-                    ","))
+                "VANGUARD SMALL-CAP ETF,VB,10,74.81,7481.00".split(","))
 
             self.assertEqual(
                 sections[0].rows[1],
-                "VANGUARD FTSE EMERGING MARKETS ETF,VWO,20,132.68,2653.60".
-                split(","))
+                "VANGUARD INFO TECHNOLOGY ETF,VGT,20,12.81,4081.00".split(","))
 
             self.assertEqual(
                 sections[0].rows[2],
-                "VANGUARD SP 500 ETF,VOO,100.1,109.60,10970.96".split(","))
+                "VANGUARD REIT ETF,VNQ,100.1,109.60,10970.96".split(","))
 
             self.assertEqual(
                 sections[0].rows[3],
-                "VANGUARD TOTAL STOCK MARKET ETF,VTI,50.5,147.78,7462.89".
-                split(","))
-
-            self.assertEqual(
-                sections[0].rows[4],
-                "U S TREASURY BILL CPN  0.00000 % MTD 2017-04-10 DTD 2017-08-14,,5000,99.42100000,4987.65"
+                "VANGUARD INTERNATIONAL HIGH DIVIDEND YIELD ETF,VYMI,50.5,147.78,7462.89"
                 .split(","))
 
             self.assertEqual(
+                sections[0].rows[4],
+                "VANGUARD FTSE EMERGING MARKETS ETF,VWO,52.5,147.78,7462.89".
+                split(","))
+
+            self.assertEqual(
                 sections[0].rows[5],
-                "Vanguard Federal Money Market Fund,VMFXX,543.21000,1.0,543.21000"
+                "VANGUARD SHORT-TERM GOVERNMENT BOND ETF,VGSH,50.5,147.78,7462.89"
+                .split(","))
+
+            self.assertEqual(
+                sections[0].rows[6],
+                "VANGUARD S&P 500 ETF,VOO,45.5,147.78,7462.89".split(","))
+
+            self.assertEqual(
+                sections[0].rows[7],
+                "Vanguard Federal Money Market Fund,VMMXX,543.21000,1.0,543.21000"
                 .split(","))
 
     def test_tradesSection(self) -> None:

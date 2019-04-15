@@ -80,9 +80,13 @@ vanguardGroup = parser.add_argument_group(
     'Vanguard',
     'Options for importing data from local files in Vanguard\'s CSV export format.'
 )
+vanguardGroup.add_argument('--vanguardpositions',
+                           help='Path to exported CSV of Vanguard positions',
+                           type=Path)
+
 vanguardGroup.add_argument(
-    '--vanguardstatement',
-    help='Path to exported CSV of Vanguard positions and trades',
+    '--vanguardtransactions',
+    help='Path to exported PDF of Vanguard transactions',
     type=Path)
 
 
@@ -167,6 +171,18 @@ if __name__ == '__main__':
         parser.print_usage()
         quit(1)
 
+    if (args.vanguardpositions and args.vanguardtransactions):
+        positionsAndTrades = vanguard.parsePositionsAndTrades(
+            args.vanguardpositions,
+            args.vanguardtransactions,
+            lenient=args.lenient)
+        positions += positionsAndTrades.positions
+        trades += positionsAndTrades.trades
+    elif (args.vanguardpositions or args.vanguardtransactions):
+        parser.error(
+            '--vanguardpositions and ---vanguardstatements must both be provided'
+        )
+
     if args.fidelitypositions:
         positions += fidelity.parsePositions(args.fidelitypositions,
                                              lenient=args.lenient)
@@ -182,12 +198,6 @@ if __name__ == '__main__':
     if args.schwabtransactions:
         trades += schwab.parseTransactions(args.schwabtransactions,
                                            lenient=args.lenient)
-
-    if args.vanguardstatement:
-        positionsAndTrades = vanguard.parsePositionsAndTrades(
-            args.vanguardstatement, lenient=args.lenient)
-        positions += positionsAndTrades.positions
-        trades += positionsAndTrades.trades
 
     if args.twsport:
         ib = IB()

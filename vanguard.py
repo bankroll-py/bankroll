@@ -4,17 +4,13 @@ from csvsectionslicer import parseSectionsForCSV, CSVSectionCriterion, CSVSectio
 from datetime import datetime
 from decimal import Decimal
 from model import Bond, Cash, Currency, Instrument, Position, Stock, Trade, TradeFlags
-from parsetools import lenientParse
+from parsetools import lenientParse, parseDecimal
 from pathlib import Path
 from typing import Dict, List, NamedTuple, Optional, Set, Tuple
 
+import camelot
 import csv
 import re
-
-
-class PositionsAndTrades(NamedTuple):
-    positions: List[Position]
-    trades: List[Trade]
 
 
 class VanguardPosition(NamedTuple):
@@ -25,9 +21,32 @@ class VanguardPosition(NamedTuple):
     totalValue: str
 
 
+class VanguardTransaction(NamedTuple):
+    settlementDate: str
+    tradeDate: str
+    symbol: str
+    name: str
+    transactionType: str
+    accountType: str
+    quantity: str
+    price: str
+    commissionFees: str
+    amount: str
+
+
+class PositionsAndTrades(NamedTuple):
+    positions: List[Position]
+    trades: List[Trade]
+
+
 class VanguardPositionAndTrades(NamedTuple):
     position: VanguardPosition
     trades: List[Trade]
+
+
+def parseVanguardDecimal(s: str) -> Decimal:
+    # when negative amounts split between 2 lines we get a space after the minus sign
+    return parseDecimal(s.replace('- ', '-'))
 
 
 def guessInstrumentForInvestmentName(name: str) -> Instrument:
@@ -87,48 +106,71 @@ def __parsePositions(path: Path, trades: List[Trade],
                          lenient=lenient))
 
 
-def parsePositionsAndTrades(path: Path,
+def parsePositionsAndTrades(positionsPath: Path,
+                            tradesPath: Path,
                             lenient: bool = False) -> PositionsAndTrades:
-    trades = __parseTransactions(path, lenient=lenient)
-    positions = __parsePositions(path, trades=trades, lenient=lenient)
+    trades = __parseActivityPDF(tradesPath, lenient=lenient)
+    positions = __parsePositions(positionsPath, trades=trades, lenient=lenient)
     return PositionsAndTrades(positions, trades)
 
 
-class VanguardTransaction(NamedTuple):
-    tradeDate: str
-    settlementDate: str
-    transactionType: str
-    transactionDescription: str
-    investmentName: str
-    symbol: str
-    shares: str
-    sharePrice: str
-    principalAmount: str
-    commissionFees: str
-    netAmount: str
-    accruedInterest: str
-    accountType: str
+def __parseActivityPDF(path: Path, lenient: bool = False) -> List[Trade]:
+    tables = camelot.read_pdf(str(path),
+                              pages='1-end',
+                              flavor='stream',
+                              row_tol=30)
+
+    allTrades: List[Trade] = []
+    for index, t in enumerate(tables):
+        # print("parsing table %s of %s" % (index, len(tables)))
+        df = t.df.replace({'\n': ''}, regex=True)
+        headerValues = df.loc[df[0] == 'Settlement date'].index.values
+
+        if (len(headerValues) == 0):
+            # For now asserting that only the last page can be invalid which is true when exporting activity from Vanguard
+            assert index == len(
+                tables) - 1, "Invalid header for table: %s" % index
+            print("Skipping table %s of %s" % (index, len(tables)))
+            continue
+
+        df = df.iloc[(headerValues[0] + 1):]
+
+        trades = list(
+            filter(
+                None,
+                lenientParse((VanguardTransaction._make(row.values)
+                              for index, row in df.iterrows()),
+                             transform=parseVanguardTransaction,
+                             lenient=lenient)))
+        allTrades.extend(trades)
+
+    return allTrades
 
 
 def forceParseVanguardTransaction(t: VanguardTransaction,
                                   flags: TradeFlags) -> Optional[Trade]:
+    # skip transactions for the settlement account
+    if '(settlement fund)' in t.name.lower():
+        return None
+
+    if t.quantity == "—":
+        return None
+
     instrument: Instrument
-    if len(t.symbol) > 0:
+    if len(t.symbol) > 0 and t.symbol != "—":
         instrument = Stock(t.symbol, currency=Currency.USD)
     else:
-        instrument = guessInstrumentForInvestmentName(t.investmentName)
+        instrument = guessInstrumentForInvestmentName(t.name)
 
-    totalFees = Decimal(t.commissionFees)
-    amount = Decimal(t.principalAmount)
+    totalFees = parseVanguardDecimal(t.commissionFees)
 
-    if t.transactionDescription == 'Redemption':
-        shares = Decimal(t.shares) * (-1)
-    else:
-        shares = Decimal(t.shares)
+    amount = parseVanguardDecimal(t.amount)
+
+    quantity = parseVanguardDecimal(t.quantity)
 
     return Trade(date=datetime.strptime(t.tradeDate, '%m/%d/%Y'),
                  instrument=instrument,
-                 quantity=shares,
+                 quantity=quantity,
                  amount=Cash(currency=Currency(Currency.USD), quantity=amount),
                  fees=Cash(currency=Currency(Currency.USD),
                            quantity=totalFees),
@@ -148,31 +190,8 @@ def parseVanguardTransaction(t: VanguardTransaction) -> Optional[Trade]:
         'Buy': TradeFlags.OPEN,
         'Sell': TradeFlags.CLOSE,
         'Reinvestment': TradeFlags.OPEN | TradeFlags.DRIP,
-        'Corp Action (Redemption)': TradeFlags.CLOSE,
-        'Transfer (outgoing)': TradeFlags.CLOSE,
+        'Corp Action (Redemption)': TradeFlags.CLOSE
     }
 
     return forceParseVanguardTransaction(
         t, flags=flagsByTransactionType[t.transactionType])
-
-
-# Transactions will be ordered from newest to oldest
-def __parseTransactions(path: Path, lenient: bool = False) -> List[Trade]:
-    with open(path, newline='') as csvfile:
-        transactionsCriterion = CSVSectionCriterion(
-            startSectionRowMatch=["Account Number", "Trade Date"],
-            endSectionRowMatch=[],
-            rowFilter=lambda r: r[1:-1])
-
-        sections = parseSectionsForCSV(csvfile, [transactionsCriterion])
-
-        if len(sections) == 0:
-            return []
-
-        return list(
-            filter(
-                None,
-                lenientParse(
-                    (VanguardTransaction._make(r) for r in sections[0].rows),
-                    transform=parseVanguardTransaction,
-                    lenient=lenient)))
