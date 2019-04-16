@@ -8,7 +8,7 @@ Bug reports and enhancement requests are more than welcome. However, if you're a
 
 ## Pull requests
 
-This project uses [CircleCI](https://circleci.com/gh/jspahrsummers/trader-portfolio/tree/master) for continuous integration, including on pull requests, so most code problems will be caught automatically.
+This project uses [CircleCI](https://circleci.com/gh/jspahrsummers/broke/tree/master) for continuous integration, including on pull requests, so most code problems will be caught automatically.
 
 ### Testing
 

@@ -1,4 +1,4 @@
-# trader-portfolio [![CircleCI](https://circleci.com/gh/jspahrsummers/trader-portfolio/tree/master.svg?style=svg&circle-token=c58ad4be41473515e863a72d8abd00ddf48d0dcd)](https://circleci.com/gh/jspahrsummers/trader-portfolio/tree/master)
+# broke [![CircleCI](https://circleci.com/gh/jspahrsummers/broke/tree/master.svg?style=svg&circle-token=c58ad4be41473515e863a72d8abd00ddf48d0dcd)](https://circleci.com/gh/jspahrsummers/broke/tree/master)
 Ingest portfolio and other data from multiple brokerages, and analyze it
 
 # Getting started
@@ -17,12 +17,12 @@ script/test
 
 # Usage
 
-After being set up, `trader-portfolio` can be used from the command line to bring together data from multiple brokerages.
+After being set up, `broke` can be used from the command line to bring together data from multiple brokerages.
 
 For example, to show all positions held in both Interactive Brokers and Charles Schwab:
 
 ```
-python3 trader-portfolio.py \
+python3 broke.py \
   --twsport 7496 \
   --schwabpositions ~/Positions-2019-01-01.CSV \
   --schwabtransactions ~/Transactions_20190101.CSV \
@@ -32,28 +32,28 @@ python3 trader-portfolio.py \
 Run with `-h` to see all options:
 
 ```
-python3 trader-portfolio.py -h
+python3 broke.py -h
 ```
 
 ## Interactive Brokers
 
 [Interactive Brokers](http://interactivebrokers.com) (sometimes abbreviated as IB or IBKR) offers a well-supported [API](https://interactivebrokers.github.io/), which—along with [ib_insync](https://github.com/erdewit/ib_insync)—makes it possible to load up-to-date portfolio data and request real-time information about particular securities.
 
-Because this integration is so useful, **some generic functionality in `trader-portfolio` will require an IB account.**
+Because this integration is so useful, **some generic functionality in `broke` will require an IB account.**
 
 Unfortunately, [one of IB's trading applications](https://interactivebrokers.github.io/tws-api/initial_setup.html)—Trader Workstation or IB Gateway—must be running and logged-in to accept API connections. You may wish to use [IBC](https://github.com/IbcAlpha/IBC) to automate the startup and login of these applications.
 
-Once Trader Workstation or IB Gateway is running, and [API connections are enabled](https://interactivebrokers.github.io/tws-api/initial_setup.html#enable_api), provide the local port number to `trader-portfolio` like so:
+Once Trader Workstation or IB Gateway is running, and [API connections are enabled](https://interactivebrokers.github.io/tws-api/initial_setup.html#enable_api), provide the local port number to `broke` like so:
 
 ```
-python3 trader-portfolio.py \
+python3 broke.py \
   --twsport 7496 \
   [command]
 ```
 
 ### Querying trade history
 
-IB's [Trader Workstation API](https://interactivebrokers.github.io/tws-api/) does not support retrieving information about an account's historical trades, so `trader-portfolio` must use their [Flex Web Service](https://www.interactivebrokers.com/en/software/am/am/reports/flex_web_service_version_3.htm).
+IB's [Trader Workstation API](https://interactivebrokers.github.io/tws-api/) does not support retrieving information about an account's historical trades, so `broke` must use their [Flex Web Service](https://www.interactivebrokers.com/en/software/am/am/reports/flex_web_service_version_3.htm).
 
 To set this up, log in to [Account Management](https://www.interactivebrokers.com/portal), then browse to _Settings_ → _Account Settings_ in the sidebar:
 
@@ -65,7 +65,7 @@ In the _Reporting_ section of this page, click the gear to configure _Flex Web S
 
 **Once configured, copy the _Current Token_ for use on the command line.**
 
-Then, you must save a query for `trader-portfolio` to use. Back in the sidebar, browse to _Reports_ → _Flex Queries_:
+Then, you must save a query for `broke` to use. Back in the sidebar, browse to _Reports_ → _Flex Queries_:
 
 <img width="309" alt="Flex Queries" src="https://user-images.githubusercontent.com/432536/55676496-4ffd0500-58ce-11e9-9a2b-d530b2d0c5c9.png">
 
@@ -91,7 +91,7 @@ Under _Sections_, click _Trade Confirmations_ and enable everything in the dialo
 With the token and the query ID from your account, historical trades can be downloaded:
 
 ```
-python3 trader-portfolio.py \
+python3 broke.py \
   --flextoken [token] \
   --flexquery [query ID] \
   trades
@@ -99,7 +99,7 @@ python3 trader-portfolio.py \
 
 ## Charles Schwab
 
-[Charles Schwab](https://www.schwab.com) does not offer an API, but it does provide [CSV](https://en.wikipedia.org/wiki/Comma-separated_values) files for export, which `trader-portfolio` can then import.
+[Charles Schwab](https://www.schwab.com) does not offer an API, but it does provide [CSV](https://en.wikipedia.org/wiki/Comma-separated_values) files for export, which `broke` can then import.
 
 Browse to the "Positions" and/or "Transactions" screen:
 
@@ -109,10 +109,10 @@ Click the "Export" link in the top-right:
 
 <img width="219" alt="Export" src="https://user-images.githubusercontent.com/432536/55676579-825b3200-58cf-11e9-8626-793d1d465e70.png">
 
-Then provide the paths of either or both these downloaded files to `trader-portfolio`:
+Then provide the paths of either or both these downloaded files to `broke`:
 
 ```
-python3 trader-portfolio.py \
+python3 broke.py \
   --schwabpositions ~/path/to/Positions.CSV \
   --schwabtransactions ~/path/to/Transactions.CSV \
   [command]
