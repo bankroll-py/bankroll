@@ -1,0 +1,38 @@
+
+
+Run Date,Account,Action,Symbol,Security Description,Security Type,Exchange Quantity,Exchange Currency,Quantity,Currency,Price,Exchange Rate,Commission,Fees,Accrued Interest,Amount,Settlement Date
+11/9/2017,My Account X12345678, INTEREST EARNED,987654321, CASH, Cash,0,,,USD,,0,,,,2.34,
+11/9/2017,My Account X12345678, REINVESTMENT,987654321, CASH, Cash,0,,3.45,USD,1,0,,,,-2.34,
+11/9/2017,My Account X12345678, DIVIDEND RECEIVED, ROBO, EXCHANGE TRADED CONCEPTS TR ROBO GLOBAL, Margin,0,,,USD,,0,,,,6.78,
+11/9/2017,My Account X12345678, REINVESTMENT, ROBO, EXCHANGE TRADED CONCEPTS TR ROBO GLOBAL, Margin,0,,0.234,USD,32.10,0,,,,-6.78,
+11/9/2017,My Account X12345678, YOU SOLD             CLOSING TRANSACTION,-SPY180125C260,CALL (SPY) SPDR S&P 500 ETF JAN 25 18 $260 (100 SHS), Margin,0,,-4,USD,0.43,0,4.95,0.08,,89.01,11/02/2017
+10/26/2017,My Account X12345678,YOU SOLD             EX-DIV DATE 01/02/19RECORD DATE 01/03/19, FXB, INVESCO CURNCYSHS BRIT PND STR BRIT POU, Margin,0,,-16,USD,122.64,0,4.95,0.03,,2345.67,10/28/2017
+10/26/2017,My Account X12345678,YOU SOLD             EX-DIV DATE 01/02/19RECORD DATE 01/03/19, FXE, INVESCO CURRENCYSHARES EURO TR EURO SHS, Margin,0,,-38,USD,108.59,0,4.95,0.06,,4567.89,10/28/2017
+10/13/2017,My Account X12345678, YOU SOLD,978928WR4,UNITED STATES TREAS NTS NOTE 1.62500% 05/30/2018, Margin,0,,-10000,USD,99.46,0,,,-123.45,10123.45,
+10/11/2017,My Account X12345678,FOREIGN TAX PAID as of 12/07/2018, TM,TOYOTA MOTOR CORP SP ADR REP2COM, Margin,0,,,USD,,0,,,,-8.76,
+10/10/2017,My Account X12345678, YOU BOUGHT,991696QU2,UNITED STATES TREAS BILLS ZERO CPN 0.00000% 05/9/2018, Margin,0,,10000,USD,98.75,0,,,,-10576.20,
+10/10/2017,My Account X12345678, YOU BOUGHT,978928WR4,UNITED STATES TREAS NTS NOTE 1.62500% 03/15/2018, Margin,0,,10000,USD,99.54,0,,,321.09,-10266.2,
+9/29/2017,My Account X12345678, REDEMPTION PAYOUT,912566RL3,UNITED STATES TREAS BILLS ZERO CPN 0.00000% 10/20/2017, Margin,0,,-10000,USD,100,0,,,,10000,
+9/26/2017,My Account X12345678, Electronic Funds Transfer Received,  , No Description, Cash,0,,,USD,,0,,,,4567,
+9/23/2017,My Account X12345678, YOU BOUGHT, USFD, US FOODS HLDG CORP COM, Margin,0,,178,USD,32.65,0,4.95,,,-5432.10,9/27/2017
+9/20/2017,My Account X12345678, YOU SOLD, NVDA, NVIDIA CORP, Margin,0,,-12,USD,149.24,0,4.95,0.02,,1487.38,9/23/2017
+8/31/2017,My Account X12345678, INTEREST EARNED,987654321, CASH, Cash,0,,,USD,,0,,,,0.02, 
+8/26/2017,My Account X12345678, YOU BOUGHT           OPENING TRANSACTION,-SPY180322P198,PUT (SPY) SPDR S&P 500 ETF MAR 22 18 $198 (100 SHS), Margin,0,,32,USD,1.33,0,24.45,0.86,,-3210.98,8/29/2017
+8/2/2017,My Account X12345678, DIVIDEND RECEIVED, IHI, ISHARES TR U.S. MED DVC ETF, Margin,0,,,USD,,0,,,,1.54, 
+8/2/2017,My Account X12345678, REINVESTMENT, IHI, ISHARES TR U.S. MED DVC ETF, Margin,0,,0.0123,USD,228.25,0,,,,-1.54, 
+
+
+
+
+
+
+"The data and information in this spreadsheet is provided to you solely for your use and is not for distribution. The spreadsheet is provided for"
+"informational purposes only, and is not intended to provide advice, nor should it be construed as an offer to sell, a solicitation of an offer to buy or a"
+"recommendation for any security by Fidelity or any third party. Data and information shown is based on information known to Fidelity as of the date it was"
+"exported and is subject to change. It should not be used in place of your account statements or trade confirmations and is not intended for tax reporting"
+"purposes. For more information on the data included in this spreadsheet, including any limitations thereof, go to Fidelity.com."
+
+"Brokerage services are provided by Fidelity Brokerage Services LLC, 900 Salem Street, Smithfield, RI 02917. Custody and other services provided by National"
+"Financial Services LLC. Both are Fidelity Investment companies and members SIPC, NYSE."
+
+"Date downloaded" 04/06/2019, 6:29 PM
