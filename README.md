@@ -1,5 +1,14 @@
 # broke [![CircleCI](https://circleci.com/gh/jspahrsummers/broke/tree/master.svg?style=svg&circle-token=c58ad4be41473515e863a72d8abd00ddf48d0dcd)](https://circleci.com/gh/jspahrsummers/broke/tree/master)
-Ingest portfolio and other data from multiple brokerages, and analyze it
+Ingest portfolio and other data from multiple brokerages, and analyze it.
+
+**Table of contents:**
+
+1. [Getting started](#getting-started)
+1. [Usage](#usage)
+   1. [Interactive Brokers](#interactive-brokers)
+   1. [Charles Schwab](#charles-schwab)
+   1. [Fidelity](#fidelity)
+   1. [Vanguard](#vanguard)
 
 # Getting started
 
@@ -117,3 +126,11 @@ python3 broke.py \
   --schwabtransactions ~/path/to/Transactions.CSV \
   [command]
 ```
+
+## Fidelity
+
+[Fidelity](https://www.fidelity.com) is supported through a similar facility as [Schwab](#charles-schwab). More detailed instructions have yet to be written—[contributions welcome](CONTRIBUTING.md)!
+
+## Vanguard
+
+[Vanguard](https://investor.vanguard.com) is a **work in progress**, and may not be as fully-featured as the other brokerages listed here. [Contributions welcome](CONTRIBUTING.md)!
