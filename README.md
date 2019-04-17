@@ -1,4 +1,4 @@
-# bankroll [![CircleCI](https://circleci.com/gh/jspahrsummers/bankroll/tree/master.svg?style=svg&circle-token=c58ad4be41473515e863a72d8abd00ddf48d0dcd)](https://circleci.com/gh/jspahrsummers/bankroll/tree/master)
+# bankroll [![CircleCI](https://circleci.com/gh/jspahrsummers/bankroll.svg?style=svg&circle-token=c2eceb857210b420215d7fdba4aa480e72c57fc3)](https://circleci.com/gh/jspahrsummers/bankroll)
 Ingest portfolio and other data from multiple brokerages, and analyze it.
 
 **Table of contents:**
