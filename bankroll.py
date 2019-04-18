@@ -93,10 +93,8 @@ dataProvider: Optional[LiveDataProvider] = None
 async def printPositions(args: Namespace) -> None:
     if args.live_value:
         assert dataProvider, 'Live data connection required to fetch market values'
-
-        values: Dict[Position, Cash] = dict(
-            await analysis.liveValuesForPositions(positions,
-                                                  dataProvider=dataProvider))
+        values = await analysis.liveValuesForPositions(
+            positions, dataProvider=dataProvider)
 
     for p in sorted(positions, key=lambda p: p.instrument):
         print(p)
@@ -195,4 +193,4 @@ if __name__ == '__main__':
         trades += ibkr.parseTrades(args.ibtrades, lenient=args.lenient)
 
     positions = list(combinePositions(positions))
-    await commands[args.command](args)
+    asyncio.run(commands[args.command](args))
