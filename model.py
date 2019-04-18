@@ -1,4 +1,4 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 from datetime import date, datetime
 from decimal import Decimal, ROUND_HALF_EVEN
 from enum import Enum, Flag, auto, unique
@@ -117,6 +117,7 @@ class Cash:
 
 @total_ordering
 class Instrument(ABC):
+    @abstractmethod
     def __init__(self, symbol: str):
         assert symbol, 'Expected non-empty symbol for instrument'
 
@@ -148,7 +149,8 @@ class Instrument(ABC):
 
 # Also used for ETFs.
 class Stock(Instrument):
-    pass
+    def __init__(self, symbol: str):
+        super().__init__(symbol)
 
 
 class Bond(Instrument):
@@ -236,11 +238,13 @@ class FutureOption(Option):
 
 
 class Future(Instrument):
-    pass
+    def __init__(self, symbol: str):
+        super().__init__(symbol)
 
 
 class Forex(Instrument):
-    pass
+    def __init__(self, symbol: str):
+        super().__init__(symbol)
 
 
 class Position:
