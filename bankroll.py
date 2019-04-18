@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Optional
 
 import analysis
-import asyncio
 import ibkr
 import fidelity
 import logging
@@ -97,11 +96,11 @@ trades: List[Trade] = []
 dataProvider: Optional[LiveDataProvider] = None
 
 
-async def printPositions(args: Namespace) -> None:
+def printPositions(args: Namespace) -> None:
     if args.live_value:
         assert dataProvider, 'Live data connection required to fetch market values'
-        values = await analysis.liveValuesForPositions(
-            positions, dataProvider=dataProvider)
+        values = analysis.liveValuesForPositions(positions,
+                                                 dataProvider=dataProvider)
 
     for p in sorted(positions, key=lambda p: p.instrument):
         print(p)
@@ -120,7 +119,7 @@ async def printPositions(args: Namespace) -> None:
             print('\tRealized basis: {}'.format(realizedBasis))
 
 
-async def printTrades(args: Namespace) -> None:
+def printTrades(args: Namespace) -> None:
     for t in sorted(trades, key=lambda t: t.date, reverse=True):
         print(t)
 
@@ -203,4 +202,4 @@ if __name__ == '__main__':
         trades += ibkr.parseTrades(args.ibtrades, lenient=args.lenient)
 
     positions = list(combinePositions(positions))
-    asyncio.run(commands[args.command](args))
+    commands[args.command](args)

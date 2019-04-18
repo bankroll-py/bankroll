@@ -2,8 +2,6 @@ from functools import reduce
 from model import Cash, Trade, Instrument, Option, LiveDataProvider, Quote, Position
 from typing import Dict, Iterable, Optional, Tuple
 
-import asyncio
-
 
 def tradeAffectsSymbol(trade: Trade, symbol: str) -> bool:
     return (isinstance(trade.instrument, Option)
@@ -21,9 +19,9 @@ def realizedBasisForSymbol(symbol: str,
                   None)
 
 
-async def liveValuesForPositions(positions: Iterable[Position],
-                                 dataProvider: LiveDataProvider
-                                 ) -> Dict[Position, Cash]:
+def liveValuesForPositions(positions: Iterable[Position],
+                           dataProvider: LiveDataProvider
+                           ) -> Dict[Position, Cash]:
     def priceFromQuote(q: Quote, p: Position) -> Cash:
         # For a long position, the value should be what the market is willing to pay right now.
         # For a short position, the value should be what the market is asking to be paid right now.
@@ -34,7 +32,7 @@ async def liveValuesForPositions(positions: Iterable[Position],
             return q.bid
 
     return {
-        p: priceFromQuote(await dataProvider.fetchQuote(p.instrument), p) *
-        p.quantity
+        p:
+        priceFromQuote(dataProvider.fetchQuote(p.instrument), p) * p.quantity
         for p in positions
     }

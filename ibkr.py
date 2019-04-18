@@ -5,7 +5,6 @@ from parsetools import lenientParse
 from pathlib import Path
 from typing import Awaitable, Callable, Dict, List, NamedTuple, Type
 
-import asyncio
 import ib_insync as IB
 import re
 
@@ -267,9 +266,9 @@ class IBDataProvider(LiveDataProvider):
         self._client = client
         super().__init__()
 
-    async def fetchQuote(self, instrument: Instrument) -> Quote:
+    def fetchQuote(self, instrument: Instrument) -> Quote:
         con = contract(instrument)
-        await self._client.qualifyContractsAsync(con)
+        self._client.qualifyContracts(con)
 
         if not con.currency:
             raise RuntimeError(
@@ -278,7 +277,7 @@ class IBDataProvider(LiveDataProvider):
 
         currency = Currency[con.currency]
 
-        tickers = await self._client.reqTickersAsync(con)
+        tickers = self._client.reqTickers(con)
         tick = tickers[0]
 
         return Quote(bid=Cash(currency=currency, quantity=Decimal(tick.bid)),

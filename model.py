@@ -305,7 +305,7 @@ class Quote:
 
 class LiveDataProvider(ABC):
     @abstractmethod
-    async def fetchQuote(self, instrument: Instrument) -> Quote:
+    def fetchQuote(self, instrument: Instrument) -> Quote:
         pass
 
 
