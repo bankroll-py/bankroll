@@ -2,7 +2,7 @@ from datetime import date
 from decimal import Decimal, ROUND_UP
 from hypothesis import assume, given, reproduce_failure
 from hypothesis.strategies import dates, decimals, from_type, integers, lists, one_of, sampled_from, text
-from model import Cash, Currency, Instrument, Bond, Stock, Option, OptionType, FutureOption, Future, Forex, Position
+from model import Cash, Currency, Instrument, Bond, Stock, Option, OptionType, FutureOption, Future, Forex, Position, Quote
 from typing import List, TypeVar
 
 import helpers
@@ -219,6 +219,12 @@ class TestOption(unittest.TestCase):
         self.assertEqual(o.symbol, 'LAMR  150117C00052500')
 
     # TODO: Mini-options support
+
+
+class TestQuote(unittest.TestCase):
+    @given(from_type(Quote))
+    def test_quoteEqualsItself(self, q: Quote) -> None:
+        self.assertEqual(q, q)
 
 
 if __name__ == '__main__':

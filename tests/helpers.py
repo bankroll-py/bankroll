@@ -1,6 +1,6 @@
 from decimal import Decimal
 from hypothesis.strategies import builds, dates, datetimes, decimals, from_regex, from_type, just, integers, one_of, register_type_strategy, sampled_from, text
-from model import Cash, Currency, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, Trade, TradeFlags
+from model import Cash, Currency, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, Trade, TradeFlags, Quote
 from typing import List
 
 decimalCashAmounts = decimals(allow_nan=False,
@@ -82,6 +82,14 @@ register_type_strategy(
                                       min_value=Decimal('0'),
                                       max_value=Decimal('10000'))),
         flags=from_type(TradeFlags))))
+
+register_type_strategy(
+    Quote,
+    from_type(Cash).flatmap(lambda bid: 
+    builds(Quote,
+           bid=just(bid),
+           ask=builds(Cash, currency=just(bid.currency), quantity=decimalCashAmounts.map(lambda c: bid.quantity + abs(c))),
+           last=builds(Cash, currency=just(bid.currency), quantity=decimalCashAmounts))))
 
 
 def cashUSD(amount: Decimal) -> Cash:
