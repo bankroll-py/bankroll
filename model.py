@@ -276,6 +276,12 @@ class Quote:
         return self.bid == other.bid and self.ask == other.ask and self.last == other.last
 
 
+class LiveDataProvider(ABC):
+    @abstractmethod
+    async def fetchQuote(self, instrument: Instrument) -> Quote:
+        pass
+
+
 class Position:
     quantityQuantization = Decimal('0.0001')
 
