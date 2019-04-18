@@ -247,6 +247,35 @@ class Forex(Instrument):
         super().__init__(symbol)
 
 
+class Quote:
+    def __init__(self, bid: Cash, ask: Cash, last: Cash):
+        assert bid.currency == ask.currency
+        assert bid.currency == last.currency
+
+        self._bid = bid
+        self._ask = ask
+        self._last = last
+        super().__init__()
+
+    @property
+    def bid(self) -> Cash:
+        return self._bid
+
+    @property
+    def ask(self) -> Cash:
+        return self._ask
+
+    @property
+    def last(self) -> Cash:
+        return self._last
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, Quote):
+            return False
+
+        return self.bid == other.bid and self.ask == other.ask and self.last == other.last
+
+
 class Position:
     quantityQuantization = Decimal('0.0001')
 
