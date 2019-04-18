@@ -20,12 +20,19 @@ register_type_strategy(
     Cash,
     builds(Cash, currency=from_type(Currency), quantity=decimalCashAmounts))
 
-register_type_strategy(Bond, builds(Bond, symbol=from_regex(Bond.regexCUSIP)))
-register_type_strategy(Stock, builds(Stock, symbol=text(min_size=1)))
+register_type_strategy(
+    Bond,
+    builds(Bond,
+           symbol=from_regex(Bond.regexCUSIP),
+           currency=from_type(Currency)))
+register_type_strategy(
+    Stock, builds(Stock, symbol=text(min_size=1),
+                  currency=from_type(Currency)))
 register_type_strategy(
     Option,
     builds(Option,
            underlying=text(min_size=1),
+           currency=from_type(Currency),
            optionType=from_type(OptionType),
            expiration=dates(),
            strike=decimals(allow_nan=False,
@@ -37,14 +44,19 @@ register_type_strategy(
     builds(FutureOption,
            symbol=text(min_size=1),
            underlying=text(min_size=1),
+           currency=from_type(Currency),
            optionType=from_type(OptionType),
            expiration=dates(),
            strike=decimals(allow_nan=False,
                            allow_infinity=False,
                            min_value=Decimal('1'),
                            max_value=Decimal('100000'))))
-register_type_strategy(Future, builds(Future, symbol=text(min_size=1)))
-register_type_strategy(Forex, builds(Forex, symbol=text(min_size=1)))
+register_type_strategy(
+    Future,
+    builds(Future, symbol=text(min_size=1), currency=from_type(Currency)))
+register_type_strategy(
+    Forex, builds(Forex, symbol=text(min_size=1),
+                  currency=from_type(Currency)))
 
 register_type_strategy(
     Instrument,
@@ -53,10 +65,12 @@ register_type_strategy(
 
 register_type_strategy(
     Position,
-    builds(Position,
-           instrument=from_type(Instrument),
-           quantity=decimalPositionQuantities,
-           costBasis=from_type(Cash)))
+    from_type(Instrument).flatmap(lambda i: builds(
+        Position,
+        instrument=just(i),
+        quantity=decimalPositionQuantities,
+        costBasis=builds(
+            Cash, quantity=decimalCashAmounts, currency=just(i.currency)))))
 
 register_type_strategy(
     TradeFlags,
@@ -69,14 +83,15 @@ register_type_strategy(
 
 register_type_strategy(
     Trade,
-    from_type(Currency).flatmap(lambda cx: builds(
+    from_type(Instrument).flatmap(lambda i: builds(
         Trade,
         date=datetimes(),
-        instrument=from_type(Instrument),
+        instrument=just(i),
         quantity=decimalPositionQuantities,
-        amount=builds(Cash, currency=just(cx), quantity=decimalCashAmounts),
+        amount=builds(
+            Cash, currency=just(i.currency), quantity=decimalCashAmounts),
         fees=builds(Cash,
-                    currency=just(cx),
+                    currency=just(i.currency),
                     quantity=decimals(allow_nan=False,
                                       allow_infinity=False,
                                       min_value=Decimal('0'),

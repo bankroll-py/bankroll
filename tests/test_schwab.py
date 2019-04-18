@@ -19,25 +19,29 @@ class TestSchwabPositions(unittest.TestCase):
         self.assertEqual(len(self.positions), 4)
 
     def test_tBill(self) -> None:
-        self.assertEqual(self.positions[0].instrument, Bond('193845XM2'))
+        self.assertEqual(self.positions[0].instrument,
+                         Bond('193845XM2', Currency.USD))
         self.assertEqual(self.positions[0].quantity, 10000)
         self.assertEqual(self.positions[0].costBasis,
                          helpers.cashUSD(Decimal('9956.80')))
 
     def test_bnd(self) -> None:
-        self.assertEqual(self.positions[1].instrument, Stock('BND'))
+        self.assertEqual(self.positions[1].instrument,
+                         Stock('BND', Currency.USD))
         self.assertEqual(self.positions[1].quantity, Decimal('36.8179'))
         self.assertEqual(self.positions[1].costBasis,
                          helpers.cashUSD(Decimal('1801.19')))
 
     def test_uvxy(self) -> None:
-        self.assertEqual(self.positions[2].instrument, Stock('UVXY'))
+        self.assertEqual(self.positions[2].instrument,
+                         Stock('UVXY', Currency.USD))
         self.assertEqual(self.positions[2].quantity, Decimal('0'))
         self.assertEqual(self.positions[2].costBasis,
                          helpers.cashUSD(Decimal('0')))
 
     def test_vti(self) -> None:
-        self.assertEqual(self.positions[3].instrument, Stock('VTI'))
+        self.assertEqual(self.positions[3].instrument,
+                         Stock('VTI', Currency.USD))
         self.assertEqual(self.positions[3].quantity, Decimal('48.2304'))
         self.assertEqual(self.positions[3].costBasis,
                          helpers.cashUSD(Decimal('3283.04')))
@@ -60,7 +64,7 @@ class TestSchwabTransactions(unittest.TestCase):
     def test_buySecurity(self) -> None:
         ts = self.tradesByDate[date(2017, 2, 22)]
         self.assertEqual(len(ts), 1)
-        self.assertEqual(ts[0].instrument, Stock('VOO'))
+        self.assertEqual(ts[0].instrument, Stock('VOO', Currency.USD))
         self.assertEqual(ts[0].quantity, Decimal('23'))
         self.assertEqual(
             ts[0].amount,
@@ -72,7 +76,7 @@ class TestSchwabTransactions(unittest.TestCase):
     def test_reinvestShares(self) -> None:
         ts = self.tradesByDate[date(2017, 3, 29)]
         self.assertEqual(len(ts), 1)
-        self.assertEqual(ts[0].instrument, Stock('VOO'))
+        self.assertEqual(ts[0].instrument, Stock('VOO', Currency.USD))
         self.assertEqual(ts[0].quantity, Decimal('0.1062'))
         self.assertEqual(
             ts[0].amount,
@@ -85,7 +89,7 @@ class TestSchwabTransactions(unittest.TestCase):
         ts = self.tradesByDate[date(2018, 1, 2)]
         self.assertEqual(len(ts), 2)
 
-        self.assertEqual(ts[0].instrument, Stock('HD'))
+        self.assertEqual(ts[0].instrument, Stock('HD', Currency.USD))
         self.assertEqual(ts[0].quantity, Decimal('-6'))
         self.assertEqual(
             ts[0].amount,
@@ -94,7 +98,7 @@ class TestSchwabTransactions(unittest.TestCase):
                          Cash(currency=Currency.USD, quantity=Decimal('4.96')))
         self.assertEqual(ts[0].flags, TradeFlags.OPEN)
 
-        self.assertEqual(ts[1].instrument, Stock('HD'))
+        self.assertEqual(ts[1].instrument, Stock('HD', Currency.USD))
         self.assertEqual(ts[1].quantity, Decimal('6'))
         self.assertEqual(
             ts[1].amount,
@@ -109,6 +113,7 @@ class TestSchwabTransactions(unittest.TestCase):
         self.assertEqual(
             ts[0].instrument,
             Option(underlying='INTC',
+                   currency=Currency.USD,
                    optionType=OptionType.PUT,
                    expiration=date(2018, 12, 7),
                    strike=Decimal('48.50')))
@@ -125,6 +130,7 @@ class TestSchwabTransactions(unittest.TestCase):
         self.assertEqual(
             ts[0].instrument,
             Option(underlying='INTC',
+                   currency=Currency.USD,
                    optionType=OptionType.PUT,
                    expiration=date(2018, 12, 7),
                    strike=Decimal('48.50')))
@@ -141,6 +147,7 @@ class TestSchwabTransactions(unittest.TestCase):
         self.assertEqual(
             ts[2].instrument,
             Option(underlying='QQQ',
+                   currency=Currency.USD,
                    optionType=OptionType.CALL,
                    expiration=date(2018, 2, 1),
                    strike=Decimal('155')))
@@ -158,6 +165,7 @@ class TestSchwabTransactions(unittest.TestCase):
         self.assertEqual(
             ts[3].instrument,
             Option(underlying='QQQ',
+                   currency=Currency.USD,
                    optionType=OptionType.CALL,
                    expiration=date(2018, 2, 1),
                    strike=Decimal('130')))
@@ -175,6 +183,7 @@ class TestSchwabTransactions(unittest.TestCase):
         self.assertEqual(
             ts[0].instrument,
             Option(underlying='CSCO',
+                   currency=Currency.USD,
                    optionType=OptionType.PUT,
                    expiration=date(2018, 11, 30),
                    strike=Decimal('44.50')))
@@ -191,6 +200,7 @@ class TestSchwabTransactions(unittest.TestCase):
         self.assertEqual(
             ts[0].instrument,
             Option(underlying='MAR',
+                   currency=Currency.USD,
                    optionType=OptionType.CALL,
                    expiration=date(2018, 12, 28),
                    strike=Decimal('116')))
@@ -207,6 +217,7 @@ class TestSchwabTransactions(unittest.TestCase):
         self.assertEqual(
             ts[1].instrument,
             Option(underlying='MAR',
+                   currency=Currency.USD,
                    optionType=OptionType.CALL,
                    expiration=date(2018, 12, 28),
                    strike=Decimal('112')))
@@ -220,7 +231,7 @@ class TestSchwabTransactions(unittest.TestCase):
     def test_securityTransferSale(self) -> None:
         ts = self.tradesByDate[date(2018, 1, 4)]
         self.assertEqual(len(ts), 1)
-        self.assertEqual(ts[0].instrument, Stock('MSFT'))
+        self.assertEqual(ts[0].instrument, Stock('MSFT', Currency.USD))
         self.assertEqual(ts[0].quantity, Decimal('-10'))
         self.assertEqual(
             ts[0].amount,

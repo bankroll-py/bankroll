@@ -206,6 +206,7 @@ class TestOption(unittest.TestCase):
     # https://en.wikipedia.org/wiki/Option_symbol#The_OCC_Option_Symbol
     def test_spxSymbol(self) -> None:
         o = Option(underlying='SPX',
+                   currency=Currency.USD,
                    optionType=OptionType.PUT,
                    expiration=date(2014, 11, 22),
                    strike=Decimal('19.50'))
@@ -213,6 +214,7 @@ class TestOption(unittest.TestCase):
 
     def test_lamrSymbol(self) -> None:
         o = Option(underlying='LAMR',
+                   currency=Currency.USD,
                    optionType=OptionType.CALL,
                    expiration=date(2015, 1, 17),
                    strike=Decimal('52.50'))

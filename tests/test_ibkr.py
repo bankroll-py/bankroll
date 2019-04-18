@@ -27,7 +27,7 @@ class TestIBKRTrades(unittest.TestCase):
         ts = self.tradesBySymbol[symbol]
         self.assertEqual(len(ts), 1)
         self.assertEqual(ts[0].date.date(), date(2019, 2, 12))
-        self.assertEqual(ts[0].instrument, Stock(symbol))
+        self.assertEqual(ts[0].instrument, Stock(symbol, Currency.GBP))
         self.assertEqual(ts[0].quantity, Decimal('100'))
         self.assertEqual(
             ts[0].amount, Cash(currency=Currency.GBP,
@@ -41,7 +41,7 @@ class TestIBKRTrades(unittest.TestCase):
         ts = self.tradesBySymbol[symbol]
         self.assertEqual(len(ts), 1)
         self.assertEqual(ts[0].date.date(), date(2019, 2, 12))
-        self.assertEqual(ts[0].instrument, Stock(symbol))
+        self.assertEqual(ts[0].instrument, Stock(symbol, Currency.USD))
         self.assertEqual(ts[0].quantity, Decimal('17'))
         self.assertEqual(
             ts[0].amount, Cash(currency=Currency.USD,
@@ -56,7 +56,8 @@ class TestIBKRTrades(unittest.TestCase):
         ts = self.tradesBySymbol[symbol]
         self.assertEqual(len(ts), 1)
         self.assertEqual(ts[0].date.date(), date(2019, 3, 19))
-        self.assertEqual(ts[0].instrument, Bond(symbol, validateSymbol=False))
+        self.assertEqual(ts[0].instrument,
+                         Bond(symbol, Currency.USD, validateSymbol=False))
         self.assertEqual(ts[0].quantity, Decimal('2000'))
         self.assertEqual(
             ts[0].amount,
@@ -73,6 +74,7 @@ class TestIBKRTrades(unittest.TestCase):
         self.assertEqual(
             ts[0].instrument,
             Option(underlying='HYG',
+                   currency=Currency.USD,
                    optionType=OptionType.PUT,
                    expiration=date(2019, 11, 15),
                    strike=Decimal('87')))
@@ -92,6 +94,7 @@ class TestIBKRTrades(unittest.TestCase):
         self.assertEqual(
             ts[0].instrument,
             Option(underlying='MTCH',
+                   currency=Currency.USD,
                    optionType=OptionType.PUT,
                    expiration=date(2019, 2, 15),
                    strike=Decimal('45')))
@@ -108,7 +111,7 @@ class TestIBKRTrades(unittest.TestCase):
         ts = self.tradesBySymbol[symbol]
         self.assertEqual(len(ts), 2)
         self.assertEqual(ts[0].date.date(), date(2019, 2, 12))
-        self.assertEqual(ts[0].instrument, Forex(symbol))
+        self.assertEqual(ts[0].instrument, Forex(symbol, Currency.USD))
         self.assertEqual(ts[0].quantity, Decimal('3060'))
         self.assertEqual(
             ts[0].amount,
@@ -116,7 +119,7 @@ class TestIBKRTrades(unittest.TestCase):
         self.assertEqual(ts[0].fees,
                          Cash(currency=Currency.USD, quantity=Decimal('2')))
         self.assertEqual(ts[0].flags, TradeFlags.OPEN)
-        self.assertEqual(ts[1].instrument, Forex(symbol))
+        self.assertEqual(ts[1].instrument, Forex(symbol, Currency.USD))
         self.assertEqual(ts[1].quantity, Decimal('50'))
         self.assertEqual(
             ts[1].amount,
@@ -130,7 +133,7 @@ class TestIBKRTrades(unittest.TestCase):
         ts = self.tradesBySymbol[symbol]
         self.assertEqual(len(ts), 1)
         self.assertEqual(ts[0].date.date(), date(2019, 3, 25))
-        self.assertEqual(ts[0].instrument, Forex(symbol))
+        self.assertEqual(ts[0].instrument, Forex(symbol, Currency.AUD))
         self.assertEqual(ts[0].quantity, Decimal('5000'))
         self.assertEqual(
             ts[0].amount,
@@ -144,7 +147,7 @@ class TestIBKRTrades(unittest.TestCase):
         ts = self.tradesBySymbol[symbol]
         self.assertEqual(len(ts), 1)
         self.assertEqual(ts[0].date.date(), date(2019, 2, 26))
-        self.assertEqual(ts[0].instrument, Future(symbol))
+        self.assertEqual(ts[0].instrument, Future(symbol, Currency.USD))
         self.assertEqual(ts[0].quantity, Decimal('1'))
         self.assertEqual(ts[0].amount, helpers.cashUSD(Decimal('-139687.5')))
         self.assertEqual(ts[0].fees, helpers.cashUSD(Decimal('2.05')))
@@ -158,6 +161,7 @@ class TestIBKRTrades(unittest.TestCase):
         self.assertEqual(
             ts[0].instrument,
             FutureOption(symbol=symbol,
+                         currency=Currency.USD,
                          underlying='GBUJ9',
                          optionType=OptionType.CALL,
                          expiration=date(2019, 4, 5),

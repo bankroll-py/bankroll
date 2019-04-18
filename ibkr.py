@@ -9,7 +9,8 @@ import ib_insync as IB
 import re
 
 
-def parseOption(symbol: str, cls: Type[Option] = Option) -> Option:
+def parseOption(symbol: str, currency: Currency,
+                cls: Type[Option] = Option) -> Option:
     # https://en.wikipedia.org/wiki/Option_symbol#The_OCC_Option_Symbol
     match = re.match(
         r'^(?P<underlying>.{6})(?P<date>\d{6})(?P<putCall>P|C)(?P<strike>\d{8})$',
@@ -23,15 +24,16 @@ def parseOption(symbol: str, cls: Type[Option] = Option) -> Option:
         optionType = OptionType.CALL
 
     return cls(underlying=match['underlying'].rstrip(),
+               currency=currency,
                optionType=optionType,
                expiration=datetime.strptime(match['date'], '%y%m%d').date(),
                strike=Decimal(match['strike']) / 1000)
 
 
 def extractPosition(p: IB.Position) -> Position:
-    instrumentsByTag: Dict[str, Callable[[str], Instrument]] = {
+    instrumentsByTag: Dict[str, Callable[[str, Currency], Instrument]] = {
         "STK": Stock,
-        "BOND": lambda s: Bond(s, validateSymbol=False),
+        "BOND": lambda s, c: Bond(s, c, validateSymbol=False),
         "OPT": parseOption,
         "FUT": Future,
         "CASH": Forex,
@@ -42,7 +44,7 @@ def extractPosition(p: IB.Position) -> Position:
     costBasis = Decimal(p.avgCost) * qty
 
     return Position(instrument=instrumentsByTag[p.contract.secType](
-        p.contract.localSymbol),
+        p.contract.localSymbol, Currency[p.contract.currency]),
                     quantity=qty,
                     costBasis=Cash(currency=Currency[p.contract.currency],
                                    quantity=costBasis))
@@ -129,6 +131,7 @@ def parseFutureOptionTrade(trade: IBTradeConfirm) -> Instrument:
             'Unexpected value for putCall in IB trade: {}'.format(trade))
 
     return FutureOption(symbol=trade.symbol,
+                        currency=Currency[trade.currency],
                         underlying=trade.underlyingSymbol,
                         optionType=optionType,
                         expiration=datetime.strptime(trade.expiry,
@@ -138,12 +141,19 @@ def parseFutureOptionTrade(trade: IBTradeConfirm) -> Instrument:
 
 def parseTradeConfirm(trade: IBTradeConfirm) -> Trade:
     instrumentsByTag: Dict[str, Callable[[IBTradeConfirm], Instrument]] = {
-        'STK': lambda t: Stock(t.symbol),
-        'BOND': lambda t: Bond(t.symbol, validateSymbol=False),
-        'OPT': lambda t: parseOption(t.symbol),
-        'FUT': lambda t: Future(t.symbol),
-        'CASH': lambda t: Forex(t.symbol),
-        'FOP': parseFutureOptionTrade,
+        'STK':
+        lambda t: Stock(t.symbol, currency=Currency[t.currency]),
+        'BOND':
+        lambda t: Bond(
+            t.symbol, currency=Currency[t.currency], validateSymbol=False),
+        'OPT':
+        lambda t: parseOption(t.symbol, currency=Currency[t.currency]),
+        'FUT':
+        lambda t: Future(t.symbol, currency=Currency[t.currency]),
+        'CASH':
+        lambda t: Forex(t.symbol, currency=Currency[t.currency]),
+        'FOP':
+        parseFutureOptionTrade,
     }
 
     flagsByCode = {

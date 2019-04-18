@@ -69,6 +69,7 @@ def parseOptionsPosition(description: str) -> Option:
     year = datetime.strptime(match['year'], '%y').year
 
     return Option(underlying=match['underlying'],
+                  currency=Currency.USD,
                   expiration=date(year, month, int(match['day'])),
                   optionType=optionType,
                   strike=Decimal(match['strike']))
@@ -88,8 +89,8 @@ def parsePositions(path: Path, lenient: bool = False) -> List[Position]:
             rowFilter=lambda r: r[0:7])
 
         instrumentBySection: Dict[CSVSectionCriterion, InstrumentFactory] = {
-            stocksCriterion: lambda p: Stock(p.symbol),
-            bondsCriterion: lambda p: Bond(p.symbol),
+            stocksCriterion: lambda p: Stock(p.symbol, currency=Currency.USD),
+            bondsCriterion: lambda p: Bond(p.symbol, currency=Currency.USD),
             optionsCriterion: lambda p: parseOptionsPosition(p.description),
         }
 
@@ -141,6 +142,7 @@ def parseOptionTransaction(symbol: str) -> Option:
         optionType = OptionType.CALL
 
     return Option(underlying=match['underlying'],
+                  currency=Currency.USD,
                   expiration=datetime.strptime(match['date'], '%y%m%d').date(),
                   optionType=optionType,
                   strike=Decimal(match['strike']))
@@ -150,9 +152,9 @@ def guessInstrumentFromSymbol(symbol: str) -> Instrument:
     if re.search(r'[0-9]+(C|P)[0-9]+$', symbol):
         return parseOptionTransaction(symbol)
     elif Bond.validBondSymbol(symbol):
-        return Bond(symbol)
+        return Bond(symbol, currency=Currency.USD)
     else:
-        return Stock(symbol)
+        return Stock(symbol, currency=Currency.USD)
 
 
 def forceParseFidelityTransaction(t: FidelityTransaction,

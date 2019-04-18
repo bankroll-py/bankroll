@@ -132,21 +132,28 @@ class Cash:
 
 class Instrument(ABC):
     @abstractmethod
-    def __init__(self, symbol: str):
+    def __init__(self, symbol: str, currency: Currency):
         assert symbol, 'Expected non-empty symbol for instrument'
+        assert currency, 'Expected currency for instrument'
 
         self._symbol = symbol
+        self._currency = currency
         super().__init__()
 
     @property
     def symbol(self) -> str:
         return self._symbol
 
+    @property
+    def currency(self) -> Currency:
+        return self._currency
+
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, Instrument):
             return False
 
-        return bool(self.symbol == other.symbol)
+        return bool(self.symbol == other.symbol
+                    and self.currency == other.currency)
 
     def __lt__(self, other: 'Instrument') -> bool:
         return self.symbol < other.symbol
@@ -164,7 +171,9 @@ class Instrument(ABC):
         return format(self.symbol, spec)
 
     def __repr__(self) -> str:
-        return '{}(\'{}\')'.format(repr(type(self)), self.symbol)
+        return '{}(symbol={}, currency={})'.format(repr(type(self)),
+                                                   repr(self.symbol),
+                                                   repr(self.currency))
 
     def __str__(self) -> str:
         return self._symbol
@@ -172,8 +181,8 @@ class Instrument(ABC):
 
 # Also used for ETFs.
 class Stock(Instrument):
-    def __init__(self, symbol: str):
-        super().__init__(symbol)
+    def __init__(self, symbol: str, currency: Currency):
+        super().__init__(symbol, currency)
 
 
 class Bond(Instrument):
@@ -183,11 +192,14 @@ class Bond(Instrument):
     def validBondSymbol(cls, symbol: str) -> bool:
         return re.match(cls.regexCUSIP, symbol) is not None
 
-    def __init__(self, symbol: str, validateSymbol: bool = True):
+    def __init__(self,
+                 symbol: str,
+                 currency: Currency,
+                 validateSymbol: bool = True):
         assert not validateSymbol or self.validBondSymbol(
             symbol), 'Expected symbol to be a bond CUSIP: {}'.format(symbol)
 
-        super().__init__(symbol)
+        super().__init__(symbol, currency)
 
 
 @unique
@@ -207,6 +219,7 @@ class Option(Instrument):
 
     def __init__(self,
                  underlying: str,
+                 currency: Currency,
                  optionType: OptionType,
                  expiration: date,
                  strike: Decimal,
@@ -226,7 +239,7 @@ class Option(Instrument):
                                                expiration.strftime('%y%m%d'),
                                                optionType.value, strike * 1000)
 
-        super().__init__(symbol)
+        super().__init__(symbol, currency)
 
     @property
     def underlying(self) -> str:
@@ -245,15 +258,16 @@ class Option(Instrument):
         return self._strike
 
     def __repr__(self) -> str:
-        return '{}(underlying={}, optionType={}, expiration={}, strike={})'.format(
+        return '{}(underlying={}, optionType={}, expiration={}, strike={}, currency={})'.format(
             repr(type(self)), repr(self.underlying), repr(self.optionType),
-            repr(self.expiration), repr(self.strike))
+            repr(self.expiration), repr(self.strike), repr(self.currency))
 
 
 class FutureOption(Option):
-    def __init__(self, symbol: str, underlying: str, optionType: OptionType,
-                 expiration: date, strike: Decimal):
+    def __init__(self, symbol: str, underlying: str, currency: Currency,
+                 optionType: OptionType, expiration: date, strike: Decimal):
         super().__init__(underlying=underlying,
+                         currency=currency,
                          optionType=optionType,
                          expiration=expiration,
                          strike=strike,
@@ -261,13 +275,13 @@ class FutureOption(Option):
 
 
 class Future(Instrument):
-    def __init__(self, symbol: str):
-        super().__init__(symbol)
+    def __init__(self, symbol: str, currency: Currency):
+        super().__init__(symbol, currency)
 
 
 class Forex(Instrument):
-    def __init__(self, symbol: str):
-        super().__init__(symbol)
+    def __init__(self, symbol: str, currency: Currency):
+        super().__init__(symbol, currency)
 
 
 class Quote:

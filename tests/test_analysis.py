@@ -39,13 +39,14 @@ class TestAnalysis(unittest.TestCase):
     def test_realizedBasis(self) -> None:
         trades = [
             Trade(date=datetime.now(),
-                  instrument=Stock('SPY'),
+                  instrument=Stock('SPY', Currency.USD),
                   quantity=Decimal('5'),
                   amount=helpers.cashUSD(Decimal('-999')),
                   fees=helpers.cashUSD(Decimal('1')),
                   flags=TradeFlags.OPEN),
             Trade(date=datetime.now(),
                   instrument=Option(underlying='SPY',
+                                    currency=Currency.USD,
                                     optionType=OptionType.CALL,
                                     expiration=date.today(),
                                     strike=Decimal('123')),

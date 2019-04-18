@@ -34,9 +34,9 @@ def guessInstrumentForInvestmentName(name: str) -> Instrument:
     instrument: Instrument
     if re.match(r'^.+\s\%\s.+$', name):
         # TODO: Determine valid CUSIP for bonds
-        instrument = Bond(name, validateSymbol=False)
+        instrument = Bond(name, currency=Currency.USD, validateSymbol=False)
     else:
-        instrument = Stock(name)
+        instrument = Stock(name, currency=Currency.USD)
 
     return instrument
 
@@ -49,7 +49,7 @@ def parseVanguardPosition(p: VanguardPosition,
                           trades: List[Trade]) -> Position:
     instrument: Instrument
     if len(p.symbol) > 0:
-        instrument = Stock(p.symbol)
+        instrument = Stock(p.symbol, currency=Currency.USD)
     else:
         instrument = guessInstrumentForInvestmentName(p.investmentName)
 
@@ -114,7 +114,7 @@ def forceParseVanguardTransaction(t: VanguardTransaction,
                                   flags: TradeFlags) -> Optional[Trade]:
     instrument: Instrument
     if len(t.symbol) > 0:
-        instrument = Stock(t.symbol)
+        instrument = Stock(t.symbol, currency=Currency.USD)
     else:
         instrument = guessInstrumentForInvestmentName(t.investmentName)
 
