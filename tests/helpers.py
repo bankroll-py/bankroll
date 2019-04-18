@@ -85,11 +85,15 @@ register_type_strategy(
 
 register_type_strategy(
     Quote,
-    from_type(Cash).flatmap(lambda bid: 
-    builds(Quote,
-           bid=just(bid),
-           ask=builds(Cash, currency=just(bid.currency), quantity=decimalCashAmounts.map(lambda c: bid.quantity + abs(c))),
-           last=builds(Cash, currency=just(bid.currency), quantity=decimalCashAmounts))))
+    from_type(Cash).flatmap(lambda bid: builds(
+        Quote,
+        bid=just(bid),
+        ask=builds(Cash,
+                   currency=just(bid.currency),
+                   quantity=decimalCashAmounts.map(lambda c: bid.quantity +
+                                                   abs(c))),
+        last=builds(
+            Cash, currency=just(bid.currency), quantity=decimalCashAmounts))))
 
 
 def cashUSD(amount: Decimal) -> Cash:
