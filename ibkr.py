@@ -204,3 +204,58 @@ def downloadTrades(token: str, queryID: int,
                    lenient: bool = False) -> List[Trade]:
     return tradesFromReport(IB.FlexReport(token=token, queryId=queryID),
                             lenient=lenient)
+
+
+def stockContract(stock: Stock) -> IB.Contract:
+    # TODO: Need currency here
+    return IB.Stock(symbol=stock.symbol)
+
+
+def bondContract(bond: Bond) -> IB.Contract:
+    # TODO: Need currency here
+    return IB.Bond(symbol=bond.symbol)
+
+
+def optionContract(option: Option) -> IB.Contract:
+    lastTradeDate = option.expiration.strftime('%Y%m%d')
+
+    # TODO: Need currency here
+    return IB.Option(symbol=option.symbol,
+                     lastTradeDateOrContractMonth=lastTradeDate,
+                     right=option.optionType.value)
+
+
+def fopContract(option: FutureOption) -> IB.Contract:
+    lastTradeDate = option.expiration.strftime('%Y%m%d')
+
+    # TODO: Need currency here
+    return IB.FuturesOption(symbol=option.symbol,
+                            lastTradeDateOrContractMonth=lastTradeDate,
+                            right=option.optionType.value)
+
+
+def futuresContract(future: Future) -> IB.Contract:
+    # TODO: Need currency here
+    return IB.Future(symbol=future.symbol)
+
+
+def forexContract(forex: Forex) -> IB.Contract:
+    return IB.Forex(pair=forex.symbol)
+
+
+def contract(instrument: Instrument) -> IB.Contract:
+    if isinstance(instrument, Stock):
+        return stockContract(instrument)
+    elif isinstance(instrument, Bond):
+        return bondContract(instrument)
+    elif isinstance(instrument, FutureOption):
+        return fopContract(instrument)
+    elif isinstance(instrument, Option):
+        return optionContract(instrument)
+    elif isinstance(instrument, Future):
+        return futuresContract(instrument)
+    elif isinstance(instrument, Forex):
+        return forexContract(instrument)
+    else:
+        raise ValueError('Unexpected type of instrument: {}'.format(
+            repr(instrument)))
