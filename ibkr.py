@@ -217,20 +217,18 @@ def downloadTrades(token: str, queryID: int,
 
 
 def stockContract(stock: Stock) -> IB.Contract:
-    # TODO: Need currency here
-    return IB.Stock(symbol=stock.symbol)
+    return IB.Stock(symbol=stock.symbol, currency=stock.currency.value)
 
 
 def bondContract(bond: Bond) -> IB.Contract:
-    # TODO: Need currency here
-    return IB.Bond(symbol=bond.symbol)
+    return IB.Bond(symbol=bond.symbol, currency=bond.currency.value)
 
 
 def optionContract(option: Option) -> IB.Contract:
     lastTradeDate = option.expiration.strftime('%Y%m%d')
 
-    # TODO: Need currency here
     return IB.Option(symbol=option.symbol,
+                     currency=option.currency.value,
                      lastTradeDateOrContractMonth=lastTradeDate,
                      right=option.optionType.value)
 
@@ -238,19 +236,18 @@ def optionContract(option: Option) -> IB.Contract:
 def fopContract(option: FutureOption) -> IB.Contract:
     lastTradeDate = option.expiration.strftime('%Y%m%d')
 
-    # TODO: Need currency here
     return IB.FuturesOption(symbol=option.symbol,
+                            currency=option.currency.value,
                             lastTradeDateOrContractMonth=lastTradeDate,
                             right=option.optionType.value)
 
 
 def futuresContract(future: Future) -> IB.Contract:
-    # TODO: Need currency here
-    return IB.Future(symbol=future.symbol)
+    return IB.Future(symbol=future.symbol, currency=option.currency.value)
 
 
 def forexContract(forex: Forex) -> IB.Contract:
-    return IB.Forex(pair=forex.symbol)
+    return IB.Forex(pair=forex.symbol, currency=forex.currency.value)
 
 
 def contract(instrument: Instrument) -> IB.Contract:
@@ -280,16 +277,12 @@ class IBDataProvider(LiveDataProvider):
         con = contract(instrument)
         self._client.qualifyContracts(con)
 
-        if not con.currency:
-            raise RuntimeError(
-                'Did not receive a currency for instrument {} as contract: {}'.
-                format(instrument, con))
-
-        currency = Currency[con.currency]
-
         tickers = self._client.reqTickers(con)
         tick = tickers[0]
 
-        return Quote(bid=Cash(currency=currency, quantity=Decimal(tick.bid)),
-                     ask=Cash(currency=currency, quantity=Decimal(tick.ask)),
-                     last=Cash(currency=currency, quantity=Decimal(tick.last)))
+        return Quote(bid=Cash(currency=instrument.currency,
+                              quantity=Decimal(tick.bid)),
+                     ask=Cash(currency=instrument.currency,
+                              quantity=Decimal(tick.ask)),
+                     last=Cash(currency=instrument.currency,
+                               quantity=Decimal(tick.last)))
