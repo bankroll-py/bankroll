@@ -2,11 +2,12 @@ from argparse import ArgumentParser, Namespace
 from functools import reduce
 from ib_insync import IB
 from itertools import groupby
-from model import Instrument, Stock, Position, Trade
+from model import Instrument, Stock, Position, Trade, Cash, LiveDataProvider
 from pathlib import Path
-from typing import Iterable, List
+from typing import Dict, Iterable, List, Optional
 
 import analysis
+import asyncio
 import ibkr
 import fidelity
 import schwab
@@ -86,11 +87,22 @@ def combinePositions(positions: Iterable[Position]) -> Iterable[Position]:
 
 positions: List[Position] = []
 trades: List[Trade] = []
+dataProvider: Optional[LiveDataProvider] = None
 
 
-def printPositions(args: Namespace) -> None:
+async def printPositions(args: Namespace) -> None:
+    if args.live_value:
+        assert dataProvider, 'Live data connection required to fetch market values'
+
+        values: Dict[Position, Cash] = dict(
+            await analysis.liveValuesForPositions(positions,
+                                                  dataProvider=dataProvider))
+
     for p in sorted(positions, key=lambda p: p.instrument):
         print(p)
+
+        if values:
+            print('\tMarket value: {}'.format(values[p]))
 
         if not isinstance(p.instrument, Stock):
             continue
@@ -103,7 +115,7 @@ def printPositions(args: Namespace) -> None:
             print('\tRealized basis: {}'.format(realizedBasis))
 
 
-def printTrades(args: Namespace) -> None:
+async def printTrades(args: Namespace) -> None:
     for t in sorted(trades, key=lambda t: t.date, reverse=True):
         print(t)
 
@@ -121,6 +133,11 @@ positionsParser = subparsers.add_parser(
 positionsParser.add_argument(
     '--realized-basis',
     help='Calculate realized basis for stock positions',
+    default=False,
+    action='store_true')
+positionsParser.add_argument(
+    '--live-value',
+    help='Fetch live, mark-to-market value of positions',
     default=False,
     action='store_true')
 
@@ -158,6 +175,10 @@ if __name__ == '__main__':
     if args.twsport:
         ib = IB()
         ib.connect('127.0.0.1', port=args.twsport)
+
+        if not dataProvider:
+            dataProvider = ibkr.IBDataProvider(ib)
+
         positions += ibkr.downloadPositions(ib, lenient=args.lenient)
 
     if args.flextoken or args.flexquery:
@@ -174,4 +195,4 @@ if __name__ == '__main__':
         trades += ibkr.parseTrades(args.ibtrades, lenient=args.lenient)
 
     positions = list(combinePositions(positions))
-    commands[args.command](args)
+    await commands[args.command](args)
