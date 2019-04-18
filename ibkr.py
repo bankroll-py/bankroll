@@ -3,9 +3,11 @@ from decimal import Decimal
 from model import Currency, Cash, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, TradeFlags, Trade, LiveDataProvider, Quote
 from parsetools import lenientParse
 from pathlib import Path
-from typing import Awaitable, Callable, Dict, List, NamedTuple, Type
+from typing import Awaitable, Callable, Dict, List, NamedTuple, Optional, Type
 
 import ib_insync as IB
+import logging
+import math
 import re
 
 
@@ -277,12 +279,21 @@ class IBDataProvider(LiveDataProvider):
         con = contract(instrument)
         self._client.qualifyContracts(con)
 
-        tickers = self._client.reqTickers(con)
-        tick = tickers[0]
+        ticker = self._client.reqTickers(con)[0]
+        logging.info('Received ticker: {}'.format(repr(ticker)))
 
-        return Quote(bid=Cash(currency=instrument.currency,
-                              quantity=Decimal(tick.bid)),
-                     ask=Cash(currency=instrument.currency,
-                              quantity=Decimal(tick.ask)),
-                     last=Cash(currency=instrument.currency,
-                               quantity=Decimal(tick.last)))
+        bid: Optional[Cash] = None
+        ask: Optional[Cash] = None
+        last: Optional[Cash] = None
+
+        if ticker.bid and math.isfinite(ticker.bid):
+            bid = Cash(currency=instrument.currency,
+                       quantity=Decimal(ticker.bid))
+        if ticker.ask and math.isfinite(ticker.ask):
+            ask = Cash(currency=instrument.currency,
+                       quantity=Decimal(ticker.ask))
+        if ticker.last and math.isfinite(ticker.last):
+            last = Cash(currency=instrument.currency,
+                        quantity=Decimal(ticker.last))
+
+        return Quote(bid=bid, ask=ask, last=last)

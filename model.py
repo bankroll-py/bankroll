@@ -51,7 +51,8 @@ class Cash:
         return d.quantize(cls.quantization, rounding=ROUND_HALF_EVEN)
 
     def __init__(self, currency: Currency, quantity: Decimal):
-        assert quantity.is_finite()
+        assert quantity.is_finite(
+        ), 'Cash quantity {} is not a finite number'.format(quantity)
 
         self._currency = currency
         self._quantity = self.quantize(quantity)
@@ -285,13 +286,21 @@ class Forex(Instrument):
 
 
 class Quote:
-    def __init__(self, bid: Cash, ask: Cash, last: Cash):
-        assert bid.currency == ask.currency, 'Currencies in a quote should match between bid {} and ask {}'.format(
-            bid, ask)
-        assert bid.currency == last.currency, 'Currencies in a quote should match between bid {} and last {}'.format(
-            bid, last)
-        assert ask >= bid, 'Expected ask {} to be at least bid {}'.format(
-            ask, bid)
+    def __init__(self, bid: Optional[Cash], ask: Optional[Cash],
+                 last: Optional[Cash]):
+        if bid and ask:
+            assert bid.currency == ask.currency, 'Currencies in a quote should match between bid {} and ask {}'.format(
+                bid, ask)
+            assert ask >= bid, 'Expected ask {} to be at least bid {}'.format(
+                ask, bid)
+
+        if bid and last:
+            assert bid.currency == last.currency, 'Currencies in a quote should match between bid {} and last {}'.format(
+                bid, last)
+
+        if ask and last:
+            assert ask.currency == last.currency, 'Currencies in a quote should match between ask {} and last {}'.format(
+                ask, last)
 
         self._bid = bid
         self._ask = ask
@@ -299,15 +308,15 @@ class Quote:
         super().__init__()
 
     @property
-    def bid(self) -> Cash:
+    def bid(self) -> Optional[Cash]:
         return self._bid
 
     @property
-    def ask(self) -> Cash:
+    def ask(self) -> Optional[Cash]:
         return self._ask
 
     @property
-    def last(self) -> Cash:
+    def last(self) -> Optional[Cash]:
         return self._last
 
     def __eq__(self, other: Any) -> bool:

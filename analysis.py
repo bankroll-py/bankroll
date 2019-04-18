@@ -22,17 +22,21 @@ def realizedBasisForSymbol(symbol: str,
 def liveValuesForPositions(positions: Iterable[Position],
                            dataProvider: LiveDataProvider
                            ) -> Dict[Position, Cash]:
-    def priceFromQuote(q: Quote, p: Position) -> Cash:
+    def priceFromQuote(q: Quote, p: Position) -> Optional[Cash]:
         # For a long position, the value should be what the market is willing to pay right now.
         # For a short position, the value should be what the market is asking to be paid right now.
         # TODO: Use order depth if available?
         if p.quantity < 0:
-            return q.ask
+            return q.ask or q.last or q.bid
         else:
-            return q.bid
+            return q.bid or q.last or q.ask
 
-    return {
-        p:
-        priceFromQuote(dataProvider.fetchQuote(p.instrument), p) * p.quantity
-        for p in positions
-    }
+    result = {}
+    for p in positions:
+        price = priceFromQuote(dataProvider.fetchQuote(p.instrument), p)
+        if not price:
+            continue
+
+        result[p] = price
+
+    return result
