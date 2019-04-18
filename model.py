@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from datetime import date, datetime
 from decimal import Decimal, ROUND_HALF_EVEN
 from enum import Enum, Flag, auto, unique
-from functools import total_ordering
 from typing import Any, Dict, NamedTuple, Optional, TypeVar, Union
 
 import re
@@ -44,7 +43,6 @@ class Currency(Enum):
 T = TypeVar('T', Decimal, int)
 
 
-@total_ordering
 class Cash:
     quantization = Decimal('0.0001')
 
@@ -112,10 +110,26 @@ class Cash:
         return self.currency == other.currency and self.quantity == other.quantity
 
     def __lt__(self, other: 'Cash') -> bool:
+        assert self.currency == other.currency, 'Currency of {} must match {} for comparison'.format(
+            self, other)
         return self.quantity < other.quantity
 
+    def __le__(self, other: 'Cash') -> bool:
+        assert self.currency == other.currency, 'Currency of {} must match {} for comparison'.format(
+            self, other)
+        return self.quantity <= other.quantity
 
-@total_ordering
+    def __gt__(self, other: 'Cash') -> bool:
+        assert self.currency == other.currency, 'Currency of {} must match {} for comparison'.format(
+            self, other)
+        return self.quantity > other.quantity
+
+    def __ge__(self, other: 'Cash') -> bool:
+        assert self.currency == other.currency, 'Currency of {} must match {} for comparison'.format(
+            self, other)
+        return self.quantity >= other.quantity
+
+
 class Instrument(ABC):
     @abstractmethod
     def __init__(self, symbol: str):
@@ -136,6 +150,15 @@ class Instrument(ABC):
 
     def __lt__(self, other: 'Instrument') -> bool:
         return self.symbol < other.symbol
+
+    def __le__(self, other: 'Instrument') -> bool:
+        return self.symbol <= other.symbol
+
+    def __gt__(self, other: 'Instrument') -> bool:
+        return self.symbol > other.symbol
+
+    def __ge__(self, other: 'Instrument') -> bool:
+        return self.symbol >= other.symbol
 
     def __format__(self, spec: str) -> str:
         return format(self.symbol, spec)
