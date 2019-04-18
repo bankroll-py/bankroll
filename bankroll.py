@@ -10,6 +10,7 @@ import analysis
 import asyncio
 import ibkr
 import fidelity
+import logging
 import schwab
 import vanguard
 
@@ -22,6 +23,12 @@ parser.add_argument(
     default=False,
     action='store_true')
 parser.add_argument('--no-lenient', dest='lenient', action='store_false')
+parser.add_argument('-v',
+                    '--verbose',
+                    help='More logging.',
+                    dest='verbose',
+                    default=False,
+                    action='store_true')
 
 ibGroup = parser.add_argument_group(
     'IB', 'Options for importing data from Interactive Brokers.')
@@ -144,6 +151,9 @@ tradesParser = subparsers.add_parser(
 
 if __name__ == '__main__':
     args = parser.parse_args()
+    if args.verbose:
+        logging.basicConfig(level=logging.INFO)
+
     if not args.command:
         parser.print_usage()
         quit(1)
