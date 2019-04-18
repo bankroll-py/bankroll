@@ -132,7 +132,7 @@ class Instrument(ABC):
         if not isinstance(other, Instrument):
             return False
 
-        return self.symbol == other.symbol
+        return bool(self.symbol == other.symbol)
 
     def __lt__(self, other: 'Instrument') -> bool:
         return self.symbol < other.symbol
