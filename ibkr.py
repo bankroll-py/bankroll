@@ -1,10 +1,11 @@
 from datetime import datetime
 from decimal import Decimal
-from model import Currency, Cash, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, TradeFlags, Trade
+from model import Currency, Cash, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, TradeFlags, Trade, LiveDataProvider, Quote
 from parsetools import lenientParse
 from pathlib import Path
-from typing import Callable, Dict, List, NamedTuple, Type
+from typing import Awaitable, Callable, Dict, List, NamedTuple, Type
 
+import asyncio
 import ib_insync as IB
 import re
 
@@ -259,3 +260,27 @@ def contract(instrument: Instrument) -> IB.Contract:
     else:
         raise ValueError('Unexpected type of instrument: {}'.format(
             repr(instrument)))
+
+
+class IBDataProvider(LiveDataProvider):
+    def __init__(self, client: IB.IB):
+        self._client = client
+        super().__init__()
+
+    async def fetchQuote(self, instrument: Instrument) -> Quote:
+        con = contract(instrument)
+        await self._client.qualifyContractsAsync(con)
+
+        if not con.currency:
+            raise RuntimeError(
+                'Did not receive a currency for instrument {} as contract: {}'.
+                format(instrument, con))
+
+        currency = Currency[con.currency]
+
+        tickers = await self._client.reqTickersAsync(con)
+        tick = tickers[0]
+
+        return Quote(bid=Cash(currency=currency, quantity=Decimal(tick.bid)),
+                     ask=Cash(currency=currency, quantity=Decimal(tick.ask)),
+                     last=Cash(currency=currency, quantity=Decimal(tick.last)))
