@@ -249,8 +249,12 @@ class Forex(Instrument):
 
 class Quote:
     def __init__(self, bid: Cash, ask: Cash, last: Cash):
-        assert bid.currency == ask.currency
-        assert bid.currency == last.currency
+        assert bid.currency == ask.currency, 'Currencies in a quote should match between bid {} and ask {}'.format(
+            bid, ask)
+        assert bid.currency == last.currency, 'Currencies in a quote should match between bid {} and last {}'.format(
+            bid, last)
+        assert ask >= bid, 'Expected ask {} to be at least bid {}'.format(
+            ask, bid)
 
         self._bid = bid
         self._ask = ask
