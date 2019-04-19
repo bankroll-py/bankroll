@@ -322,13 +322,13 @@ class IBDataProvider(LiveDataProvider):
         ask: Optional[Cash] = None
         last: Optional[Cash] = None
 
-        if ticker.bid and math.isfinite(ticker.bid):
+        if (ticker.bid and math.isfinite(ticker.bid)) and not ticker.bidSize == 0:
             bid = Cash(currency=instrument.currency,
                        quantity=Decimal(ticker.bid))
-        if ticker.ask and math.isfinite(ticker.ask):
+        if (ticker.ask and math.isfinite(ticker.ask)) and not ticker.askSize == 0:
             ask = Cash(currency=instrument.currency,
                        quantity=Decimal(ticker.ask))
-        if ticker.last and math.isfinite(ticker.last):
+        if (ticker.last and math.isfinite(ticker.last)) and not ticker.lastSize == 0:
             last = Cash(currency=instrument.currency,
                         quantity=Decimal(ticker.last))
 
