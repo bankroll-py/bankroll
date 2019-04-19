@@ -109,7 +109,7 @@ def printPositions(args: Namespace) -> None:
         if p in values:
             print('\tMarket value: {}'.format(values[p]))
         elif args.live_value:
-            logging.warning('\tCould not fetch market value for {}'.format(
+            logging.warning('Could not fetch market value for {}'.format(
                 p.instrument))
 
         if not isinstance(p.instrument, Stock):
