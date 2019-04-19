@@ -153,7 +153,8 @@ class Instrument(ABC):
         return self._currency
 
     def __eq__(self, other: Any) -> bool:
-        if not isinstance(other, Instrument):
+        # Strict typechecking, because we want different types of Instrument to be inequal.
+        if type(self) != type(other):
             return False
 
         return bool(self.symbol == other.symbol
