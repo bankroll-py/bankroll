@@ -2,7 +2,7 @@ from datetime import date
 from decimal import Decimal, ROUND_UP
 from hypothesis import assume, given, reproduce_failure
 from hypothesis.strategies import dates, decimals, from_type, integers, lists, one_of, sampled_from, text
-from model import Cash, Currency, Instrument, Bond, Stock, Option, OptionType, FutureOption, Future, Forex, Position, Quote
+from model import Cash, Currency, Instrument, Bond, Stock, Option, OptionType, FutureOption, Future, Forex, Position, Quote, Trade
 from typing import List, Optional, TypeVar
 
 import helpers
@@ -261,6 +261,12 @@ class TestQuote(unittest.TestCase):
         b = Quote(cashBid, cashAsk, cashLast)
         self.assertEqual(a, b)
         self.assertEqual(hash(a), hash(b))
+
+
+class TestTrade(unittest.TestCase):
+    @given(from_type(Trade))
+    def test_tradeEqualsItself(self, t: Trade) -> None:
+        self.assertEqual(t, t)
 
 
 if __name__ == '__main__':
