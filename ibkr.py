@@ -219,17 +219,22 @@ def downloadTrades(token: str, queryID: int,
 
 
 def stockContract(stock: Stock) -> IB.Contract:
-    return IB.Stock(symbol=stock.symbol, currency=stock.currency.value)
+    return IB.Stock(symbol=stock.symbol,
+                    exchange='SMART',
+                    currency=stock.currency.value)
 
 
 def bondContract(bond: Bond) -> IB.Contract:
-    return IB.Bond(symbol=bond.symbol, currency=bond.currency.value)
+    return IB.Bond(symbol=bond.symbol,
+                   exchange='SMART',
+                   currency=bond.currency.value)
 
 
 def optionContract(option: Option) -> IB.Contract:
     lastTradeDate = option.expiration.strftime('%Y%m%d')
 
     return IB.Option(symbol=option.symbol,
+                     exchange='SMART',
                      currency=option.currency.value,
                      lastTradeDateOrContractMonth=lastTradeDate,
                      right=option.optionType.value)
@@ -239,13 +244,16 @@ def fopContract(option: FutureOption) -> IB.Contract:
     lastTradeDate = option.expiration.strftime('%Y%m%d')
 
     return IB.FuturesOption(symbol=option.symbol,
+                            exchange='SMART',
                             currency=option.currency.value,
                             lastTradeDateOrContractMonth=lastTradeDate,
                             right=option.optionType.value)
 
 
 def futuresContract(future: Future) -> IB.Contract:
-    return IB.Future(symbol=future.symbol, currency=future.currency.value)
+    return IB.Future(symbol=future.symbol,
+                     exchange='SMART',
+                     currency=future.currency.value)
 
 
 def forexContract(forex: Forex) -> IB.Contract:
