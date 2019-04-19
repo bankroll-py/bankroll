@@ -1,7 +1,7 @@
 from decimal import Decimal
-from hypothesis.strategies import builds, dates, datetimes, decimals, from_regex, from_type, just, integers, one_of, register_type_strategy, sampled_from, text
+from hypothesis.strategies import builds, dates, datetimes, decimals, from_regex, from_type, just, integers, none, one_of, register_type_strategy, sampled_from, text, SearchStrategy
 from model import Cash, Currency, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, Trade, TradeFlags, Quote
-from typing import List
+from typing import List, Optional, TypeVar
 
 decimalCashAmounts = decimals(allow_nan=False,
                               allow_infinity=False,
@@ -110,6 +110,11 @@ register_type_strategy(
         last=builds(
             Cash, currency=just(bid.currency), quantity=decimalCashAmounts))))
 
+
+T = TypeVar('T')
+
+def optionals(inner: SearchStrategy[T]) -> SearchStrategy[Optional[T]]:
+    return one_of(inner, none())
 
 def cashUSD(amount: Decimal) -> Cash:
     return Cash(currency=Currency.USD, quantity=amount)

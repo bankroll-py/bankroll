@@ -3,7 +3,7 @@ from decimal import Decimal, ROUND_UP
 from hypothesis import assume, given, reproduce_failure
 from hypothesis.strategies import dates, decimals, from_type, integers, lists, one_of, sampled_from, text
 from model import Cash, Currency, Instrument, Bond, Stock, Option, OptionType, FutureOption, Future, Forex, Position, Quote
-from typing import List, TypeVar
+from typing import List, Optional, TypeVar
 
 import helpers
 import unittest
@@ -244,6 +244,23 @@ class TestQuote(unittest.TestCase):
     @given(from_type(Quote))
     def test_quoteEqualsItself(self, q: Quote) -> None:
         self.assertEqual(q, q)
+
+    @given(from_type(Currency), helpers.optionals(helpers.decimalCashAmounts),
+           helpers.optionals(helpers.decimalCashAmounts),
+           helpers.optionals(helpers.decimalCashAmounts))
+    def test_quoteEquality(self, currency: Currency, bid: Optional[Decimal],
+                           ask: Optional[Decimal],
+                           last: Optional[Decimal]) -> None:
+        assume((not bid) or (not ask) or (ask > bid))
+
+        cashBid = Cash(currency=currency, quantity=bid) if bid else None
+        cashAsk = Cash(currency=currency, quantity=ask) if ask else None
+        cashLast = Cash(currency=currency, quantity=last) if last else None
+
+        a = Quote(cashBid, cashAsk, cashLast)
+        b = Quote(cashBid, cashAsk, cashLast)
+        self.assertEqual(a, b)
+        self.assertEqual(hash(a), hash(b))
 
 
 if __name__ == '__main__':
