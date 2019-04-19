@@ -105,7 +105,7 @@ def printPositions(args: Namespace) -> None:
     for p in sorted(positions, key=lambda p: p.instrument):
         print(p)
 
-        if values:
+        if p in values:
             print('\tMarket value: {}'.format(values[p]))
 
         if not isinstance(p.instrument, Stock):
