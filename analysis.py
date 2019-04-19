@@ -37,6 +37,6 @@ def liveValuesForPositions(positions: Iterable[Position],
         if not price:
             continue
 
-        result[p] = price
+        result[p] = price * p.quantity
 
     return result
