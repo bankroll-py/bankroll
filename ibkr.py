@@ -1,5 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
+from enum import IntEnum
 from model import Currency, Cash, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, TradeFlags, Trade, LiveDataProvider, Quote
 from parsetools import lenientParse
 from pathlib import Path
@@ -293,12 +294,24 @@ def contract(instrument: Instrument) -> IB.Contract:
             repr(instrument)))
 
 
+# https://interactivebrokers.github.io/tws-api/market_data_type.html
+class MarketDataType(IntEnum):
+    LIVE = 1
+    FROZEN = 2
+    DELAYED = 3
+    DELAYED_FROZEN = 4
+
+
 class IBDataProvider(LiveDataProvider):
     def __init__(self, client: IB.IB):
         self._client = client
         super().__init__()
 
-    def fetchQuote(self, instrument: Instrument) -> Quote:
+    def fetchQuote(self,
+                   instrument: Instrument,
+                   dataType: MarketDataType = MarketDataType.FROZEN) -> Quote:
+        self._client.reqMarketDataType(dataType.value)
+
         con = contract(instrument)
         self._client.qualifyContracts(con)
 
