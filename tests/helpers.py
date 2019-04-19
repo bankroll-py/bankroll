@@ -16,6 +16,12 @@ decimalPositionQuantities = decimals(
     max_value=Decimal('1000000000')).map(
         Position.quantizeQuantity).filter(lambda x: x != 0)
 
+decimalMultipliers = decimals(allow_nan=False,
+                              allow_infinity=False,
+                              min_value=Decimal('1'),
+                              max_value=Decimal('10000')).map(
+                                  Instrument.quantizeMultiplier)
+
 register_type_strategy(
     Cash,
     builds(Cash, currency=from_type(Currency), quantity=decimalCashAmounts))
@@ -38,7 +44,8 @@ register_type_strategy(
            strike=decimals(allow_nan=False,
                            allow_infinity=False,
                            min_value=Decimal('1'),
-                           max_value=Decimal('100000'))))
+                           max_value=Decimal('100000')),
+           multiplier=decimalMultipliers))
 register_type_strategy(
     FutureOption,
     builds(FutureOption,
@@ -50,10 +57,14 @@ register_type_strategy(
            strike=decimals(allow_nan=False,
                            allow_infinity=False,
                            min_value=Decimal('1'),
-                           max_value=Decimal('100000'))))
+                           max_value=Decimal('100000')),
+           multiplier=decimalMultipliers))
 register_type_strategy(
     Future,
-    builds(Future, symbol=text(min_size=1), currency=from_type(Currency)))
+    builds(Future,
+           symbol=text(min_size=1),
+           currency=from_type(Currency),
+           multiplier=decimalMultipliers))
 
 register_type_strategy(
     Forex,

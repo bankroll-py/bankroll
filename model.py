@@ -136,6 +136,13 @@ class Cash:
 
 
 class Instrument(ABC):
+    multiplierQuantization = Decimal('0.1')
+
+    @classmethod
+    def quantizeMultiplier(cls, multiplier: Decimal) -> Decimal:
+        return multiplier.quantize(cls.multiplierQuantization,
+                                   rounding=ROUND_HALF_EVEN)
+
     @abstractmethod
     def __init__(self, symbol: str, currency: Currency):
         assert symbol, 'Expected non-empty symbol for instrument'
@@ -152,6 +159,10 @@ class Instrument(ABC):
     @property
     def currency(self) -> Currency:
         return self._currency
+
+    @property
+    def multiplier(self) -> Decimal:
+        return Decimal(1)
 
     def __eq__(self, other: Any) -> bool:
         # Strict typechecking, because we want different types of Instrument to be inequal.
@@ -232,15 +243,20 @@ class Option(Instrument):
                  optionType: OptionType,
                  expiration: date,
                  strike: Decimal,
+                 multiplier: Decimal = Decimal(100),
                  symbol: Optional[str] = None):
         assert underlying, 'Expected non-empty underlying symbol for Option'
         assert strike.is_finite(
         ) and strike > 0, 'Expected positive strike price: {}'.format(strike)
+        assert multiplier.is_finite(
+        ) and multiplier > 0, 'Expected positive multiplier: {}'.format(
+            multiplier)
 
         self._underlying = underlying
         self._optionType = optionType
         self._expiration = expiration
         self._strike = self.quantizeStrike(strike)
+        self._multiplier = self.quantizeMultiplier(multiplier)
 
         if symbol is None:
             # https://en.wikipedia.org/wiki/Option_symbol#The_OCC_Option_Symbol
@@ -266,26 +282,43 @@ class Option(Instrument):
     def strike(self) -> Decimal:
         return self._strike
 
+    @property
+    def multiplier(self) -> Decimal:
+        return self._multiplier
+
     def __repr__(self) -> str:
-        return '{}(underlying={}, optionType={}, expiration={}, strike={}, currency={})'.format(
+        return '{}(underlying={}, optionType={}, expiration={}, strike={}, currency={}, multiplier={})'.format(
             repr(type(self)), repr(self.underlying), repr(self.optionType),
-            repr(self.expiration), repr(self.strike), repr(self.currency))
+            repr(self.expiration), repr(self.strike), repr(self.currency),
+            repr(self.multiplier))
 
 
 class FutureOption(Option):
     def __init__(self, symbol: str, underlying: str, currency: Currency,
-                 optionType: OptionType, expiration: date, strike: Decimal):
+                 optionType: OptionType, expiration: date, strike: Decimal,
+                 multiplier: Decimal):
         super().__init__(underlying=underlying,
                          currency=currency,
                          optionType=optionType,
                          expiration=expiration,
                          strike=strike,
+                         multiplier=multiplier,
                          symbol=symbol)
 
 
 class Future(Instrument):
-    def __init__(self, symbol: str, currency: Currency):
+    def __init__(self, symbol: str, currency: Currency, multiplier: Decimal):
+        assert multiplier.is_finite(
+        ) and multiplier > 0, 'Expected positive multiplier: {}'.format(
+            multiplier)
+
+        self._multiplier = self.quantizeMultiplier(multiplier)
+
         super().__init__(symbol, currency)
+
+    @property
+    def multiplier(self) -> Decimal:
+        return self._multiplier
 
 
 class Forex(Instrument):
