@@ -14,8 +14,8 @@ T = TypeVar('T', Decimal, int)
 class TestCash(unittest.TestCase):
     @given(
         sampled_from(Currency),
-        helpers.decimalCashAmounts,
-        helpers.decimalCashAmounts,
+        helpers.cashAmounts(),
+        helpers.cashAmounts(),
     )
     def test_addCash(self, cur: Currency, a: Decimal, b: Decimal) -> None:
         cashA = Cash(currency=cur, quantity=a)
@@ -27,8 +27,8 @@ class TestCash(unittest.TestCase):
 
     @given(
         sampled_from(Currency),
-        helpers.decimalCashAmounts,
-        helpers.decimalCashAmounts,
+        helpers.cashAmounts(),
+        helpers.cashAmounts(),
     )
     def test_subtractCash(self, cur: Currency, a: Decimal, b: Decimal) -> None:
         cashA = Cash(currency=cur, quantity=a)
@@ -40,8 +40,8 @@ class TestCash(unittest.TestCase):
 
     @given(
         lists(sampled_from(Currency), min_size=2, max_size=2, unique=True),
-        helpers.decimalCashAmounts,
-        helpers.decimalCashAmounts,
+        helpers.cashAmounts(),
+        helpers.cashAmounts(),
     )
     def test_addIncompatibleCash(self, curs: List[Currency], a: Decimal,
                                  b: Decimal) -> None:
@@ -53,8 +53,8 @@ class TestCash(unittest.TestCase):
 
     @given(
         lists(sampled_from(Currency), min_size=2, max_size=2, unique=True),
-        helpers.decimalCashAmounts,
-        helpers.decimalCashAmounts,
+        helpers.cashAmounts(),
+        helpers.cashAmounts(),
     )
     def test_subtractIncompatibleCash(self, curs: List[Currency], a: Decimal,
                                       b: Decimal) -> None:
@@ -67,9 +67,8 @@ class TestCash(unittest.TestCase):
     @given(
         from_type(Cash),
         one_of(
-            helpers.decimalCashAmounts,
-            helpers.decimalCashAmounts.map(lambda d: int(d.to_integral_value())
-                                           )),
+            helpers.cashAmounts(),
+            helpers.cashAmounts().map(lambda d: int(d.to_integral_value()))),
     )
     def test_multiplyCash(self, cashA: Cash, b: T) -> None:
         cashC = cashA * b
@@ -78,10 +77,9 @@ class TestCash(unittest.TestCase):
 
     @given(
         from_type(Cash),
-        one_of(
-            helpers.decimalCashAmounts,
-            helpers.decimalCashAmounts.map(lambda d: int(d.to_integral_value())
-                                           )).filter(lambda x: x != 0),
+        one_of(helpers.cashAmounts(),
+               helpers.cashAmounts().map(lambda d: int(d.to_integral_value()))
+               ).filter(lambda x: x != 0),
     )
     def test_divideCash(self, cashA: Cash, b: T) -> None:
         cashC = cashA / b
@@ -94,7 +92,7 @@ class TestCash(unittest.TestCase):
 
     @given(
         sampled_from(Currency),
-        helpers.decimalCashAmounts,
+        helpers.cashAmounts(),
     )
     def test_cashEquality(self, cur: Currency, a: Decimal) -> None:
         cashA = Cash(currency=cur, quantity=a)
@@ -104,9 +102,8 @@ class TestCash(unittest.TestCase):
 
     @given(
         sampled_from(Currency),
-        helpers.decimalCashAmounts,
-        helpers.decimalCashAmounts.filter(lambda x: abs(x) >= Decimal('0.0001')
-                                          ),
+        helpers.cashAmounts(),
+        helpers.cashAmounts().filter(lambda x: abs(x) >= Decimal('0.0001')),
     )
     def test_cashInequality(self, cur: Currency, a: Decimal,
                             b: Decimal) -> None:
@@ -119,8 +116,8 @@ class TestCash(unittest.TestCase):
 
     @given(
         sampled_from(Currency),
-        helpers.decimalCashAmounts,
-        helpers.decimalCashAmounts.map(abs),
+        helpers.cashAmounts(),
+        helpers.cashAmounts().map(abs),
     )
     def test_cashComparison(self, cur: Currency, a: Decimal,
                             b: Decimal) -> None:
@@ -178,9 +175,9 @@ class TestPosition(unittest.TestCase):
         self.assertEqual(combined.costBasis,
                          Cash(currency=i.currency, quantity=Decimal('30')))
 
-    @given(from_type(Instrument), helpers.decimalPositionQuantities,
-           helpers.decimalCashAmounts, helpers.decimalPositionQuantities,
-           helpers.decimalCashAmounts)
+    @given(from_type(Instrument), helpers.positionQuantities(),
+           helpers.cashAmounts(), helpers.positionQuantities(),
+           helpers.cashAmounts())
     def test_combineIsCommutative(self, i: Instrument, aQty: Decimal,
                                   aPrice: Decimal, bQty: Decimal,
                                   bPrice: Decimal) -> None:
@@ -247,10 +244,10 @@ class TestQuote(unittest.TestCase):
     def test_quoteEqualsItself(self, q: Quote) -> None:
         self.assertEqual(q, q)
 
-    @given(from_type(Currency), helpers.optionals(helpers.decimalCashAmounts),
-           helpers.optionals(helpers.decimalCashAmounts),
-           helpers.optionals(helpers.decimalCashAmounts),
-           helpers.optionals(helpers.decimalCashAmounts))
+    @given(from_type(Currency), helpers.optionals(helpers.cashAmounts()),
+           helpers.optionals(helpers.cashAmounts()),
+           helpers.optionals(helpers.cashAmounts()),
+           helpers.optionals(helpers.cashAmounts()))
     def test_quoteEquality(self, currency: Currency, bid: Optional[Decimal],
                            ask: Optional[Decimal], last: Optional[Decimal],
                            close: Optional[Decimal]) -> None:

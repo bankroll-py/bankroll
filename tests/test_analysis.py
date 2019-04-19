@@ -28,7 +28,7 @@ def tradesForAmounts(draw: Any, symbol: str,
     return (Trade(
         date=draw(datetimes()),
         instrument=draw(instruments),
-        quantity=draw(helpers.decimalPositionQuantities),
+        quantity=draw(helpers.positionQuantities()),
         amount=Cash(currency=cx, quantity=x),
         fees=Cash(currency=cx, quantity=Decimal(0)),
         flags=draw(from_type(TradeFlags)),
@@ -75,7 +75,7 @@ class TestAnalysis(unittest.TestCase):
 
     # pylint: disable=no-value-for-parameter
     @given(
-        lists(helpers.decimalCashAmounts, min_size=1,
+        lists(helpers.cashAmounts(), min_size=1,
               max_size=20).flatmap(lambda ds: tradesForAmounts(
                   amounts=ds, symbol='SPY').map(lambda ts: (ds, ts))))
     def test_realizedBasisAddsUp(self,

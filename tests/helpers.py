@@ -11,28 +11,40 @@ def optionals(inner: SearchStrategy[T]) -> SearchStrategy[Optional[T]]:
     return one_of(inner, none())
 
 
-decimalCashAmounts = decimals(allow_nan=False,
-                              allow_infinity=False,
-                              min_value=Decimal('-1000000000'),
-                              max_value=Decimal('1000000000')).map(
-                                  Cash.quantize)
+def cashAmounts(min_value: Decimal = Decimal('-1000000000'),
+                max_value: Decimal = Decimal('1000000000')
+                ) -> SearchStrategy[Decimal]:
+    return decimals(allow_nan=False,
+                    allow_infinity=False,
+                    min_value=min_value,
+                    max_value=max_value).map(Cash.quantize)
 
-decimalPositionQuantities = decimals(
-    allow_nan=False,
-    allow_infinity=False,
-    min_value=Decimal('-1000000000'),
-    max_value=Decimal('1000000000')).map(
-        Position.quantizeQuantity).filter(lambda x: x != 0)
 
-decimalMultipliers = decimals(allow_nan=False,
-                              allow_infinity=False,
-                              min_value=Decimal('1'),
-                              max_value=Decimal('10000')).map(
-                                  Instrument.quantizeMultiplier)
+def positionQuantities(min_value: Decimal = Decimal('-1000000000'),
+                       max_value: Decimal = Decimal('1000000000'),
+                       allow_zero: bool = False) -> SearchStrategy[Decimal]:
+    s = decimals(allow_nan=False,
+                 allow_infinity=False,
+                 min_value=min_value,
+                 max_value=max_value).map(Position.quantizeQuantity)
+
+    if not allow_zero:
+        s = s.filter(lambda x: x != 0)
+
+    return s
+
+
+def multipliers(min_value: Decimal = Decimal('1'),
+                max_value: Decimal = Decimal('10000')
+                ) -> SearchStrategy[Decimal]:
+    return decimals(allow_nan=False,
+                    allow_infinity=False,
+                    min_value=min_value,
+                    max_value=max_value).map(Instrument.quantizeMultiplier)
 
 
 def cash(currency: SearchStrategy[Currency] = from_type(Currency),
-         quantity: SearchStrategy[Decimal] = decimalCashAmounts
+         quantity: SearchStrategy[Decimal] = cashAmounts()
          ) -> SearchStrategy[Cash]:
     return builds(Cash, currency=currency, quantity=quantity)
 
@@ -58,7 +70,7 @@ def options(underlying: SearchStrategy[str] = text(min_size=1),
                 allow_infinity=False,
                 min_value=Decimal('1'),
                 max_value=Decimal('100000')),
-            multiplier: SearchStrategy[Decimal] = decimalMultipliers
+            multiplier: SearchStrategy[Decimal] = multipliers()
             ) -> SearchStrategy[Option]:
     return builds(Option,
                   underlying=underlying,
@@ -80,7 +92,7 @@ def futuresOptions(
             allow_infinity=False,
             min_value=Decimal('1'),
             max_value=Decimal('100000')),
-        multiplier: SearchStrategy[Decimal] = decimalMultipliers
+        multiplier: SearchStrategy[Decimal] = multipliers()
 ) -> SearchStrategy[FutureOption]:
     return builds(FutureOption,
                   symbol=symbol,
@@ -94,7 +106,7 @@ def futuresOptions(
 
 def futures(symbol: SearchStrategy[str] = text(min_size=1),
             currency: SearchStrategy[Currency] = from_type(Currency),
-            multiplier: SearchStrategy[Decimal] = decimalMultipliers
+            multiplier: SearchStrategy[Decimal] = multipliers()
             ) -> SearchStrategy[Future]:
     return builds(Future,
                   symbol=symbol,
@@ -122,7 +134,7 @@ def instruments(currency: SearchStrategy[Currency] = from_type(Currency)
 
 
 def positions(instrument: SearchStrategy[Instrument] = instruments(),
-              quantity: SearchStrategy[Decimal] = decimalPositionQuantities,
+              quantity: SearchStrategy[Decimal] = positionQuantities(),
               costBasis: SearchStrategy[Cash] = cash()
               ) -> SearchStrategy[Position]:
     return builds(Position,
@@ -133,7 +145,7 @@ def positions(instrument: SearchStrategy[Instrument] = instruments(),
 
 def trades(date: SearchStrategy[datetime] = datetimes(),
            instrument: SearchStrategy[Instrument] = instruments(),
-           quantity: SearchStrategy[Decimal] = decimalPositionQuantities,
+           quantity: SearchStrategy[Decimal] = positionQuantities(),
            amount: SearchStrategy[Cash] = cash(),
            fees: SearchStrategy[Cash] = cash(
                quantity=decimals(allow_nan=False,
@@ -205,8 +217,7 @@ register_type_strategy(
         bid=optionals(just(bid)),
         ask=optionals(
             cash(currency=just(bid.currency),
-                 quantity=decimalCashAmounts.map(lambda c: bid.quantity + abs(
-                     c)))),
+                 quantity=cashAmounts().map(lambda c: bid.quantity + abs(c)))),
         last=optionals(cash(currency=just(bid.currency))),
         close=optionals(cash(currency=just(bid.currency))))))
 
