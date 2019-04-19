@@ -288,8 +288,26 @@ class Future(Instrument):
 
 
 class Forex(Instrument):
-    def __init__(self, symbol: str, currency: Currency):
-        super().__init__(symbol, currency)
+    def __init__(self, baseCurrency: Currency, quoteCurrency: Currency):
+        assert baseCurrency != quoteCurrency, 'Forex pair must be composed of different currencies, got {} and {}'.format(
+            repr(baseCurrency), repr(quoteCurrency))
+        self._baseCurrency = baseCurrency
+
+        symbol = '{}{}'.format(baseCurrency.name, quoteCurrency.name)
+        super().__init__(symbol, quoteCurrency)
+
+    @property
+    def quoteCurrency(self) -> Currency:
+        return self.currency
+
+    @property
+    def baseCurrency(self) -> Currency:
+        return self._baseCurrency
+
+    def __repr__(self) -> str:
+        return '{}(baseCurrency={}, quoteCurrency={})'.format(
+            repr(type(self)), repr(self.baseCurrency),
+            repr(self.quoteCurrency))
 
 
 class Quote:

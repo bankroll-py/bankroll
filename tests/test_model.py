@@ -2,7 +2,7 @@ from datetime import date
 from decimal import Decimal, ROUND_UP
 from hypothesis import assume, given, reproduce_failure
 from hypothesis.strategies import dates, decimals, from_type, integers, lists, one_of, sampled_from, text
-from model import Cash, Currency, Instrument, Bond, Stock, Option, OptionType, FutureOption, Future, Forex, Position, Quote, Trade
+from model import Cash, Currency, Instrument, Bond, Stock, Option, OptionType, FutureOption, Future, Position, Quote, Trade
 from typing import List, Optional, TypeVar
 
 import helpers

@@ -1,5 +1,5 @@
 from decimal import Decimal
-from hypothesis.strategies import builds, dates, datetimes, decimals, from_regex, from_type, just, integers, none, one_of, register_type_strategy, sampled_from, text, SearchStrategy
+from hypothesis.strategies import builds, dates, datetimes, decimals, from_regex, from_type, just, lists, integers, none, one_of, register_type_strategy, sampled_from, text, SearchStrategy
 from model import Cash, Currency, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, Trade, TradeFlags, Quote
 from typing import List, Optional, TypeVar
 
@@ -54,9 +54,12 @@ register_type_strategy(
 register_type_strategy(
     Future,
     builds(Future, symbol=text(min_size=1), currency=from_type(Currency)))
+
 register_type_strategy(
-    Forex, builds(Forex, symbol=text(min_size=1),
-                  currency=from_type(Currency)))
+    Forex,
+    lists(from_type(Currency), min_size=2, max_size=2,
+          unique=True).flatmap(lambda cx: builds(
+              Forex, baseCurrency=just(cx[0]), quoteCurrency=just(cx[1]))))
 
 register_type_strategy(
     Instrument,
@@ -110,11 +113,12 @@ register_type_strategy(
         last=builds(
             Cash, currency=just(bid.currency), quantity=decimalCashAmounts))))
 
-
 T = TypeVar('T')
+
 
 def optionals(inner: SearchStrategy[T]) -> SearchStrategy[Optional[T]]:
     return one_of(inner, none())
+
 
 def cashUSD(amount: Decimal) -> Cash:
     return Cash(currency=Currency.USD, quantity=amount)

@@ -107,11 +107,13 @@ class TestIBKRTrades(unittest.TestCase):
         self.assertEqual(ts[0].flags, TradeFlags.CLOSE)
 
     def test_buyForex(self) -> None:
-        symbol = 'GBP.USD'
+        symbol = 'GBPUSD'
         ts = self.tradesBySymbol[symbol]
         self.assertEqual(len(ts), 2)
         self.assertEqual(ts[0].date.date(), date(2019, 2, 12))
-        self.assertEqual(ts[0].instrument, Forex(symbol, Currency.USD))
+        self.assertEqual(
+            ts[0].instrument,
+            Forex(baseCurrency=Currency.GBP, quoteCurrency=Currency.USD))
         self.assertEqual(ts[0].quantity, Decimal('3060'))
         self.assertEqual(
             ts[0].amount,
@@ -129,11 +131,13 @@ class TestIBKRTrades(unittest.TestCase):
         self.assertEqual(ts[1].flags, TradeFlags.OPEN)
 
     def test_buyForexCross(self) -> None:
-        symbol = 'GBP.AUD'
+        symbol = 'GBPAUD'
         ts = self.tradesBySymbol[symbol]
         self.assertEqual(len(ts), 1)
         self.assertEqual(ts[0].date.date(), date(2019, 3, 25))
-        self.assertEqual(ts[0].instrument, Forex(symbol, Currency.AUD))
+        self.assertEqual(
+            ts[0].instrument,
+            Forex(baseCurrency=Currency.GBP, quoteCurrency=Currency.AUD))
         self.assertEqual(ts[0].quantity, Decimal('5000'))
         self.assertEqual(
             ts[0].amount,
