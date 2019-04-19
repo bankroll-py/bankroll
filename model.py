@@ -404,6 +404,10 @@ class Quote:
     def __hash__(self) -> int:
         return hash((self.bid, self.ask, self.last, self.close))
 
+    def __repr__(self) -> str:
+        return 'Quote(bid={}, ask={}, last={}, close={})'.format(
+            repr(self.bid), repr(self.ask), repr(self.last), repr(self.close))
+
 
 class LiveDataProvider(ABC):
     @abstractmethod
