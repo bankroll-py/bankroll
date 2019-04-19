@@ -100,6 +100,7 @@ class TestCash(unittest.TestCase):
         cashA = Cash(currency=cur, quantity=a)
         cashB = Cash(currency=cur, quantity=a)
         self.assertEqual(cashA, cashB)
+        self.assertEqual(hash(cashA), hash(cashB))
 
     @given(
         sampled_from(Currency),
