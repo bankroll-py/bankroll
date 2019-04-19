@@ -112,25 +112,31 @@ register_type_strategy(
                                       max_value=Decimal('10000'))),
         flags=from_type(TradeFlags))))
 
-register_type_strategy(
-    Quote,
-    from_type(Cash).flatmap(lambda bid: builds(
-        Quote,
-        bid=just(bid),
-        ask=builds(Cash,
-                   currency=just(bid.currency),
-                   quantity=decimalCashAmounts.map(lambda c: bid.quantity +
-                                                   abs(c))),
-        last=builds(
-            Cash, currency=just(bid.currency), quantity=decimalCashAmounts),
-        close=builds(
-            Cash, currency=just(bid.currency), quantity=decimalCashAmounts))))
-
 T = TypeVar('T')
 
 
 def optionals(inner: SearchStrategy[T]) -> SearchStrategy[Optional[T]]:
     return one_of(inner, none())
+
+
+register_type_strategy(
+    Quote,
+    from_type(Cash).flatmap(lambda bid: builds(
+        Quote,
+        bid=optionals(just(bid)),
+        ask=optionals(
+            builds(Cash,
+                   currency=just(bid.currency),
+                   quantity=decimalCashAmounts.map(lambda c: bid.quantity +
+                                                   abs(c)))),
+        last=optionals(
+            builds(Cash,
+                   currency=just(bid.currency),
+                   quantity=decimalCashAmounts)),
+        close=optionals(
+            builds(Cash,
+                   currency=just(bid.currency),
+                   quantity=decimalCashAmounts)))))
 
 
 def cashUSD(amount: Decimal) -> Cash:
