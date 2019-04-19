@@ -121,7 +121,9 @@ class TestIBKRTrades(unittest.TestCase):
         self.assertEqual(ts[0].fees,
                          Cash(currency=Currency.USD, quantity=Decimal('2')))
         self.assertEqual(ts[0].flags, TradeFlags.OPEN)
-        self.assertEqual(ts[1].instrument, Forex(symbol, Currency.USD))
+        self.assertEqual(
+            ts[1].instrument,
+            Forex(baseCurrency=Currency.GBP, quoteCurrency=Currency.USD))
         self.assertEqual(ts[1].quantity, Decimal('50'))
         self.assertEqual(
             ts[1].amount,

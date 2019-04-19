@@ -32,13 +32,28 @@ def parseOption(symbol: str, currency: Currency,
                strike=Decimal(match['strike']) / 1000)
 
 
+def parseForex(symbol: str, currency: Currency) -> Forex:
+    match = re.match(r'^(?P<base>[A-Z]{3})\.(?P<quote>[A-Z]{3})', symbol)
+    if not match:
+        raise ValueError('Could not parse IB cash symbol: {}'.format(symbol))
+
+    baseCurrency = Currency[match['base']]
+    quoteCurrency = Currency[match['quote']]
+    if currency != quoteCurrency:
+        raise ValueError(
+            'Expected quote currency {} to match position currency {}'.format(
+                quoteCurrency, currency))
+
+    return Forex(baseCurrency=baseCurrency, quoteCurrency=quoteCurrency)
+
+
 def extractPosition(p: IB.Position) -> Position:
     instrumentsByTag: Dict[str, Callable[[str, Currency], Instrument]] = {
         "STK": Stock,
         "BOND": lambda s, c: Bond(s, c, validateSymbol=False),
         "OPT": parseOption,
         "FUT": Future,
-        "CASH": Forex,
+        "CASH": parseForex,
         # TODO: FOP
     }
 
@@ -153,7 +168,7 @@ def parseTradeConfirm(trade: IBTradeConfirm) -> Trade:
         'FUT':
         lambda t: Future(t.symbol, currency=Currency[t.currency]),
         'CASH':
-        lambda t: Forex(t.symbol, currency=Currency[t.currency]),
+        lambda t: parseForex(t.symbol, currency=Currency[t.currency]),
         'FOP':
         parseFutureOptionTrade,
     }
