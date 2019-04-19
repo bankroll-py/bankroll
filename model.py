@@ -472,7 +472,7 @@ class Trade:
     def proceeds(self) -> Cash:
         return self.amount - self.fees
 
-    def __eq__(self, other: 'Trade') -> bool:
+    def __eq__(self, other: Any) -> bool:
         if not isinstance(other, Trade):
             return False
 
