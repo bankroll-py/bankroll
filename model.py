@@ -462,7 +462,7 @@ class Position:
             assert self.costBasis == 0
             return self.costBasis
 
-        return self.costBasis / self.quantity
+        return self.costBasis / self.quantity / self.instrument.multiplier
 
     @property
     def costBasis(self) -> Cash:
