@@ -1,6 +1,6 @@
 from functools import reduce
-from model import Cash, Trade, Instrument, Option
-from typing import Iterable, Optional
+from model import Cash, Trade, Instrument, Option, LiveDataProvider, Quote, Position
+from typing import Dict, Iterable, Optional, Tuple
 
 
 def tradeAffectsSymbol(trade: Trade, symbol: str) -> bool:
@@ -17,3 +17,25 @@ def realizedBasisForSymbol(symbol: str,
 
     return reduce(f, (t for t in trades if tradeAffectsSymbol(t, symbol)),
                   None)
+
+
+def liveValuesForPositions(positions: Iterable[Position],
+                           dataProvider: LiveDataProvider
+                           ) -> Dict[Position, Cash]:
+    def priceFromQuote(q: Quote, p: Position) -> Optional[Cash]:
+        # For a long position, the value should be what the market is willing to pay right now.
+        # For a short position, the value should be what the market is asking to be paid right now.
+        if p.quantity < 0:
+            return q.ask or q.last or q.bid or q.close
+        else:
+            return q.bid or q.last or q.ask or q.close
+
+    result = {}
+    for p in positions:
+        price = priceFromQuote(dataProvider.fetchQuote(p.instrument), p)
+        if not price:
+            continue
+
+        result[p] = price * p.quantity * p.instrument.multiplier
+
+    return result

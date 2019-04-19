@@ -1,10 +1,10 @@
-from analysis import realizedBasisForSymbol
+from analysis import realizedBasisForSymbol, liveValuesForPositions
 from datetime import datetime, date
 from decimal import Decimal
-from hypothesis import given, reproduce_failure
-from hypothesis.strategies import builds, composite, dates, datetimes, decimals, from_type, iterables, just, lists, one_of, text
-from model import Cash, Currency, Instrument, Stock, Option, OptionType, Trade, TradeFlags
-from typing import Any, Iterable, List, Tuple, no_type_check
+from hypothesis import given, reproduce_failure, seed
+from hypothesis.strategies import builds, composite, dates, datetimes, decimals, from_type, iterables, just, lists, one_of, text, tuples, SearchStrategy
+from model import Cash, Currency, Instrument, Stock, Option, OptionType, Quote, Trade, TradeFlags, LiveDataProvider, Position
+from typing import Any, Dict, Iterable, List, Tuple, no_type_check
 
 import helpers
 import unittest
@@ -28,24 +28,44 @@ def tradesForAmounts(draw: Any, symbol: str,
     return (Trade(
         date=draw(datetimes()),
         instrument=draw(instruments),
-        quantity=draw(helpers.decimalPositionQuantities),
+        quantity=draw(helpers.positionQuantities()),
         amount=Cash(currency=cx, quantity=x),
         fees=Cash(currency=cx, quantity=Decimal(0)),
         flags=draw(from_type(TradeFlags)),
     ) for x in amounts)
 
 
+@no_type_check
+def positionAndQuote(
+        instrument: SearchStrategy[Instrument] = helpers.instruments()
+) -> SearchStrategy[Tuple[Position, Quote]]:
+    return instrument.flatmap(lambda i: tuples(
+        helpers.positions(instrument=just(i),
+                          costBasis=helpers.cash(currency=just(i.currency))),
+        helpers.uniformCurrencyQuotes(currency=just(i.currency))))
+
+
+class StubDataProvider(LiveDataProvider):
+    def __init__(self, quotes: Dict[Instrument, Quote]):
+        self._quotes = quotes
+        super().__init__()
+
+    def fetchQuote(self, instrument: Instrument) -> Quote:
+        return self._quotes[instrument]
+
+
 class TestAnalysis(unittest.TestCase):
     def test_realizedBasis(self) -> None:
         trades = [
             Trade(date=datetime.now(),
-                  instrument=Stock('SPY'),
+                  instrument=Stock('SPY', Currency.USD),
                   quantity=Decimal('5'),
                   amount=helpers.cashUSD(Decimal('-999')),
                   fees=helpers.cashUSD(Decimal('1')),
                   flags=TradeFlags.OPEN),
             Trade(date=datetime.now(),
                   instrument=Option(underlying='SPY',
+                                    currency=Currency.USD,
                                     optionType=OptionType.CALL,
                                     expiration=date.today(),
                                     strike=Decimal('123')),
@@ -74,7 +94,7 @@ class TestAnalysis(unittest.TestCase):
 
     # pylint: disable=no-value-for-parameter
     @given(
-        lists(helpers.decimalCashAmounts, min_size=1,
+        lists(helpers.cashAmounts(), min_size=1,
               max_size=20).flatmap(lambda ds: tradesForAmounts(
                   amounts=ds, symbol='SPY').map(lambda ts: (ds, ts))))
     def test_realizedBasisAddsUp(self,
@@ -89,3 +109,36 @@ class TestAnalysis(unittest.TestCase):
 
         if realizedBasis:
             self.assertEqual(realizedBasis.quantity, -summed)
+
+    @given(lists(positionAndQuote(), min_size=1, max_size=3))
+    def test_liveValuesForPositions(self,
+                                    i: List[Tuple[Position, Quote]]) -> None:
+        quotesByInstrument = {p.instrument: q for (p, q) in i}
+        self.assertGreater(len(quotesByInstrument), 0)
+
+        dataProvider = StubDataProvider(quotesByInstrument)
+        positions = [p for (p, _) in i]
+        self.assertGreater(len(positions), 0)
+
+        valuesByPosition = liveValuesForPositions(positions, dataProvider)
+        for position in positions:
+            quote = quotesByInstrument[position.instrument]
+            prices = [quote.bid, quote.ask, quote.last, quote.close]
+            if all([p is None for p in prices]):
+                self.assertFalse(position in valuesByPosition)
+                continue
+
+            value = valuesByPosition[position]
+
+            valuesPerPrice = [
+                p * position.quantity * position.instrument.multiplier
+                for p in prices if p is not None
+            ]
+
+            lowest = min(valuesPerPrice, default=None)
+            if lowest is not None:
+                self.assertGreaterEqual(value, lowest)
+
+            highest = max(valuesPerPrice, default=None)
+            if highest is not None:
+                self.assertLessEqual(value, highest)

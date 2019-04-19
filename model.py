@@ -1,9 +1,9 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 from datetime import date, datetime
 from decimal import Decimal, ROUND_HALF_EVEN
 from enum import Enum, Flag, auto, unique
-from functools import total_ordering
-from typing import Any, Dict, NamedTuple, Optional, TypeVar, Union
+from itertools import permutations
+from typing import Any, Dict, Iterable, NamedTuple, Optional, TypeVar, Union
 
 import re
 
@@ -44,7 +44,6 @@ class Currency(Enum):
 T = TypeVar('T', Decimal, int)
 
 
-@total_ordering
 class Cash:
     quantization = Decimal('0.0001')
 
@@ -53,7 +52,8 @@ class Cash:
         return d.quantize(cls.quantization, rounding=ROUND_HALF_EVEN)
 
     def __init__(self, currency: Currency, quantity: Decimal):
-        assert quantity.is_finite()
+        assert quantity.is_finite(
+        ), 'Cash quantity {} is not a finite number'.format(quantity)
 
         self._currency = currency
         self._quantity = self.quantize(quantity)
@@ -103,6 +103,9 @@ class Cash:
     def __neg__(self) -> 'Cash':
         return Cash(currency=self.currency, quantity=-self.quantity)
 
+    def __abs__(self) -> 'Cash':
+        return Cash(currency=self.currency, quantity=abs(self.quantity))
+
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, Cash):
             # Make mypy happy
@@ -112,35 +115,88 @@ class Cash:
         return self.currency == other.currency and self.quantity == other.quantity
 
     def __lt__(self, other: 'Cash') -> bool:
+        assert self.currency == other.currency, 'Currency of {} must match {} for comparison'.format(
+            self, other)
         return self.quantity < other.quantity
 
+    def __le__(self, other: 'Cash') -> bool:
+        assert self.currency == other.currency, 'Currency of {} must match {} for comparison'.format(
+            self, other)
+        return self.quantity <= other.quantity
 
-@total_ordering
+    def __gt__(self, other: 'Cash') -> bool:
+        assert self.currency == other.currency, 'Currency of {} must match {} for comparison'.format(
+            self, other)
+        return self.quantity > other.quantity
+
+    def __ge__(self, other: 'Cash') -> bool:
+        assert self.currency == other.currency, 'Currency of {} must match {} for comparison'.format(
+            self, other)
+        return self.quantity >= other.quantity
+
+    def __hash__(self) -> int:
+        return hash((self.currency, self.quantity))
+
+
 class Instrument(ABC):
-    def __init__(self, symbol: str):
+    multiplierQuantization = Decimal('0.1')
+
+    @classmethod
+    def quantizeMultiplier(cls, multiplier: Decimal) -> Decimal:
+        return multiplier.quantize(cls.multiplierQuantization,
+                                   rounding=ROUND_HALF_EVEN)
+
+    @abstractmethod
+    def __init__(self, symbol: str, currency: Currency):
         assert symbol, 'Expected non-empty symbol for instrument'
+        assert currency, 'Expected currency for instrument'
 
         self._symbol = symbol
+        self._currency = currency
         super().__init__()
 
     @property
     def symbol(self) -> str:
         return self._symbol
 
+    @property
+    def currency(self) -> Currency:
+        return self._currency
+
+    @property
+    def multiplier(self) -> Decimal:
+        return Decimal(1)
+
     def __eq__(self, other: Any) -> bool:
-        if not isinstance(other, Instrument):
+        # Strict typechecking, because we want different types of Instrument to be inequal.
+        if type(self) != type(other):
             return False
 
-        return self.symbol == other.symbol
+        return bool(self.symbol == other.symbol
+                    and self.currency == other.currency)
+
+    def __hash__(self) -> int:
+        return hash((self.currency, self.symbol))
 
     def __lt__(self, other: 'Instrument') -> bool:
         return self.symbol < other.symbol
+
+    def __le__(self, other: 'Instrument') -> bool:
+        return self.symbol <= other.symbol
+
+    def __gt__(self, other: 'Instrument') -> bool:
+        return self.symbol > other.symbol
+
+    def __ge__(self, other: 'Instrument') -> bool:
+        return self.symbol >= other.symbol
 
     def __format__(self, spec: str) -> str:
         return format(self.symbol, spec)
 
     def __repr__(self) -> str:
-        return '{}(\'{}\')'.format(repr(type(self)), self.symbol)
+        return '{}(symbol={}, currency={})'.format(repr(type(self)),
+                                                   repr(self.symbol),
+                                                   repr(self.currency))
 
     def __str__(self) -> str:
         return self._symbol
@@ -148,7 +204,8 @@ class Instrument(ABC):
 
 # Also used for ETFs.
 class Stock(Instrument):
-    pass
+    def __init__(self, symbol: str, currency: Currency):
+        super().__init__(symbol, currency)
 
 
 class Bond(Instrument):
@@ -158,11 +215,14 @@ class Bond(Instrument):
     def validBondSymbol(cls, symbol: str) -> bool:
         return re.match(cls.regexCUSIP, symbol) is not None
 
-    def __init__(self, symbol: str, validateSymbol: bool = True):
+    def __init__(self,
+                 symbol: str,
+                 currency: Currency,
+                 validateSymbol: bool = True):
         assert not validateSymbol or self.validBondSymbol(
             symbol), 'Expected symbol to be a bond CUSIP: {}'.format(symbol)
 
-        super().__init__(symbol)
+        super().__init__(symbol, currency)
 
 
 @unique
@@ -182,18 +242,24 @@ class Option(Instrument):
 
     def __init__(self,
                  underlying: str,
+                 currency: Currency,
                  optionType: OptionType,
                  expiration: date,
                  strike: Decimal,
+                 multiplier: Decimal = Decimal(100),
                  symbol: Optional[str] = None):
         assert underlying, 'Expected non-empty underlying symbol for Option'
         assert strike.is_finite(
         ) and strike > 0, 'Expected positive strike price: {}'.format(strike)
+        assert multiplier.is_finite(
+        ) and multiplier > 0, 'Expected positive multiplier: {}'.format(
+            multiplier)
 
         self._underlying = underlying
         self._optionType = optionType
         self._expiration = expiration
         self._strike = self.quantizeStrike(strike)
+        self._multiplier = self.quantizeMultiplier(multiplier)
 
         if symbol is None:
             # https://en.wikipedia.org/wiki/Option_symbol#The_OCC_Option_Symbol
@@ -201,7 +267,7 @@ class Option(Instrument):
                                                expiration.strftime('%y%m%d'),
                                                optionType.value, strike * 1000)
 
-        super().__init__(symbol)
+        super().__init__(symbol, currency)
 
     @property
     def underlying(self) -> str:
@@ -219,28 +285,139 @@ class Option(Instrument):
     def strike(self) -> Decimal:
         return self._strike
 
+    @property
+    def multiplier(self) -> Decimal:
+        return self._multiplier
+
     def __repr__(self) -> str:
-        return '{}(underlying={}, optionType={}, expiration={}, strike={})'.format(
+        return '{}(underlying={}, optionType={}, expiration={}, strike={}, currency={}, multiplier={})'.format(
             repr(type(self)), repr(self.underlying), repr(self.optionType),
-            repr(self.expiration), repr(self.strike))
+            repr(self.expiration), repr(self.strike), repr(self.currency),
+            repr(self.multiplier))
 
 
 class FutureOption(Option):
-    def __init__(self, symbol: str, underlying: str, optionType: OptionType,
-                 expiration: date, strike: Decimal):
+    def __init__(self, symbol: str, underlying: str, currency: Currency,
+                 optionType: OptionType, expiration: date, strike: Decimal,
+                 multiplier: Decimal):
         super().__init__(underlying=underlying,
+                         currency=currency,
                          optionType=optionType,
                          expiration=expiration,
                          strike=strike,
+                         multiplier=multiplier,
                          symbol=symbol)
 
 
 class Future(Instrument):
-    pass
+    def __init__(self, symbol: str, currency: Currency, multiplier: Decimal):
+        assert multiplier.is_finite(
+        ) and multiplier > 0, 'Expected positive multiplier: {}'.format(
+            multiplier)
+
+        self._multiplier = self.quantizeMultiplier(multiplier)
+
+        super().__init__(symbol, currency)
+
+    @property
+    def multiplier(self) -> Decimal:
+        return self._multiplier
+
+    def __repr__(self) -> str:
+        return '{}(symbol={}, currency={}, multiplier={})'.format(
+            repr(type(self)), repr(self.symbol), repr(self.currency),
+            repr(self.multiplier))
 
 
 class Forex(Instrument):
-    pass
+    def __init__(self, baseCurrency: Currency, quoteCurrency: Currency):
+        assert baseCurrency != quoteCurrency, 'Forex pair must be composed of different currencies, got {} and {}'.format(
+            repr(baseCurrency), repr(quoteCurrency))
+        self._baseCurrency = baseCurrency
+
+        symbol = '{}{}'.format(baseCurrency.name, quoteCurrency.name)
+        super().__init__(symbol, quoteCurrency)
+
+    @property
+    def quoteCurrency(self) -> Currency:
+        return self.currency
+
+    @property
+    def baseCurrency(self) -> Currency:
+        return self._baseCurrency
+
+    def __repr__(self) -> str:
+        return '{}(baseCurrency={}, quoteCurrency={})'.format(
+            repr(type(self)), repr(self.baseCurrency),
+            repr(self.quoteCurrency))
+
+
+Item = TypeVar('Item')
+
+
+def allEqual(i: Iterable[Item]) -> bool:
+    for (a, b) in permutations(i, 2):
+        if a != b:
+            return False
+
+    return True
+
+
+class Quote:
+    def __init__(self,
+                 bid: Optional[Cash] = None,
+                 ask: Optional[Cash] = None,
+                 last: Optional[Cash] = None,
+                 close: Optional[Cash] = None):
+        if bid and ask:
+            assert ask >= bid, 'Expected ask {} to be at least bid {}'.format(
+                ask, bid)
+
+        assert allEqual((price.currency for price in [bid, ask, last, close]
+                         if price is not None
+                         )), 'Currencies in a quote should match: {}'.format(
+                             [bid, ask, last, close])
+
+        self._bid = bid
+        self._ask = ask
+        self._last = last
+        self._close = close
+        super().__init__()
+
+    @property
+    def bid(self) -> Optional[Cash]:
+        return self._bid
+
+    @property
+    def ask(self) -> Optional[Cash]:
+        return self._ask
+
+    @property
+    def last(self) -> Optional[Cash]:
+        return self._last
+
+    @property
+    def close(self) -> Optional[Cash]:
+        return self._close
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, Quote):
+            return False
+
+        return self.bid == other.bid and self.ask == other.ask and self.last == other.last and self.close == other.close
+
+    def __hash__(self) -> int:
+        return hash((self.bid, self.ask, self.last, self.close))
+
+    def __repr__(self) -> str:
+        return 'Quote(bid={}, ask={}, last={}, close={})'.format(
+            repr(self.bid), repr(self.ask), repr(self.last), repr(self.close))
+
+
+class LiveDataProvider(ABC):
+    @abstractmethod
+    def fetchQuote(self, instrument: Instrument) -> Quote:
+        pass
 
 
 class Position:
@@ -253,6 +430,8 @@ class Position:
 
     def __init__(self, instrument: Instrument, quantity: Decimal,
                  costBasis: Cash):
+        assert instrument.currency == costBasis.currency, 'Cost basis {} should be in same currency as instrument {}'.format(
+            costBasis, instrument)
         assert quantity.is_finite()
         quantity = self.quantizeQuantity(quantity)
 
@@ -278,6 +457,9 @@ class Position:
 
         return self.instrument == other.instrument and self.quantity == other.quantity and self.averagePrice == other.averagePrice
 
+    def __hash__(self) -> int:
+        return hash((self.instrument, self.quantity, self.averagePrice))
+
     @property
     def instrument(self) -> Instrument:
         return self._instrument
@@ -292,7 +474,7 @@ class Position:
             assert self.costBasis == 0
             return self.costBasis
 
-        return self.costBasis / self.quantity
+        return self.costBasis / self.quantity / self.instrument.multiplier
 
     @property
     def costBasis(self) -> Cash:
@@ -303,7 +485,8 @@ class Position:
             repr(self.instrument), repr(self.quantity), repr(self.costBasis))
 
     def __str__(self) -> str:
-        return '{:21} {:>14,g} @ {}'.format(self.instrument, self.quantity,
+        return '{:21} {:>14,f} @ {}'.format(self.instrument,
+                                            self.quantity.normalize(),
                                             self.averagePrice)
 
 
@@ -364,12 +547,33 @@ class Trade:
         return self._fees
 
     @property
+    def price(self) -> Cash:
+        if self.quantity >= 0:
+            return -self.amount / self.instrument.multiplier
+        else:
+            return self.amount / self.instrument.multiplier
+
+    @property
     def flags(self) -> TradeFlags:
         return self._flags
 
     @property
     def proceeds(self) -> Cash:
         return self.amount - self.fees
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, Trade):
+            return False
+
+        return bool(self.date == other.date
+                    and self.instrument == other.instrument
+                    and self.quantity == other.quantity
+                    and self.amount == other.amount and self.fees == other.fees
+                    and self.flags == other.flags)
+
+    def __hash__(self) -> int:
+        return hash((self.date, self.instrument, self.quantity, self.amount,
+                     self.fees, self.flags))
 
     def __repr__(self) -> str:
         return 'Trade(date={}, instrument={}, quantity={}, amount={}, fees={}, flags={})'.format(

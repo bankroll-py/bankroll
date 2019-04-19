@@ -19,20 +19,23 @@ class TestFidelityPositions(unittest.TestCase):
         self.assertEqual(len(self.positions), 6)
 
     def test_tBill(self) -> None:
-        self.assertEqual(self.positions[0].instrument, Bond('942792RU5'))
+        self.assertEqual(self.positions[0].instrument,
+                         Bond('942792RU5', Currency.USD))
         self.assertEqual(self.positions[0].quantity, 10000)
         self.assertEqual(self.positions[0].costBasis,
                          Cash(currency=Currency.USD, quantity=Decimal('9800')))
 
     def test_aapl(self) -> None:
-        self.assertEqual(self.positions[1].instrument, Stock('AAPL'))
+        self.assertEqual(self.positions[1].instrument,
+                         Stock('AAPL', Currency.USD))
         self.assertEqual(self.positions[1].quantity, Decimal('100'))
         self.assertEqual(
             self.positions[1].costBasis,
             Cash(currency=Currency.USD, quantity=Decimal('14000')))
 
     def test_robo(self) -> None:
-        self.assertEqual(self.positions[2].instrument, Stock('ROBO'))
+        self.assertEqual(self.positions[2].instrument,
+                         Stock('ROBO', Currency.USD))
         self.assertEqual(self.positions[2].quantity, Decimal('10'))
         self.assertEqual(self.positions[2].costBasis,
                          Cash(currency=Currency.USD, quantity=Decimal('300')))
@@ -41,6 +44,7 @@ class TestFidelityPositions(unittest.TestCase):
         self.assertEqual(
             self.positions[3].instrument,
             Option(underlying='SPY',
+                   currency=Currency.USD,
                    optionType=OptionType.CALL,
                    expiration=date(2019, 1, 25),
                    strike=Decimal('265')))
@@ -53,6 +57,7 @@ class TestFidelityPositions(unittest.TestCase):
         self.assertEqual(
             self.positions[4].instrument,
             Option(underlying='SPY',
+                   currency=Currency.USD,
                    optionType=OptionType.PUT,
                    expiration=date(2019, 3, 22),
                    strike=Decimal('189')))
@@ -62,7 +67,8 @@ class TestFidelityPositions(unittest.TestCase):
             Cash(currency=Currency.USD, quantity=Decimal('5432.78')))
 
     def test_v(self) -> None:
-        self.assertEqual(self.positions[5].instrument, Stock('V'))
+        self.assertEqual(self.positions[5].instrument,
+                         Stock('V', Currency.USD))
         self.assertEqual(self.positions[5].quantity, Decimal('20'))
         self.assertEqual(self.positions[5].costBasis,
                          Cash(currency=Currency.USD, quantity=Decimal('2600')))
@@ -85,7 +91,7 @@ class TestFidelityTransactions(unittest.TestCase):
     def test_buySecurity(self) -> None:
         ts = self.tradesByDate[date(2017, 9, 23)]
         self.assertEqual(len(ts), 1)
-        self.assertEqual(ts[0].instrument, Stock('USFD'))
+        self.assertEqual(ts[0].instrument, Stock('USFD', Currency.USD))
         self.assertEqual(ts[0].quantity, Decimal('178'))
         self.assertEqual(
             ts[0].amount,
@@ -97,7 +103,7 @@ class TestFidelityTransactions(unittest.TestCase):
     def test_reinvestShares(self) -> None:
         ts = self.tradesByDate[date(2017, 11, 9)]
         self.assertEqual(len(ts), 3)
-        self.assertEqual(ts[1].instrument, Stock('ROBO'))
+        self.assertEqual(ts[1].instrument, Stock('ROBO', Currency.USD))
         self.assertEqual(ts[1].quantity, Decimal('0.234'))
         self.assertEqual(
             ts[1].amount, Cash(currency=Currency.USD,
@@ -116,6 +122,7 @@ class TestFidelityTransactions(unittest.TestCase):
         self.assertEqual(
             ts[0].instrument,
             Option(underlying='SPY',
+                   currency=Currency.USD,
                    optionType=OptionType.PUT,
                    expiration=date(2018, 3, 22),
                    strike=Decimal('198')))
@@ -133,6 +140,7 @@ class TestFidelityTransactions(unittest.TestCase):
         self.assertEqual(
             ts[2].instrument,
             Option(underlying='SPY',
+                   currency=Currency.USD,
                    optionType=OptionType.CALL,
                    expiration=date(2018, 1, 25),
                    strike=Decimal('260')))

@@ -2,13 +2,14 @@ from argparse import ArgumentParser, Namespace
 from functools import reduce
 from ib_insync import IB
 from itertools import groupby
-from model import Instrument, Stock, Position, Trade
+from model import Instrument, Stock, Position, Trade, Cash, LiveDataProvider
 from pathlib import Path
-from typing import Iterable, List
+from typing import Dict, Iterable, List, Optional
 
 import analysis
 import ibkr
 import fidelity
+import logging
 import schwab
 import vanguard
 
@@ -21,6 +22,12 @@ parser.add_argument(
     default=False,
     action='store_true')
 parser.add_argument('--no-lenient', dest='lenient', action='store_false')
+parser.add_argument('-v',
+                    '--verbose',
+                    help='More logging.',
+                    dest='verbose',
+                    default=False,
+                    action='store_true')
 
 ibGroup = parser.add_argument_group(
     'IB', 'Options for importing data from Interactive Brokers.')
@@ -86,11 +93,24 @@ def combinePositions(positions: Iterable[Position]) -> Iterable[Position]:
 
 positions: List[Position] = []
 trades: List[Trade] = []
+dataProvider: Optional[LiveDataProvider] = None
 
 
 def printPositions(args: Namespace) -> None:
+    values: Dict[Position, Cash] = {}
+    if args.live_value:
+        assert dataProvider, 'Live data connection required to fetch market values'
+        values = analysis.liveValuesForPositions(positions,
+                                                 dataProvider=dataProvider)
+
     for p in sorted(positions, key=lambda p: p.instrument):
         print(p)
+
+        if p in values:
+            print('\tMarket value: {}'.format(values[p]))
+        elif args.live_value:
+            logging.warning('Could not fetch market value for {}'.format(
+                p.instrument))
 
         if not isinstance(p.instrument, Stock):
             continue
@@ -123,12 +143,20 @@ positionsParser.add_argument(
     help='Calculate realized basis for stock positions',
     default=False,
     action='store_true')
+positionsParser.add_argument(
+    '--live-value',
+    help='Fetch live, mark-to-market value of positions',
+    default=False,
+    action='store_true')
 
 tradesParser = subparsers.add_parser(
     'trades', help='Operations upon the imported list of trades')
 
 if __name__ == '__main__':
     args = parser.parse_args()
+    if args.verbose:
+        logging.basicConfig(level=logging.INFO)
+
     if not args.command:
         parser.print_usage()
         quit(1)
@@ -158,6 +186,10 @@ if __name__ == '__main__':
     if args.twsport:
         ib = IB()
         ib.connect('127.0.0.1', port=args.twsport)
+
+        if not dataProvider:
+            dataProvider = ibkr.IBDataProvider(ib)
+
         positions += ibkr.downloadPositions(ib, lenient=args.lenient)
 
     if args.flextoken or args.flexquery:

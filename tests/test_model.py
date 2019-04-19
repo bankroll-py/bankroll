@@ -2,8 +2,8 @@ from datetime import date
 from decimal import Decimal, ROUND_UP
 from hypothesis import assume, given, reproduce_failure
 from hypothesis.strategies import dates, decimals, from_type, integers, lists, one_of, sampled_from, text
-from model import Cash, Currency, Instrument, Bond, Stock, Option, OptionType, FutureOption, Future, Forex, Position
-from typing import List, TypeVar
+from model import Cash, Currency, Instrument, Bond, Stock, Option, OptionType, FutureOption, Future, Position, Quote, Trade
+from typing import List, Optional, TypeVar
 
 import helpers
 import unittest
@@ -14,8 +14,8 @@ T = TypeVar('T', Decimal, int)
 class TestCash(unittest.TestCase):
     @given(
         sampled_from(Currency),
-        helpers.decimalCashAmounts,
-        helpers.decimalCashAmounts,
+        helpers.cashAmounts(),
+        helpers.cashAmounts(),
     )
     def test_addCash(self, cur: Currency, a: Decimal, b: Decimal) -> None:
         cashA = Cash(currency=cur, quantity=a)
@@ -27,8 +27,8 @@ class TestCash(unittest.TestCase):
 
     @given(
         sampled_from(Currency),
-        helpers.decimalCashAmounts,
-        helpers.decimalCashAmounts,
+        helpers.cashAmounts(),
+        helpers.cashAmounts(),
     )
     def test_subtractCash(self, cur: Currency, a: Decimal, b: Decimal) -> None:
         cashA = Cash(currency=cur, quantity=a)
@@ -40,8 +40,8 @@ class TestCash(unittest.TestCase):
 
     @given(
         lists(sampled_from(Currency), min_size=2, max_size=2, unique=True),
-        helpers.decimalCashAmounts,
-        helpers.decimalCashAmounts,
+        helpers.cashAmounts(),
+        helpers.cashAmounts(),
     )
     def test_addIncompatibleCash(self, curs: List[Currency], a: Decimal,
                                  b: Decimal) -> None:
@@ -53,8 +53,8 @@ class TestCash(unittest.TestCase):
 
     @given(
         lists(sampled_from(Currency), min_size=2, max_size=2, unique=True),
-        helpers.decimalCashAmounts,
-        helpers.decimalCashAmounts,
+        helpers.cashAmounts(),
+        helpers.cashAmounts(),
     )
     def test_subtractIncompatibleCash(self, curs: List[Currency], a: Decimal,
                                       b: Decimal) -> None:
@@ -67,9 +67,8 @@ class TestCash(unittest.TestCase):
     @given(
         from_type(Cash),
         one_of(
-            helpers.decimalCashAmounts,
-            helpers.decimalCashAmounts.map(lambda d: int(d.to_integral_value())
-                                           )),
+            helpers.cashAmounts(),
+            helpers.cashAmounts().map(lambda d: int(d.to_integral_value()))),
     )
     def test_multiplyCash(self, cashA: Cash, b: T) -> None:
         cashC = cashA * b
@@ -78,10 +77,9 @@ class TestCash(unittest.TestCase):
 
     @given(
         from_type(Cash),
-        one_of(
-            helpers.decimalCashAmounts,
-            helpers.decimalCashAmounts.map(lambda d: int(d.to_integral_value())
-                                           )).filter(lambda x: x != 0),
+        one_of(helpers.cashAmounts(),
+               helpers.cashAmounts().map(lambda d: int(d.to_integral_value()))
+               ).filter(lambda x: x != 0),
     )
     def test_divideCash(self, cashA: Cash, b: T) -> None:
         cashC = cashA / b
@@ -94,18 +92,18 @@ class TestCash(unittest.TestCase):
 
     @given(
         sampled_from(Currency),
-        helpers.decimalCashAmounts,
+        helpers.cashAmounts(),
     )
     def test_cashEquality(self, cur: Currency, a: Decimal) -> None:
         cashA = Cash(currency=cur, quantity=a)
         cashB = Cash(currency=cur, quantity=a)
         self.assertEqual(cashA, cashB)
+        self.assertEqual(hash(cashA), hash(cashB))
 
     @given(
         sampled_from(Currency),
-        helpers.decimalCashAmounts,
-        helpers.decimalCashAmounts.filter(lambda x: abs(x) >= Decimal('0.0001')
-                                          ),
+        helpers.cashAmounts(),
+        helpers.cashAmounts().filter(lambda x: abs(x) >= Decimal('0.0001')),
     )
     def test_cashInequality(self, cur: Currency, a: Decimal,
                             b: Decimal) -> None:
@@ -118,8 +116,8 @@ class TestCash(unittest.TestCase):
 
     @given(
         sampled_from(Currency),
-        helpers.decimalCashAmounts,
-        helpers.decimalCashAmounts.map(abs),
+        helpers.cashAmounts(),
+        helpers.cashAmounts().map(abs),
     )
     def test_cashComparison(self, cur: Currency, a: Decimal,
                             b: Decimal) -> None:
@@ -160,35 +158,37 @@ class TestPosition(unittest.TestCase):
         with self.assertRaises(AssertionError):
             a.combine(b)
 
-    @given(from_type(Instrument), from_type(Currency))
-    def test_combineIncreasesBasis(self, i: Instrument, c: Currency) -> None:
+    @given(from_type(Instrument))
+    def test_combineIncreasesBasis(self, i: Instrument) -> None:
         a = Position(instrument=i,
                      quantity=Decimal('100'),
-                     costBasis=Cash(currency=c, quantity=Decimal('10')))
+                     costBasis=Cash(currency=i.currency,
+                                    quantity=Decimal('10')))
         b = Position(instrument=i,
                      quantity=Decimal('300'),
-                     costBasis=Cash(currency=c, quantity=Decimal('20')))
+                     costBasis=Cash(currency=i.currency,
+                                    quantity=Decimal('20')))
 
         combined = a.combine(b)
         self.assertEqual(combined.instrument, i)
         self.assertEqual(combined.quantity, Decimal('400'))
         self.assertEqual(combined.costBasis,
-                         Cash(currency=c, quantity=Decimal('30')))
+                         Cash(currency=i.currency, quantity=Decimal('30')))
 
-    @given(from_type(Instrument), from_type(Currency),
-           helpers.decimalPositionQuantities, helpers.decimalCashAmounts,
-           helpers.decimalPositionQuantities, helpers.decimalCashAmounts)
-    def test_combineIsCommutative(self, i: Instrument, c: Currency,
-                                  aQty: Decimal, aPrice: Decimal,
-                                  bQty: Decimal, bPrice: Decimal) -> None:
+    @given(from_type(Instrument), helpers.positionQuantities(),
+           helpers.cashAmounts(), helpers.positionQuantities(),
+           helpers.cashAmounts())
+    def test_combineIsCommutative(self, i: Instrument, aQty: Decimal,
+                                  aPrice: Decimal, bQty: Decimal,
+                                  bPrice: Decimal) -> None:
         assume(aQty != -bQty)
 
         a = Position(instrument=i,
                      quantity=aQty,
-                     costBasis=Cash(currency=c, quantity=aPrice))
+                     costBasis=Cash(currency=i.currency, quantity=aPrice))
         b = Position(instrument=i,
                      quantity=bQty,
-                     costBasis=Cash(currency=c, quantity=bPrice))
+                     costBasis=Cash(currency=i.currency, quantity=bPrice))
         self.assertEqual(a.combine(b), b.combine(a))
 
     @given(from_type(Position))
@@ -202,10 +202,27 @@ class TestPosition(unittest.TestCase):
         self.assertEqual(combined.costBasis, Decimal(0))
 
 
+class TestInstrument(unittest.TestCase):
+    @given(from_type(Instrument))
+    def test_instrumentEqualsItself(self, i: Instrument) -> None:
+        self.assertEqual(i, i)
+
+    @given(from_type(Instrument))
+    def test_instrumentHashStable(self, i: Instrument) -> None:
+        self.assertEqual(hash(i), hash(i))
+
+    @given(from_type(Instrument), from_type(Instrument))
+    def test_differentInstrumentTypesNotEqual(self, a: Instrument,
+                                              b: Instrument) -> None:
+        assume(type(a) != type(b))
+        self.assertNotEqual(a, b)
+
+
 class TestOption(unittest.TestCase):
     # https://en.wikipedia.org/wiki/Option_symbol#The_OCC_Option_Symbol
     def test_spxSymbol(self) -> None:
         o = Option(underlying='SPX',
+                   currency=Currency.USD,
                    optionType=OptionType.PUT,
                    expiration=date(2014, 11, 22),
                    strike=Decimal('19.50'))
@@ -213,12 +230,73 @@ class TestOption(unittest.TestCase):
 
     def test_lamrSymbol(self) -> None:
         o = Option(underlying='LAMR',
+                   currency=Currency.USD,
                    optionType=OptionType.CALL,
                    expiration=date(2015, 1, 17),
                    strike=Decimal('52.50'))
         self.assertEqual(o.symbol, 'LAMR  150117C00052500')
 
     # TODO: Mini-options support
+
+
+class TestQuote(unittest.TestCase):
+    @given(from_type(Quote))
+    def test_quoteEqualsItself(self, q: Quote) -> None:
+        self.assertEqual(q, q)
+
+    @given(from_type(Currency), helpers.optionals(helpers.cashAmounts()),
+           helpers.optionals(helpers.cashAmounts()),
+           helpers.optionals(helpers.cashAmounts()),
+           helpers.optionals(helpers.cashAmounts()))
+    def test_quoteEquality(self, currency: Currency, bid: Optional[Decimal],
+                           ask: Optional[Decimal], last: Optional[Decimal],
+                           close: Optional[Decimal]) -> None:
+        assume((not bid) or (not ask) or (ask > bid))
+
+        cashBid = Cash(currency=currency, quantity=bid) if bid else None
+        cashAsk = Cash(currency=currency, quantity=ask) if ask else None
+        cashLast = Cash(currency=currency, quantity=last) if last else None
+        cashClose = Cash(currency=currency, quantity=close) if close else None
+
+        a = Quote(cashBid, cashAsk, cashLast, cashClose)
+        b = Quote(cashBid, cashAsk, cashLast, cashClose)
+        self.assertEqual(a, b)
+        self.assertEqual(hash(a), hash(b))
+
+
+class TestTrade(unittest.TestCase):
+    @given(from_type(Trade))
+    def test_tradeEqualsItself(self, t: Trade) -> None:
+        self.assertEqual(t, t)
+
+    @given(from_type(Trade))
+    def test_signOfTradePrice(self, t: Trade) -> None:
+        if t.quantity >= 0:
+            if t.amount.quantity >= 0:
+                self.assertLessEqual(
+                    t.price.quantity,
+                    0,
+                    msg=
+                    'Buy transaction for profit should have a negative price')
+            else:
+                self.assertGreaterEqual(
+                    t.price.quantity,
+                    0,
+                    msg='Buy transaction for loss should have a positive price'
+                )
+        else:
+            if t.amount.quantity >= 0:
+                self.assertGreaterEqual(
+                    t.price.quantity,
+                    0,
+                    msg=
+                    'Sell transaction for profit should have a positive price')
+            else:
+                self.assertLessEqual(
+                    t.price.quantity,
+                    0,
+                    msg='Sell transaction for loss should have a negative price'
+                )
 
 
 if __name__ == '__main__':

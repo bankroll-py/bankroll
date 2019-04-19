@@ -1,15 +1,21 @@
 from datetime import datetime
 from decimal import Decimal
-from model import Currency, Cash, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, TradeFlags, Trade
+from enum import IntEnum
+from model import Currency, Cash, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, TradeFlags, Trade, LiveDataProvider, Quote
 from parsetools import lenientParse
 from pathlib import Path
-from typing import Callable, Dict, List, NamedTuple, Type
+from typing import Awaitable, Callable, Dict, List, NamedTuple, Optional, Type
 
 import ib_insync as IB
+import logging
+import math
 import re
 
 
-def parseOption(symbol: str, cls: Type[Option] = Option) -> Option:
+def parseOption(symbol: str,
+                currency: Currency,
+                multiplier: Decimal,
+                cls: Type[Option] = Option) -> Option:
     # https://en.wikipedia.org/wiki/Option_symbol#The_OCC_Option_Symbol
     match = re.match(
         r'^(?P<underlying>.{6})(?P<date>\d{6})(?P<putCall>P|C)(?P<strike>\d{8})$',
@@ -23,26 +29,57 @@ def parseOption(symbol: str, cls: Type[Option] = Option) -> Option:
         optionType = OptionType.CALL
 
     return cls(underlying=match['underlying'].rstrip(),
+               currency=currency,
                optionType=optionType,
                expiration=datetime.strptime(match['date'], '%y%m%d').date(),
                strike=Decimal(match['strike']) / 1000)
 
 
+def parseForex(symbol: str, currency: Currency) -> Forex:
+    match = re.match(r'^(?P<base>[A-Z]{3})\.(?P<quote>[A-Z]{3})', symbol)
+    if not match:
+        raise ValueError('Could not parse IB cash symbol: {}'.format(symbol))
+
+    baseCurrency = Currency[match['base']]
+    quoteCurrency = Currency[match['quote']]
+    if currency != quoteCurrency:
+        raise ValueError(
+            'Expected quote currency {} to match position currency {}'.format(
+                quoteCurrency, currency))
+
+    return Forex(baseCurrency=baseCurrency, quoteCurrency=quoteCurrency)
+
+
 def extractPosition(p: IB.Position) -> Position:
-    instrumentsByTag: Dict[str, Callable[[str], Instrument]] = {
-        "STK": Stock,
-        "BOND": lambda s: Bond(s, validateSymbol=False),
-        "OPT": parseOption,
-        "FUT": Future,
-        "CASH": Forex,
-        # TODO: FOP
-    }
+    tag = p.contract.secType
+    symbol = p.contract.localSymbol
+    currency = Currency[p.contract.currency]
+
+    instrument: Instrument
+    if tag == 'STK':
+        instrument = Stock(symbol=symbol, currency=currency)
+    elif tag == 'BOND':
+        instrument = Bond(symbol=symbol,
+                          currency=currency,
+                          validateSymbol=False)
+    elif tag == 'OPT':
+        instrument = parseOption(symbol=symbol,
+                                 currency=currency,
+                                 multiplier=Decimal(p.contract.multiplier))
+    elif tag == 'FUT':
+        instrument = Future(symbol=symbol,
+                            currency=currency,
+                            multiplier=Decimal(p.contract.multiplier))
+    elif tag == 'CASH':
+        instrument = parseForex(symbol=symbol, currency=currency)
+    else:
+        raise ValueError(
+            'Unrecognized/unsupported security type in position: {}'.format(p))
 
     qty = Decimal(p.position)
     costBasis = Decimal(p.avgCost) * qty
 
-    return Position(instrument=instrumentsByTag[p.contract.secType](
-        p.contract.localSymbol),
+    return Position(instrument=instrument,
                     quantity=qty,
                     costBasis=Cash(currency=Currency[p.contract.currency],
                                    quantity=costBasis))
@@ -129,22 +166,43 @@ def parseFutureOptionTrade(trade: IBTradeConfirm) -> Instrument:
             'Unexpected value for putCall in IB trade: {}'.format(trade))
 
     return FutureOption(symbol=trade.symbol,
+                        currency=Currency[trade.currency],
                         underlying=trade.underlyingSymbol,
                         optionType=optionType,
                         expiration=datetime.strptime(trade.expiry,
                                                      '%Y%m%d').date(),
-                        strike=Decimal(trade.strike))
+                        strike=Decimal(trade.strike),
+                        multiplier=Decimal(trade.multiplier))
 
 
 def parseTradeConfirm(trade: IBTradeConfirm) -> Trade:
-    instrumentsByTag: Dict[str, Callable[[IBTradeConfirm], Instrument]] = {
-        'STK': lambda t: Stock(t.symbol),
-        'BOND': lambda t: Bond(t.symbol, validateSymbol=False),
-        'OPT': lambda t: parseOption(t.symbol),
-        'FUT': lambda t: Future(t.symbol),
-        'CASH': lambda t: Forex(t.symbol),
-        'FOP': parseFutureOptionTrade,
-    }
+    tag = trade.assetCategory
+    symbol = trade.symbol
+    currency = Currency[trade.currency]
+
+    instrument: Instrument
+    if tag == 'STK':
+        instrument = Stock(symbol=symbol, currency=currency)
+    elif tag == 'BOND':
+        instrument = Bond(symbol=symbol,
+                          currency=currency,
+                          validateSymbol=False)
+    elif tag == 'OPT':
+        instrument = parseOption(symbol=symbol,
+                                 currency=currency,
+                                 multiplier=Decimal(trade.multiplier))
+    elif tag == 'FUT':
+        instrument = Future(symbol=symbol,
+                            currency=currency,
+                            multiplier=Decimal(trade.multiplier))
+    elif tag == 'CASH':
+        instrument = parseForex(symbol=symbol, currency=currency)
+    elif tag == 'FOP':
+        instrument = parseFutureOptionTrade(trade)
+    else:
+        raise ValueError(
+            'Unrecognized/unsupported security type in trade: {}'.format(
+                trade))
 
     flagsByCode = {
         'O': TradeFlags.OPEN,
@@ -178,7 +236,7 @@ def parseTradeConfirm(trade: IBTradeConfirm) -> Trade:
 
     return Trade(
         date=datetime.strptime(trade.tradeDate, '%Y%m%d'),
-        instrument=instrumentsByTag[trade.assetCategory](trade),
+        instrument=instrument,
         quantity=Decimal(trade.quantity),
         amount=Cash(currency=Currency(trade.currency),
                     quantity=Decimal(trade.proceeds)),
@@ -204,3 +262,116 @@ def downloadTrades(token: str, queryID: int,
                    lenient: bool = False) -> List[Trade]:
     return tradesFromReport(IB.FlexReport(token=token, queryId=queryID),
                             lenient=lenient)
+
+
+def stockContract(stock: Stock) -> IB.Contract:
+    return IB.Stock(symbol=stock.symbol,
+                    exchange='SMART',
+                    currency=stock.currency.value)
+
+
+def bondContract(bond: Bond) -> IB.Contract:
+    return IB.Bond(symbol=bond.symbol,
+                   exchange='SMART',
+                   currency=bond.currency.value)
+
+
+def optionContract(option: Option) -> IB.Contract:
+    lastTradeDate = option.expiration.strftime('%Y%m%d')
+
+    return IB.Option(
+        localSymbol=option.symbol,
+        exchange='SMART',
+        currency=option.currency.value,
+        lastTradeDateOrContractMonth=lastTradeDate,
+        right=option.optionType.value,
+        strike=float(option.strike),
+        # TODO: Support non-standard multipliers
+        multiplier='100')
+
+
+def fopContract(option: FutureOption) -> IB.Contract:
+    lastTradeDate = option.expiration.strftime('%Y%m%d')
+
+    return IB.FuturesOption(symbol=option.symbol,
+                            exchange='SMART',
+                            currency=option.currency.value,
+                            lastTradeDateOrContractMonth=lastTradeDate,
+                            right=option.optionType.value)
+
+
+def futuresContract(future: Future) -> IB.Contract:
+    return IB.Future(symbol=future.symbol,
+                     exchange='SMART',
+                     currency=future.currency.value)
+
+
+def forexContract(forex: Forex) -> IB.Contract:
+    return IB.Forex(pair=forex.symbol, currency=forex.currency.value)
+
+
+def contract(instrument: Instrument) -> IB.Contract:
+    if isinstance(instrument, Stock):
+        return stockContract(instrument)
+    elif isinstance(instrument, Bond):
+        return bondContract(instrument)
+    elif isinstance(instrument, FutureOption):
+        return fopContract(instrument)
+    elif isinstance(instrument, Option):
+        return optionContract(instrument)
+    elif isinstance(instrument, Future):
+        return futuresContract(instrument)
+    elif isinstance(instrument, Forex):
+        return forexContract(instrument)
+    else:
+        raise ValueError('Unexpected type of instrument: {}'.format(
+            repr(instrument)))
+
+
+# https://interactivebrokers.github.io/tws-api/market_data_type.html
+class MarketDataType(IntEnum):
+    LIVE = 1
+    FROZEN = 2
+    DELAYED = 3
+    DELAYED_FROZEN = 4
+
+
+class IBDataProvider(LiveDataProvider):
+    def __init__(self, client: IB.IB):
+        self._client = client
+        super().__init__()
+
+    def fetchQuote(self,
+                   instrument: Instrument,
+                   dataType: MarketDataType = MarketDataType.DELAYED_FROZEN
+                   ) -> Quote:
+        self._client.reqMarketDataType(dataType.value)
+
+        con = contract(instrument)
+        self._client.qualifyContracts(con)
+
+        ticker = self._client.reqTickers(con)[0]
+        logging.info('Received ticker: {}'.format(repr(ticker)))
+
+        bid: Optional[Cash] = None
+        ask: Optional[Cash] = None
+        last: Optional[Cash] = None
+        close: Optional[Cash] = None
+
+        if (ticker.bid
+                and math.isfinite(ticker.bid)) and not ticker.bidSize == 0:
+            bid = Cash(currency=instrument.currency,
+                       quantity=Decimal(ticker.bid))
+        if (ticker.ask
+                and math.isfinite(ticker.ask)) and not ticker.askSize == 0:
+            ask = Cash(currency=instrument.currency,
+                       quantity=Decimal(ticker.ask))
+        if (ticker.last
+                and math.isfinite(ticker.last)) and not ticker.lastSize == 0:
+            last = Cash(currency=instrument.currency,
+                        quantity=Decimal(ticker.last))
+        if ticker.close and math.isfinite(ticker.close):
+            close = Cash(currency=instrument.currency,
+                         quantity=Decimal(ticker.close))
+
+        return Quote(bid=bid, ask=ask, last=last, close=close)

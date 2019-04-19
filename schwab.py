@@ -30,6 +30,7 @@ def parseOption(symbol: str) -> Option:
         optionType = OptionType.CALL
 
     return Option(underlying=match['underlying'],
+                  currency=Currency.USD,
                   expiration=date(int(match['year']), int(match['month']),
                                   int(match['day'])),
                   optionType=optionType,
@@ -67,11 +68,11 @@ def parseSchwabPosition(p: SchwabPosition) -> Optional[Position]:
 
     instrument: Instrument
     if re.match(r'Equity|ETFs', p.securityType):
-        instrument = Stock(p.symbol)
+        instrument = Stock(p.symbol, currency=Currency.USD)
     elif re.match(r'Option', p.securityType):
         instrument = parseOption(p.symbol)
     elif re.match(r'Fixed Income', p.securityType):
-        instrument = Bond(p.symbol)
+        instrument = Bond(p.symbol, currency=Currency.USD)
     else:
         raise ValueError('Unrecognized security type: {}'.format(
             p.securityType))
@@ -113,9 +114,9 @@ def guessInstrumentFromSymbol(symbol: str) -> Instrument:
     if re.search(r'\s(C|P)$', symbol):
         return parseOption(symbol)
     elif Bond.validBondSymbol(symbol):
-        return Bond(symbol)
+        return Bond(symbol, currency=Currency.USD)
     else:
-        return Stock(symbol)
+        return Stock(symbol, currency=Currency.USD)
 
 
 def forceParseSchwabTransaction(t: SchwabTransaction,

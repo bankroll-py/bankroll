@@ -23,32 +23,38 @@ class TestVanguardPositions(unittest.TestCase):
             self.positions[0].instrument,
             Bond(
                 "U S TREASURY BILL CPN  0.00000 % MTD 2017-04-10 DTD 2017-08-14",
+                currency=Currency.USD,
                 validateSymbol=False))
         self.assertEqual(self.positions[0].quantity, 5000)
         # TODO: Validate cost basis
 
     def test_vmfxx(self) -> None:
-        self.assertEqual(self.positions[1].instrument, Stock("VMFXX"))
+        self.assertEqual(self.positions[1].instrument,
+                         Stock("VMFXX", Currency.USD))
         self.assertEqual(self.positions[1].quantity, Decimal('543.21'))
         # TODO: Validate cost basis
 
     def test_voo(self) -> None:
-        self.assertEqual(self.positions[2].instrument, Stock("VOO"))
+        self.assertEqual(self.positions[2].instrument,
+                         Stock("VOO", Currency.USD))
         self.assertEqual(self.positions[2].quantity, Decimal('100.1'))
         # TODO: Validate cost basis
 
     def test_vt(self) -> None:
-        self.assertEqual(self.positions[3].instrument, Stock("VT"))
+        self.assertEqual(self.positions[3].instrument,
+                         Stock("VT", Currency.USD))
         self.assertEqual(self.positions[3].quantity, Decimal('10'))
         # TODO: Validate cost basis
 
     def test_vti(self) -> None:
-        self.assertEqual(self.positions[4].instrument, Stock("VTI"))
+        self.assertEqual(self.positions[4].instrument,
+                         Stock("VTI", Currency.USD))
         self.assertEqual(self.positions[4].quantity, Decimal('50.5'))
         # TODO: Validate cost basis
 
     def test_vbr(self) -> None:
-        self.assertEqual(self.positions[5].instrument, Stock("VWO"))
+        self.assertEqual(self.positions[5].instrument,
+                         Stock("VWO", Currency.USD))
         self.assertEqual(self.positions[5].quantity, 20)
         # TODO: Validate cost basis
 
@@ -70,7 +76,7 @@ class TestVanguardTransactions(unittest.TestCase):
     def test_buySecurity(self) -> None:
         ts = self.tradesByDate[date(2016, 4, 20)]
         self.assertEqual(len(ts), 1)
-        self.assertEqual(ts[0].instrument, Stock('VTI'))
+        self.assertEqual(ts[0].instrument, Stock('VTI', Currency.USD))
         self.assertEqual(ts[0].quantity, Decimal('12'))
         self.assertEqual(
             ts[0].amount,
@@ -82,7 +88,7 @@ class TestVanguardTransactions(unittest.TestCase):
     def test_sellSecurity(self) -> None:
         ts = self.tradesByDate[date(2016, 10, 13)]
         self.assertEqual(len(ts), 1)
-        self.assertEqual(ts[0].instrument, Stock('VWO'))
+        self.assertEqual(ts[0].instrument, Stock('VWO', Currency.USD))
         self.assertEqual(ts[0].quantity, Decimal('-4'))
         self.assertEqual(
             ts[0].amount,
@@ -107,7 +113,7 @@ class TestVanguardTransactions(unittest.TestCase):
         ts = self.tradesByDate[date(2017, 2, 4)]
         self.assertEqual(len(ts), 2)
 
-        self.assertEqual(ts[0].instrument, Stock('VWO'))
+        self.assertEqual(ts[0].instrument, Stock('VWO', Currency.USD))
         self.assertEqual(ts[0].quantity, Decimal('0.123'))
         self.assertEqual(
             ts[0].amount,
@@ -116,7 +122,7 @@ class TestVanguardTransactions(unittest.TestCase):
                          Cash(currency=Currency.USD, quantity=Decimal('0.00')))
         self.assertEqual(ts[0].flags, TradeFlags.OPEN | TradeFlags.DRIP)
 
-        self.assertEqual(ts[1].instrument, Stock('VOO'))
+        self.assertEqual(ts[1].instrument, Stock('VOO', Currency.USD))
         self.assertEqual(ts[1].quantity, Decimal('0.321'))
         self.assertEqual(
             ts[1].amount,
