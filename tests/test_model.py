@@ -161,35 +161,37 @@ class TestPosition(unittest.TestCase):
         with self.assertRaises(AssertionError):
             a.combine(b)
 
-    @given(from_type(Instrument), from_type(Currency))
-    def test_combineIncreasesBasis(self, i: Instrument, c: Currency) -> None:
+    @given(from_type(Instrument))
+    def test_combineIncreasesBasis(self, i: Instrument) -> None:
         a = Position(instrument=i,
                      quantity=Decimal('100'),
-                     costBasis=Cash(currency=c, quantity=Decimal('10')))
+                     costBasis=Cash(currency=i.currency,
+                                    quantity=Decimal('10')))
         b = Position(instrument=i,
                      quantity=Decimal('300'),
-                     costBasis=Cash(currency=c, quantity=Decimal('20')))
+                     costBasis=Cash(currency=i.currency,
+                                    quantity=Decimal('20')))
 
         combined = a.combine(b)
         self.assertEqual(combined.instrument, i)
         self.assertEqual(combined.quantity, Decimal('400'))
         self.assertEqual(combined.costBasis,
-                         Cash(currency=c, quantity=Decimal('30')))
+                         Cash(currency=i.currency, quantity=Decimal('30')))
 
-    @given(from_type(Instrument), from_type(Currency),
-           helpers.decimalPositionQuantities, helpers.decimalCashAmounts,
-           helpers.decimalPositionQuantities, helpers.decimalCashAmounts)
-    def test_combineIsCommutative(self, i: Instrument, c: Currency,
-                                  aQty: Decimal, aPrice: Decimal,
-                                  bQty: Decimal, bPrice: Decimal) -> None:
+    @given(from_type(Instrument), helpers.decimalPositionQuantities,
+           helpers.decimalCashAmounts, helpers.decimalPositionQuantities,
+           helpers.decimalCashAmounts)
+    def test_combineIsCommutative(self, i: Instrument, aQty: Decimal,
+                                  aPrice: Decimal, bQty: Decimal,
+                                  bPrice: Decimal) -> None:
         assume(aQty != -bQty)
 
         a = Position(instrument=i,
                      quantity=aQty,
-                     costBasis=Cash(currency=c, quantity=aPrice))
+                     costBasis=Cash(currency=i.currency, quantity=aPrice))
         b = Position(instrument=i,
                      quantity=bQty,
-                     costBasis=Cash(currency=c, quantity=bPrice))
+                     costBasis=Cash(currency=i.currency, quantity=bPrice))
         self.assertEqual(a.combine(b), b.combine(a))
 
     @given(from_type(Position))

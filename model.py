@@ -370,6 +370,8 @@ class Position:
 
     def __init__(self, instrument: Instrument, quantity: Decimal,
                  costBasis: Cash):
+        assert instrument.currency == costBasis.currency, 'Cost basis {} should be in same currency as instrument {}'.format(
+            costBasis, instrument)
         assert quantity.is_finite()
         quantity = self.quantizeQuantity(quantity)
 
