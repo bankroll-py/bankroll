@@ -423,7 +423,8 @@ class Position:
             repr(self.instrument), repr(self.quantity), repr(self.costBasis))
 
     def __str__(self) -> str:
-        return '{:21} {:>14,g} @ {}'.format(self.instrument, self.quantity,
+        return '{:21} {:>14,f} @ {}'.format(self.instrument,
+                                            self.quantity.normalize(),
                                             self.averagePrice)
 
 
