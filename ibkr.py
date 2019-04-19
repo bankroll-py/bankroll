@@ -249,11 +249,15 @@ def bondContract(bond: Bond) -> IB.Contract:
 def optionContract(option: Option) -> IB.Contract:
     lastTradeDate = option.expiration.strftime('%Y%m%d')
 
-    return IB.Option(symbol=option.symbol,
-                     exchange='SMART',
-                     currency=option.currency.value,
-                     lastTradeDateOrContractMonth=lastTradeDate,
-                     right=option.optionType.value)
+    return IB.Option(
+        localSymbol=option.symbol,
+        exchange='SMART',
+        currency=option.currency.value,
+        lastTradeDateOrContractMonth=lastTradeDate,
+        right=option.optionType.value,
+        strike=float(option.strike),
+        # TODO: Support non-standard multipliers
+        multiplier='100')
 
 
 def fopContract(option: FutureOption) -> IB.Contract:
