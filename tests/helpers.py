@@ -43,6 +43,14 @@ def multipliers(min_value: Decimal = Decimal('1'),
                     max_value=max_value).map(Instrument.quantizeMultiplier)
 
 
+def strikes(min_value: Decimal = Decimal('1'),
+            max_value: Decimal = Decimal('100000')) -> SearchStrategy[Decimal]:
+    return decimals(allow_nan=False,
+                    allow_infinity=False,
+                    min_value=min_value,
+                    max_value=max_value).map(Option.quantizeStrike)
+
+
 def cash(currency: SearchStrategy[Currency] = from_type(Currency),
          quantity: SearchStrategy[Decimal] = cashAmounts()
          ) -> SearchStrategy[Cash]:
@@ -65,11 +73,7 @@ def options(underlying: SearchStrategy[str] = text(min_size=1),
             currency: SearchStrategy[Currency] = from_type(Currency),
             optionType: SearchStrategy[OptionType] = from_type(OptionType),
             expiration: SearchStrategy[date] = dates(),
-            strike: SearchStrategy[Decimal] = decimals(
-                allow_nan=False,
-                allow_infinity=False,
-                min_value=Decimal('1'),
-                max_value=Decimal('100000')),
+            strike: SearchStrategy[Decimal] = strikes(),
             multiplier: SearchStrategy[Decimal] = multipliers()
             ) -> SearchStrategy[Option]:
     return builds(Option,
@@ -87,11 +91,7 @@ def futuresOptions(
         currency: SearchStrategy[Currency] = from_type(Currency),
         optionType: SearchStrategy[OptionType] = from_type(OptionType),
         expiration: SearchStrategy[date] = dates(),
-        strike: SearchStrategy[Decimal] = decimals(
-            allow_nan=False,
-            allow_infinity=False,
-            min_value=Decimal('1'),
-            max_value=Decimal('100000')),
+        strike: SearchStrategy[Decimal] = strikes(),
         multiplier: SearchStrategy[Decimal] = multipliers()
 ) -> SearchStrategy[FutureOption]:
     return builds(FutureOption,
@@ -147,11 +147,8 @@ def trades(date: SearchStrategy[datetime] = datetimes(),
            instrument: SearchStrategy[Instrument] = instruments(),
            quantity: SearchStrategy[Decimal] = positionQuantities(),
            amount: SearchStrategy[Cash] = cash(),
-           fees: SearchStrategy[Cash] = cash(
-               quantity=decimals(allow_nan=False,
-                                 allow_infinity=False,
-                                 min_value=Decimal('0'),
-                                 max_value=Decimal('10000'))),
+           fees: SearchStrategy[Cash] = cash(quantity=cashAmounts(
+               min_value=Decimal('0'))),
            flags: SearchStrategy[TradeFlags] = from_type(TradeFlags)
            ) -> SearchStrategy[Trade]:
     return builds(Trade,
@@ -206,10 +203,7 @@ register_type_strategy(
         instrument=just(i),
         amount=cash(currency=just(i.currency)),
         fees=cash(currency=just(i.currency),
-                  quantity=decimals(allow_nan=False,
-                                    allow_infinity=False,
-                                    min_value=Decimal('0'),
-                                    max_value=Decimal('10000'))))))
+                  quantity=cashAmounts(min_value=Decimal('0'))))))
 
 register_type_strategy(
     Quote,
