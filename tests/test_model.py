@@ -272,6 +272,35 @@ class TestTrade(unittest.TestCase):
     def test_tradeEqualsItself(self, t: Trade) -> None:
         self.assertEqual(t, t)
 
+    @given(from_type(Trade))
+    def test_signOfTradePrice(self, t: Trade) -> None:
+        if t.quantity >= 0:
+            if t.amount.quantity >= 0:
+                self.assertLessEqual(
+                    t.price.quantity,
+                    0,
+                    msg=
+                    'Buy transaction for profit should have a negative price')
+            else:
+                self.assertGreaterEqual(
+                    t.price.quantity,
+                    0,
+                    msg='Buy transaction for loss should have a positive price'
+                )
+        else:
+            if t.amount.quantity >= 0:
+                self.assertGreaterEqual(
+                    t.price.quantity,
+                    0,
+                    msg=
+                    'Sell transaction for profit should have a positive price')
+            else:
+                self.assertLessEqual(
+                    t.price.quantity,
+                    0,
+                    msg='Sell transaction for loss should have a negative price'
+                )
+
 
 if __name__ == '__main__':
     unittest.main()

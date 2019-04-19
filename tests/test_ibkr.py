@@ -84,6 +84,8 @@ class TestIBKRTrades(unittest.TestCase):
         self.assertEqual(
             ts[0].fees, Cash(currency=Currency.USD,
                              quantity=Decimal('0.7182')))
+        self.assertEqual(ts[0].price,
+                         Cash(currency=Currency.USD, quantity=Decimal('5.65')))
         self.assertEqual(ts[0].flags, TradeFlags.OPEN)
 
     def test_sellOption(self) -> None:
@@ -104,6 +106,8 @@ class TestIBKRTrades(unittest.TestCase):
         self.assertEqual(
             ts[0].fees,
             Cash(currency=Currency.USD, quantity=Decimal('1.320915')))
+        self.assertEqual(ts[0].price,
+                         Cash(currency=Currency.USD, quantity=Decimal('0.55')))
         self.assertEqual(ts[0].flags, TradeFlags.CLOSE)
 
     def test_buyForex(self) -> None:
@@ -161,6 +165,9 @@ class TestIBKRTrades(unittest.TestCase):
         self.assertEqual(ts[0].quantity, Decimal('1'))
         self.assertEqual(ts[0].amount, helpers.cashUSD(Decimal('-139687.5')))
         self.assertEqual(ts[0].fees, helpers.cashUSD(Decimal('2.05')))
+        self.assertEqual(
+            ts[0].price,
+            Cash(currency=Currency.USD, quantity=Decimal('2793.75')))
         self.assertEqual(ts[0].flags, TradeFlags.OPEN)
 
     def test_buyFutureOption(self) -> None:
@@ -180,6 +187,9 @@ class TestIBKRTrades(unittest.TestCase):
         self.assertEqual(ts[0].quantity, Decimal('1'))
         self.assertEqual(ts[0].amount, helpers.cashUSD(Decimal('-918.75')))
         self.assertEqual(ts[0].fees, helpers.cashUSD(Decimal('2.47')))
+        self.assertEqual(
+            ts[0].price, Cash(currency=Currency.USD,
+                              quantity=Decimal('0.0147')))
         self.assertEqual(ts[0].flags, TradeFlags.OPEN)
 
 

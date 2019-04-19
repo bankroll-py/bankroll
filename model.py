@@ -535,6 +535,13 @@ class Trade:
         return self._fees
 
     @property
+    def price(self) -> Cash:
+        if self.quantity >= 0:
+            return -self.amount / self.instrument.multiplier
+        else:
+            return self.amount / self.instrument.multiplier
+
+    @property
     def flags(self) -> TradeFlags:
         return self._flags
 
