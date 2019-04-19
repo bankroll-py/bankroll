@@ -25,11 +25,10 @@ def liveValuesForPositions(positions: Iterable[Position],
     def priceFromQuote(q: Quote, p: Position) -> Optional[Cash]:
         # For a long position, the value should be what the market is willing to pay right now.
         # For a short position, the value should be what the market is asking to be paid right now.
-        # TODO: Use order depth if available?
         if p.quantity < 0:
-            return q.ask or q.last or q.bid
+            return q.ask or q.last or q.bid or q.close
         else:
-            return q.bid or q.last or q.ask
+            return q.bid or q.last or q.ask or q.close
 
     result = {}
     for p in positions:
