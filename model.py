@@ -130,6 +130,9 @@ class Cash:
             self, other)
         return self.quantity >= other.quantity
 
+    def __hash__(self) -> int:
+        return hash((self.currency, self.quantity))
+
 
 class Instrument(ABC):
     @abstractmethod
@@ -155,6 +158,9 @@ class Instrument(ABC):
 
         return bool(self.symbol == other.symbol
                     and self.currency == other.currency)
+
+    def __hash__(self) -> int:
+        return hash((self.currency, self.symbol))
 
     def __lt__(self, other: 'Instrument') -> bool:
         return self.symbol < other.symbol
@@ -325,6 +331,9 @@ class Quote:
 
         return self.bid == other.bid and self.ask == other.ask and self.last == other.last
 
+    def __hash__(self) -> int:
+        return hash((self.bid, self.ask, self.last))
+
 
 class LiveDataProvider(ABC):
     @abstractmethod
@@ -366,6 +375,9 @@ class Position:
             return False
 
         return self.instrument == other.instrument and self.quantity == other.quantity and self.averagePrice == other.averagePrice
+
+    def __hash__(self) -> int:
+        return hash((self.instrument, self.quantity, self.averagePrice))
 
     @property
     def instrument(self) -> Instrument:
@@ -459,6 +471,20 @@ class Trade:
     @property
     def proceeds(self) -> Cash:
         return self.amount - self.fees
+
+    def __eq__(self, other: 'Trade') -> bool:
+        if not isinstance(other, Trade):
+            return False
+
+        return bool(self.date == other.date
+                    and self.instrument == other.instrument
+                    and self.quantity == other.quantity
+                    and self.amount == other.amount and self.fees == other.fees
+                    and self.flags == other.flags)
+
+    def __hash__(self) -> int:
+        return hash((self.date, self.instrument, self.quantity, self.amount,
+                     self.fees, self.flags))
 
     def __repr__(self) -> str:
         return 'Trade(date={}, instrument={}, quantity={}, amount={}, fees={}, flags={})'.format(
