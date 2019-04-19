@@ -141,7 +141,7 @@ class TestVanguardSections(unittest.TestCase):
             sections = parseSectionsForCSV(csvfile, [criterion])
 
             self.assertEqual(sections[0].criterion, criterion)
-            self.assertEqual(len(sections[0].rows), 8)
+            self.assertEqual(len(sections[0].rows), 7)
 
             self.assertEqual(
                 sections[0].rows[0],
@@ -167,15 +167,10 @@ class TestVanguardSections(unittest.TestCase):
 
             self.assertEqual(
                 sections[0].rows[5],
-                "VANGUARD SHORT-TERM GOVERNMENT BOND ETF,VGSH,50.5,147.78,7462.89"
-                .split(","))
-
-            self.assertEqual(
-                sections[0].rows[6],
                 "VANGUARD S&P 500 ETF,VOO,45.5,147.78,7462.89".split(","))
 
             self.assertEqual(
-                sections[0].rows[7],
+                sections[0].rows[6],
                 "Vanguard Federal Money Market Fund,VMMXX,543.21000,1.0,543.21000"
                 .split(","))
 

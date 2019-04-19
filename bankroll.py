@@ -83,11 +83,18 @@ vanguardGroup = parser.add_argument_group(
 vanguardGroup.add_argument('--vanguardpositions',
                            help='Path to exported CSV of Vanguard positions',
                            type=Path)
-
 vanguardGroup.add_argument(
     '--vanguardtransactions',
-    help='Path to exported PDF of Vanguard transactions',
+    help='Path to exported PDF or CSV of Vanguard transactions',
     type=Path)
+
+vanguardGroup.add_argument('--vanguardactivity',
+                           help='Path to exported PDF of Vanguard activity',
+                           type=Path)
+
+vanguardGroup.add_argument('--vanguardoutput',
+                           help='Output path for converted activity',
+                           type=Path)
 
 
 def combinePositions(positions: Iterable[Position]) -> Iterable[Position]:
@@ -138,9 +145,19 @@ def printTrades(args: Namespace) -> None:
         print(t)
 
 
+def convert(args: Namespace) -> None:
+    if args.vanguardactivity and args.vanguardoutput:
+        vanguard.exportActivityCSV(args.vanguardactivity, args.vanguardoutput)
+    else:
+        print(
+            'Please provide a path to the input pdf and a path to output the csv'
+        )
+
+
 commands = {
     'positions': printPositions,
     'trades': printTrades,
+    'convert': convert,
 }
 
 subparsers = parser.add_subparsers(dest='command', help='What to inspect')
@@ -162,6 +179,14 @@ positionsParser.add_argument(
 tradesParser = subparsers.add_parser(
     'trades', help='Operations upon the imported list of trades')
 
+convertParser = subparsers.add_parser('convert', help='convert activity')
+convertParser.add_argument('--vanguardactivity',
+                           help='Path to exported PDF of Vanguard activity',
+                           type=Path)
+convertParser.add_argument('--vanguardoutput',
+                           help='Output path for converted activity',
+                           type=Path)
+
 if __name__ == '__main__':
     args = parser.parse_args()
     if args.verbose:
@@ -180,7 +205,7 @@ if __name__ == '__main__':
         trades += positionsAndTrades.trades
     elif (args.vanguardpositions or args.vanguardtransactions):
         parser.error(
-            '--vanguardpositions and ---vanguardstatements must both be provided'
+            '--vanguardpositions and ---vanguardtransactions must both be provided'
         )
 
     if args.fidelitypositions:

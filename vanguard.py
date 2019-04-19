@@ -109,18 +109,39 @@ def __parsePositions(path: Path, trades: List[Trade],
 def parsePositionsAndTrades(positionsPath: Path,
                             tradesPath: Path,
                             lenient: bool = False) -> PositionsAndTrades:
-    trades = __parseActivityPDF(tradesPath, lenient=lenient)
+    if tradesPath.suffix.lower() == '.pdf':
+        activityValues = parseActivityPDFRows(tradesPath)
+    elif tradesPath.suffix.lower() == '.csv':
+        activityValues = __rowsForActivtyCSV(tradesPath)
+    else:
+        print('Error! Expected PDF or CSV for trades path: %s' % tradesPath)
+        return PositionsAndTrades([], [])
+
+    trades = __tradesForActivityRows(activityValues)
     positions = __parsePositions(positionsPath, trades=trades, lenient=lenient)
     return PositionsAndTrades(positions, trades)
 
 
-def __parseActivityPDF(path: Path, lenient: bool = False) -> List[Trade]:
+def exportActivityCSV(activityPath: Path, outputPath: Path) -> None:
+    with open(outputPath, 'w') as f:
+        activityValues = parseActivityPDFRows(activityPath)
+        csvLines = map(lambda r: ','.join(r), activityValues)
+
+        f.write(
+            "Settlement Date,Trade Date,Symbol,Name,Transaction Type,Account Type,Quantity,Price,Commission and Fees,Amount\n"
+        )
+
+        for line in csvLines:
+            f.write("%s\n" % line)
+
+
+def parseActivityPDFRows(path: Path) -> List[List[str]]:
     tables = camelot.read_pdf(str(path),
                               pages='1-end',
                               flavor='stream',
                               row_tol=30)
 
-    allTrades: List[Trade] = []
+    allRows: List[List[str]] = []
     for index, t in enumerate(tables):
         # print("parsing table %s of %s" % (index, len(tables)))
         df = t.df.replace({'\n': ''}, regex=True)
@@ -134,17 +155,30 @@ def __parseActivityPDF(path: Path, lenient: bool = False) -> List[Trade]:
             continue
 
         df = df.iloc[(headerValues[0] + 1):]
+        df = df.replace({',': ''}, regex=True)
+        df = df.replace({'\$': ''}, regex=True)
+        df = df.replace({'- ': '-'}, regex=True)
 
-        trades = list(
-            filter(
-                None,
-                lenientParse((VanguardTransaction._make(row.values)
-                              for index, row in df.iterrows()),
-                             transform=parseVanguardTransaction,
-                             lenient=lenient)))
-        allTrades.extend(trades)
+        for index, row in df.iterrows():
+            allRows.append(row)
 
-    return allTrades
+    return allRows
+
+
+def __rowsForActivtyCSV(path: Path) -> List[List[str]]:
+    with open(path, newline='') as csvTradesFile:
+        reader = csv.reader(csvTradesFile)
+        return list(map(lambda r: r[0:], reader))
+
+
+def __tradesForActivityRows(rows: List[List[str]]) -> List[Trade]:
+    trades: List[Trade] = []
+    for r in rows:
+        trade = parseVanguardTransaction(VanguardTransaction._make(r))
+        if trade:
+            trades.append(trade)
+
+    return trades
 
 
 def forceParseVanguardTransaction(t: VanguardTransaction,
