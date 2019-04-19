@@ -163,9 +163,31 @@ def trades(date: SearchStrategy[datetime] = datetimes(),
 def quotes(bid: SearchStrategy[Optional[Cash]] = optionals(cash()),
            ask: SearchStrategy[Optional[Cash]] = optionals(cash()),
            last: SearchStrategy[Optional[Cash]] = optionals(cash()),
-           close: SearchStrategy[Optional[Cash]] = optionals(cash())
-           ) -> SearchStrategy[Quote]:
-    return builds(Quote, bid=bid, ask=ask, last=last, close=close)
+           close: SearchStrategy[Optional[Cash]] = optionals(cash()),
+           grow_ask: bool = True) -> SearchStrategy[Quote]:
+    return bid.flatmap(lambda x: builds(Quote,
+                                        bid=just(x),
+                                        ask=ask.map(lambda y: x + abs(y)
+                                                    if x and y else y)
+                                        if grow_ask else ask,
+                                        last=last,
+                                        close=close))
+
+
+def uniformCurrencyQuotes(
+        currency: SearchStrategy[Currency] = from_type(Currency),
+        bid: SearchStrategy[Optional[Decimal]] = optionals(cashAmounts()),
+        ask: SearchStrategy[Optional[Decimal]] = optionals(cashAmounts()),
+        last: SearchStrategy[Optional[Decimal]] = optionals(cashAmounts()),
+        close: SearchStrategy[Optional[Decimal]] = optionals(cashAmounts()),
+        grow_ask: bool = True) -> SearchStrategy[Quote]:
+    return currency.flatmap(lambda cur: quotes(
+        bid=bid.map(lambda x: Cash(currency=cur, quantity=x) if x else None),
+        ask=ask.map(lambda x: Cash(currency=cur, quantity=x) if x else None),
+        last=last.map(lambda x: Cash(currency=cur, quantity=x) if x else None),
+        close=close.map(lambda x: Cash(currency=cur, quantity=x)
+                        if x else None),
+        grow_ask=grow_ask))
 
 
 register_type_strategy(Cash, cash())
@@ -205,15 +227,7 @@ register_type_strategy(
         fees=cash(currency=just(i.currency),
                   quantity=cashAmounts(min_value=Decimal('0'))))))
 
-register_type_strategy(
-    Quote,
-    from_type(Cash).flatmap(lambda bid: quotes(
-        bid=optionals(just(bid)),
-        ask=optionals(
-            cash(currency=just(bid.currency),
-                 quantity=cashAmounts().map(lambda c: bid.quantity + abs(c)))),
-        last=optionals(cash(currency=just(bid.currency))),
-        close=optionals(cash(currency=just(bid.currency))))))
+register_type_strategy(Quote, uniformCurrencyQuotes())
 
 
 def cashUSD(amount: Decimal) -> Cash:

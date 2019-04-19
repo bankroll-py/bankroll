@@ -103,6 +103,9 @@ class Cash:
     def __neg__(self) -> 'Cash':
         return Cash(currency=self.currency, quantity=-self.quantity)
 
+    def __abs__(self) -> 'Cash':
+        return Cash(currency=self.currency, quantity=abs(self.quantity))
+
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, Cash):
             # Make mypy happy
