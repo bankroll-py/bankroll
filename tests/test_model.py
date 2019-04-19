@@ -202,6 +202,22 @@ class TestPosition(unittest.TestCase):
         self.assertEqual(combined.costBasis, Decimal(0))
 
 
+class TestInstrument(unittest.TestCase):
+    @given(from_type(Instrument))
+    def test_instrumentEqualsItself(self, i: Instrument) -> None:
+        self.assertEqual(i, i)
+
+    @given(from_type(Instrument))
+    def test_instrumentHashStable(self, i: Instrument) -> None:
+        self.assertEqual(hash(i), hash(i))
+
+    @given(from_type(Instrument), from_type(Instrument))
+    def test_differentInstrumentTypesNotEqual(self, a: Instrument,
+                                              b: Instrument) -> None:
+        assume(type(a) != type(b))
+        self.assertNotEqual(a, b)
+
+
 class TestOption(unittest.TestCase):
     # https://en.wikipedia.org/wiki/Option_symbol#The_OCC_Option_Symbol
     def test_spxSymbol(self) -> None:
