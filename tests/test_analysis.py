@@ -1,7 +1,7 @@
 from analysis import realizedBasisForSymbol, liveValuesForPositions
 from datetime import datetime, date
 from decimal import Decimal
-from hypothesis import given, reproduce_failure
+from hypothesis import given, reproduce_failure, seed
 from hypothesis.strategies import builds, composite, dates, datetimes, decimals, from_type, iterables, just, lists, one_of, text, tuples, SearchStrategy
 from model import Cash, Currency, Instrument, Stock, Option, OptionType, Quote, Trade, TradeFlags, LiveDataProvider, Position
 from typing import Any, Dict, Iterable, List, Tuple, no_type_check
@@ -110,7 +110,7 @@ class TestAnalysis(unittest.TestCase):
         if realizedBasis:
             self.assertEqual(realizedBasis.quantity, -summed)
 
-    @given(lists(positionAndQuote(), min_size=1))
+    @given(lists(positionAndQuote(), min_size=1, max_size=3))
     def test_liveValuesForPositions(self,
                                     i: List[Tuple[Position, Quote]]) -> None:
         quotesByInstrument = {p.instrument: q for (p, q) in i}
