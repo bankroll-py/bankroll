@@ -12,7 +12,9 @@ import math
 import re
 
 
-def parseOption(symbol: str, currency: Currency,
+def parseOption(symbol: str,
+                currency: Currency,
+                multiplier: Decimal,
                 cls: Type[Option] = Option) -> Option:
     # https://en.wikipedia.org/wiki/Option_symbol#The_OCC_Option_Symbol
     match = re.match(
@@ -49,20 +51,35 @@ def parseForex(symbol: str, currency: Currency) -> Forex:
 
 
 def extractPosition(p: IB.Position) -> Position:
-    instrumentsByTag: Dict[str, Callable[[str, Currency], Instrument]] = {
-        "STK": Stock,
-        "BOND": lambda s, c: Bond(s, c, validateSymbol=False),
-        "OPT": parseOption,
-        "FUT": Future,
-        "CASH": parseForex,
-        # TODO: FOP
-    }
+    tag = p.contract.secType
+    symbol = p.contract.localSymbol
+    currency = Currency[p.contract.currency]
+
+    instrument: Instrument
+    if tag == 'STK':
+        instrument = Stock(symbol=symbol, currency=currency)
+    elif tag == 'BOND':
+        instrument = Bond(symbol=symbol,
+                          currency=currency,
+                          validateSymbol=False)
+    elif tag == 'OPT':
+        instrument = parseOption(symbol=symbol,
+                                 currency=currency,
+                                 multiplier=Decimal(p.contract.multiplier))
+    elif tag == 'FUT':
+        instrument = Future(symbol=symbol,
+                            currency=currency,
+                            multiplier=Decimal(p.contract.multiplier))
+    elif tag == 'CASH':
+        instrument = parseForex(symbol=symbol, currency=currency)
+    else:
+        raise ValueError(
+            'Unrecognized/unsupported security type in position: {}'.format(p))
 
     qty = Decimal(p.position)
     costBasis = Decimal(p.avgCost) * qty
 
-    return Position(instrument=instrumentsByTag[p.contract.secType](
-        p.contract.localSymbol, Currency[p.contract.currency]),
+    return Position(instrument=instrument,
                     quantity=qty,
                     costBasis=Cash(currency=Currency[p.contract.currency],
                                    quantity=costBasis))
@@ -154,25 +171,37 @@ def parseFutureOptionTrade(trade: IBTradeConfirm) -> Instrument:
                         optionType=optionType,
                         expiration=datetime.strptime(trade.expiry,
                                                      '%Y%m%d').date(),
-                        strike=Decimal(trade.strike))
+                        strike=Decimal(trade.strike),
+                        multiplier=Decimal(trade.multiplier))
 
 
 def parseTradeConfirm(trade: IBTradeConfirm) -> Trade:
-    instrumentsByTag: Dict[str, Callable[[IBTradeConfirm], Instrument]] = {
-        'STK':
-        lambda t: Stock(t.symbol, currency=Currency[t.currency]),
-        'BOND':
-        lambda t: Bond(
-            t.symbol, currency=Currency[t.currency], validateSymbol=False),
-        'OPT':
-        lambda t: parseOption(t.symbol, currency=Currency[t.currency]),
-        'FUT':
-        lambda t: Future(t.symbol, currency=Currency[t.currency]),
-        'CASH':
-        lambda t: parseForex(t.symbol, currency=Currency[t.currency]),
-        'FOP':
-        parseFutureOptionTrade,
-    }
+    tag = trade.assetCategory
+    symbol = trade.symbol
+    currency = Currency[trade.currency]
+
+    instrument: Instrument
+    if tag == 'STK':
+        instrument = Stock(symbol=symbol, currency=currency)
+    elif tag == 'BOND':
+        instrument = Bond(symbol=symbol,
+                          currency=currency,
+                          validateSymbol=False)
+    elif tag == 'OPT':
+        instrument = parseOption(symbol=symbol,
+                                 currency=currency,
+                                 multiplier=Decimal(trade.multiplier))
+    elif tag == 'FUT':
+        instrument = Future(symbol=symbol,
+                            currency=currency,
+                            multiplier=Decimal(trade.multiplier))
+    elif tag == 'CASH':
+        instrument = parseForex(symbol=symbol, currency=currency)
+    elif tag == 'FOP':
+        instrument = parseFutureOptionTrade(trade)
+    else:
+        raise ValueError(
+            'Unrecognized/unsupported security type in position: {}'.format(p))
 
     flagsByCode = {
         'O': TradeFlags.OPEN,
@@ -206,7 +235,7 @@ def parseTradeConfirm(trade: IBTradeConfirm) -> Trade:
 
     return Trade(
         date=datetime.strptime(trade.tradeDate, '%Y%m%d'),
-        instrument=instrumentsByTag[trade.assetCategory](trade),
+        instrument=instrument,
         quantity=Decimal(trade.quantity),
         amount=Cash(currency=Currency(trade.currency),
                     quantity=Decimal(trade.proceeds)),

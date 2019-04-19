@@ -153,7 +153,11 @@ class TestIBKRTrades(unittest.TestCase):
         ts = self.tradesBySymbol[symbol]
         self.assertEqual(len(ts), 1)
         self.assertEqual(ts[0].date.date(), date(2019, 2, 26))
-        self.assertEqual(ts[0].instrument, Future(symbol, Currency.USD))
+        self.assertEqual(
+            ts[0].instrument,
+            Future(symbol=symbol,
+                   currency=Currency.USD,
+                   multiplier=Decimal(50)))
         self.assertEqual(ts[0].quantity, Decimal('1'))
         self.assertEqual(ts[0].amount, helpers.cashUSD(Decimal('-139687.5')))
         self.assertEqual(ts[0].fees, helpers.cashUSD(Decimal('2.05')))
@@ -171,7 +175,8 @@ class TestIBKRTrades(unittest.TestCase):
                          underlying='GBUJ9',
                          optionType=OptionType.CALL,
                          expiration=date(2019, 4, 5),
-                         strike=Decimal('1.335')))
+                         strike=Decimal('1.335'),
+                         multiplier=Decimal(62500)))
         self.assertEqual(ts[0].quantity, Decimal('1'))
         self.assertEqual(ts[0].amount, helpers.cashUSD(Decimal('-918.75')))
         self.assertEqual(ts[0].fees, helpers.cashUSD(Decimal('2.47')))
