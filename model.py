@@ -2,7 +2,8 @@ from abc import ABC, abstractmethod
 from datetime import date, datetime
 from decimal import Decimal, ROUND_HALF_EVEN
 from enum import Enum, Flag, auto, unique
-from typing import Any, Dict, NamedTuple, Optional, TypeVar, Union
+from itertools import permutations
+from typing import Any, Dict, Iterable, NamedTuple, Optional, TypeVar, Union
 
 import re
 
@@ -310,26 +311,36 @@ class Forex(Instrument):
             repr(self.quoteCurrency))
 
 
+Item = TypeVar('Item')
+
+
+def allEqual(i: Iterable[Item]) -> bool:
+    for (a, b) in permutations(i, 2):
+        if a != b:
+            return False
+
+    return True
+
+
 class Quote:
-    def __init__(self, bid: Optional[Cash], ask: Optional[Cash],
-                 last: Optional[Cash]):
+    def __init__(self,
+                 bid: Optional[Cash] = None,
+                 ask: Optional[Cash] = None,
+                 last: Optional[Cash] = None,
+                 close: Optional[Cash] = None):
         if bid and ask:
-            assert bid.currency == ask.currency, 'Currencies in a quote should match between bid {} and ask {}'.format(
-                bid, ask)
             assert ask >= bid, 'Expected ask {} to be at least bid {}'.format(
                 ask, bid)
 
-        if bid and last:
-            assert bid.currency == last.currency, 'Currencies in a quote should match between bid {} and last {}'.format(
-                bid, last)
-
-        if ask and last:
-            assert ask.currency == last.currency, 'Currencies in a quote should match between ask {} and last {}'.format(
-                ask, last)
+        assert allEqual((price.currency for price in [bid, ask, last, close]
+                         if price is not None
+                         )), 'Currencies in a quote should match: {}'.format(
+                             [bid, ask, last, close])
 
         self._bid = bid
         self._ask = ask
         self._last = last
+        self._close = close
         super().__init__()
 
     @property
@@ -344,14 +355,18 @@ class Quote:
     def last(self) -> Optional[Cash]:
         return self._last
 
+    @property
+    def close(self) -> Optional[Cash]:
+        return self._close
+
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, Quote):
             return False
 
-        return self.bid == other.bid and self.ask == other.ask and self.last == other.last
+        return self.bid == other.bid and self.ask == other.ask and self.last == other.last and self.close == other.close
 
     def __hash__(self) -> int:
-        return hash((self.bid, self.ask, self.last))
+        return hash((self.bid, self.ask, self.last, self.close))
 
 
 class LiveDataProvider(ABC):

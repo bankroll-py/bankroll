@@ -111,6 +111,8 @@ register_type_strategy(
                    quantity=decimalCashAmounts.map(lambda c: bid.quantity +
                                                    abs(c))),
         last=builds(
+            Cash, currency=just(bid.currency), quantity=decimalCashAmounts),
+        close=builds(
             Cash, currency=just(bid.currency), quantity=decimalCashAmounts))))
 
 T = TypeVar('T')
