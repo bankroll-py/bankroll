@@ -323,6 +323,11 @@ class Future(Instrument):
     def multiplier(self) -> Decimal:
         return self._multiplier
 
+    def __repr__(self) -> str:
+        return '{}(symbol={}, currency={}, multiplier={})'.format(
+            repr(type(self)), repr(self.symbol), repr(self.currency),
+            repr(self.multiplier))
+
 
 class Forex(Instrument):
     def __init__(self, baseCurrency: Currency, quoteCurrency: Currency):
