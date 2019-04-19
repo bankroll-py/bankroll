@@ -245,7 +245,7 @@ def fopContract(option: FutureOption) -> IB.Contract:
 
 
 def futuresContract(future: Future) -> IB.Contract:
-    return IB.Future(symbol=future.symbol, currency=option.currency.value)
+    return IB.Future(symbol=future.symbol, currency=future.currency.value)
 
 
 def forexContract(forex: Forex) -> IB.Contract:
