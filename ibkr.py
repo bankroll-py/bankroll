@@ -309,7 +309,8 @@ class IBDataProvider(LiveDataProvider):
 
     def fetchQuote(self,
                    instrument: Instrument,
-                   dataType: MarketDataType = MarketDataType.FROZEN) -> Quote:
+                   dataType: MarketDataType = MarketDataType.DELAYED_FROZEN
+                   ) -> Quote:
         self._client.reqMarketDataType(dataType.value)
 
         con = contract(instrument)
