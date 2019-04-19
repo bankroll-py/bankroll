@@ -201,7 +201,8 @@ def parseTradeConfirm(trade: IBTradeConfirm) -> Trade:
         instrument = parseFutureOptionTrade(trade)
     else:
         raise ValueError(
-            'Unrecognized/unsupported security type in position: {}'.format(p))
+            'Unrecognized/unsupported security type in trade: {}'.format(
+                trade))
 
     flagsByCode = {
         'O': TradeFlags.OPEN,
