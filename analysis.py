@@ -1,5 +1,6 @@
 from functools import reduce
 from model import Cash, Trade, Instrument, Option, LiveDataProvider, Quote, Position
+from progress.bar import Bar
 from typing import Dict, Iterable, Optional, Tuple
 
 
@@ -19,9 +20,11 @@ def realizedBasisForSymbol(symbol: str,
                   None)
 
 
-def liveValuesForPositions(positions: Iterable[Position],
-                           dataProvider: LiveDataProvider
-                           ) -> Dict[Position, Cash]:
+def liveValuesForPositions(
+        positions: Iterable[Position],
+        dataProvider: LiveDataProvider,
+        progressBar: Optional[Bar] = None,
+) -> Dict[Position, Cash]:
     def priceFromQuote(q: Quote, p: Position) -> Optional[Cash]:
         # For a long position, the value should be what the market is willing to pay right now.
         # For a short position, the value should be what the market is asking to be paid right now.
@@ -31,7 +34,9 @@ def liveValuesForPositions(positions: Iterable[Position],
             return q.bid or q.last or q.ask or q.close
 
     result = {}
-    for p in positions:
+    it = progressBar.iter(positions) if progressBar else positions
+
+    for p in it:
         price = priceFromQuote(dataProvider.fetchQuote(p.instrument), p)
         if not price:
             continue

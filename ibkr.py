@@ -4,6 +4,7 @@ from enum import IntEnum
 from model import Currency, Cash, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, TradeFlags, Trade, LiveDataProvider, Quote
 from parsetools import lenientParse
 from pathlib import Path
+from progress.spinner import Spinner
 from typing import Awaitable, Callable, Dict, List, NamedTuple, Optional, Type
 
 import ib_insync as IB
@@ -324,10 +325,29 @@ def parseTrades(path: Path, lenient: bool = False) -> List[Trade]:
     return tradesFromReport(IB.FlexReport(path=path), lenient=lenient)
 
 
+class SpinnerOnLogHandler(logging.Handler):
+    def __init__(self, spinner: Spinner):
+        self._spinner = spinner
+        super().__init__()
+
+    def handle(self, record: logging.LogRecord) -> None:
+        self._spinner.next()
+
+
 def downloadTrades(token: str, queryID: int,
                    lenient: bool = False) -> List[Trade]:
-    return tradesFromReport(IB.FlexReport(token=token, queryId=queryID),
-                            lenient=lenient)
+    with Spinner('Downloading trade report ') as spinner:
+        handler = SpinnerOnLogHandler(spinner)
+        logger = logging.getLogger('ib_insync.flexreport')
+        logger.addHandler(handler)
+
+        try:
+            spinner.next()
+            report = IB.FlexReport(token=token, queryId=queryID)
+        finally:
+            logger.removeHandler(handler)
+
+    return tradesFromReport(report, lenient=lenient)
 
 
 def stockContract(stock: Stock) -> IB.Contract:
