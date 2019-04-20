@@ -178,6 +178,12 @@ def parseFutureOptionTrade(trade: IBTradeConfirm) -> Instrument:
 def parseTradeConfirm(trade: IBTradeConfirm) -> Trade:
     tag = trade.assetCategory
     symbol = trade.symbol
+    if not symbol:
+        raise ValueError('Missing symbol in trade: {}'.format(trade))
+
+    if trade.currency not in Currency.__members__:
+        raise ValueError('Unrecognized currency in trade: {}'.format(trade))
+
     currency = Currency[trade.currency]
 
     instrument: Instrument
