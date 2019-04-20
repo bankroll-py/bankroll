@@ -1,11 +1,15 @@
 from datetime import date
 from decimal import Decimal
+from hypothesis import given, reproduce_failure
+from hypothesis.strategies import builds, dates, decimals, from_regex, from_type, lists, one_of, sampled_from, text
 from itertools import groupby
-from model import Cash, Currency, Stock, Bond, Option, OptionType, Forex, Future, FutureOption, Trade, TradeFlags
+from model import Cash, Currency, Position, Instrument, Stock, Bond, Option, OptionType, Forex, Future, FutureOption, Trade, TradeFlags
 from pathlib import Path
 
 import helpers
+import ib_insync as IB
 import ibkr
+import logging
 import unittest
 
 
@@ -161,7 +165,8 @@ class TestIBKRTrades(unittest.TestCase):
             ts[0].instrument,
             Future(symbol=symbol,
                    currency=Currency.USD,
-                   multiplier=Decimal(50)))
+                   multiplier=Decimal(50),
+                   expiration=date(2019, 3, 15)))
         self.assertEqual(ts[0].quantity, Decimal('1'))
         self.assertEqual(ts[0].amount, helpers.cashUSD(Decimal('-139687.5')))
         self.assertEqual(ts[0].fees, helpers.cashUSD(Decimal('2.05')))
@@ -191,6 +196,180 @@ class TestIBKRTrades(unittest.TestCase):
             ts[0].price, Cash(currency=Currency.USD,
                               quantity=Decimal('0.0147')))
         self.assertEqual(ts[0].flags, TradeFlags.OPEN)
+
+
+class TestIBKRParsing(unittest.TestCase):
+    validSymbols = text(min_size=1)
+    validCurrencies = from_type(Currency).map(lambda c: c.name)
+    validAssetCategories = sampled_from(
+        ['STK', 'BOND', 'OPT', 'FUT', 'CASH', 'FOP'])
+    allAssetCategories = one_of(
+        validAssetCategories,
+        sampled_from(
+            ['IND', 'CFD', 'FUND', 'CMDTY', 'IOPT', 'BAG', 'NEWS', 'WAR']))
+    validDates = dates().map(lambda d: d.strftime('%Y%m%d'))
+    validQuantities = helpers.positionQuantities().map(str)
+    validCodes = lists(sampled_from(['O', 'C', 'A', 'Ep', 'Ex', 'R', 'P',
+                                     'D']),
+                       max_size=3,
+                       unique=True).map(lambda l: ';'.join(l))
+    allCodes = one_of(validCodes,
+                      from_regex(r'([A-Z][A-Za-z]*(;[A-Z][A-Za-z]*)*)?'))
+    validMultipliers = helpers.multipliers().map(str)
+    validCashAmounts = helpers.cashAmounts().map(str)
+    validStrikes = helpers.strikes().map(str)
+    validPutCalls = sampled_from(['P', 'C'])
+
+    validTradeConfirms = builds(ibkr.IBTradeConfirm,
+                                symbol=validSymbols,
+                                underlyingSymbol=validSymbols,
+                                currency=validCurrencies,
+                                commissionCurrency=validCurrencies,
+                                assetCategory=validAssetCategories,
+                                tradeDate=validDates,
+                                expiry=validDates,
+                                quantity=validQuantities,
+                                multiplier=validMultipliers,
+                                proceeds=validCashAmounts,
+                                tax=validCashAmounts,
+                                commission=validCashAmounts,
+                                strike=validStrikes,
+                                putCall=validPutCalls,
+                                code=validCodes)
+
+    allTradeConfirms = builds(ibkr.IBTradeConfirm,
+                              symbol=one_of(validSymbols, text()),
+                              underlyingSymbol=one_of(validSymbols, text()),
+                              currency=one_of(validCurrencies, text()),
+                              commissionCurrency=one_of(
+                                  validCurrencies, text()),
+                              assetCategory=one_of(allAssetCategories, text()),
+                              tradeDate=one_of(validDates, text()),
+                              expiry=one_of(validDates, text()),
+                              quantity=one_of(validQuantities,
+                                              decimals().map(str), text()),
+                              multiplier=one_of(validMultipliers,
+                                                decimals().map(str), text()),
+                              proceeds=one_of(validCashAmounts,
+                                              decimals().map(str), text()),
+                              tax=one_of(validCashAmounts,
+                                         decimals().map(str), text()),
+                              commission=one_of(validCashAmounts,
+                                                decimals().map(str), text()),
+                              strike=one_of(validStrikes,
+                                            decimals().map(str), text()),
+                              putCall=one_of(validPutCalls, text()),
+                              code=one_of(allCodes, text()))
+
+    validContracts = builds(
+        IB.Contract,
+        symbol=validSymbols,
+        secType=validAssetCategories,
+        lastTradeDateOrContractMonth=validDates,
+        strike=validStrikes,
+        right=validPutCalls,
+        multiplier=validMultipliers,
+        currency=validCurrencies,
+        localSymbol=validSymbols,
+    )
+
+    validPositions = builds(IB.Position,
+                            account=text(),
+                            avgCost=validCashAmounts,
+                            contract=validContracts,
+                            position=validQuantities)
+
+    allContracts = builds(
+        IB.Contract,
+        symbol=one_of(validSymbols, text()),
+        secType=one_of(validAssetCategories, text()),
+        lastTradeDateOrContractMonth=one_of(validDates, text()),
+        strike=one_of(validStrikes,
+                      decimals().map(str), text()),
+        right=one_of(validPutCalls, text()),
+        multiplier=one_of(validMultipliers,
+                          decimals().map(str), text()),
+        currency=one_of(validCurrencies, text()),
+        localSymbol=one_of(validSymbols, text()),
+    )
+
+    allPositions = builds(IB.Position,
+                          account=text(),
+                          avgCost=one_of(validCashAmounts,
+                                         decimals().map(str), text()),
+                          contract=allContracts,
+                          position=one_of(validQuantities,
+                                          decimals().map(str), text()))
+
+    def validateTradeContract(self, tradeConfirm: ibkr.IBTradeConfirm,
+                              instrument: Instrument) -> None:
+        contract = ibkr.contract(instrument)
+        self.assertEqual(contract.secType, tradeConfirm.assetCategory)
+        self.assertEqual(contract.currency, tradeConfirm.currency)
+
+        if isinstance(instrument, Option):
+            self.assertAlmostEqual(contract.strike,
+                                   float(tradeConfirm.strike),
+                                   places=1)
+            self.assertEqual(contract.right, tradeConfirm.putCall)
+
+        if isinstance(instrument, Option) or isinstance(instrument, Future):
+            self.assertEqual(contract.multiplier, tradeConfirm.multiplier)
+            self.assertEqual(contract.lastTradeDateOrContractMonth,
+                             tradeConfirm.expiry)
+
+    @given(allTradeConfirms)
+    def test_fuzzTradeConfirm(self, tradeConfirm: ibkr.IBTradeConfirm) -> None:
+        try:
+            trade = ibkr.parseTradeConfirm(tradeConfirm)
+        except ValueError:
+            return
+
+        self.validateTradeContract(tradeConfirm, trade.instrument)
+
+    @unittest.skip('Exists to validate test data only')
+    @given(validTradeConfirms)
+    def test_parsedTradeConfirmConvertsToContract(
+            self, tradeConfirm: ibkr.IBTradeConfirm) -> None:
+        trade = ibkr.parseTradeConfirm(tradeConfirm)
+        self.validateTradeContract(tradeConfirm, trade.instrument)
+
+    def validatePositionContract(self, position: IB.Position,
+                                 instrument: Instrument) -> None:
+        contract = ibkr.contract(instrument)
+        self.assertEqual(contract.secType, position.contract.secType)
+        self.assertEqual(contract.currency, position.contract.currency)
+
+        if isinstance(instrument, Option):
+            self.assertAlmostEqual(float(contract.strike),
+                                   float(position.contract.strike),
+                                   places=1)
+            self.assertEqual(contract.right, position.contract.right)
+
+        if isinstance(instrument, Option) or isinstance(instrument, Future):
+            self.assertEqual(contract.multiplier, position.contract.multiplier)
+            self.assertEqual(contract.lastTradeDateOrContractMonth,
+                             position.contract.lastTradeDateOrContractMonth)
+
+    @given(allPositions)
+    def test_fuzzPosition(self, position: IB.Position) -> None:
+        try:
+            parsedPosition = ibkr.extractPosition(position)
+        except ValueError:
+            return
+
+        self.assertEqual(parsedPosition.quantity,
+                         Position.quantizeQuantity(Decimal(position.position)))
+        self.validatePositionContract(position, parsedPosition.instrument)
+
+    @unittest.skip('Exists to validate test data only')
+    @given(validPositions)
+    def test_parsedPositionConvertsToContract(self,
+                                              position: IB.Position) -> None:
+        parsedPosition = ibkr.extractPosition(position)
+        self.assertEqual(parsedPosition.quantity,
+                         Position.quantizeQuantity(Decimal(position.position)))
+        self.validatePositionContract(position, parsedPosition.instrument)
 
 
 if __name__ == '__main__':

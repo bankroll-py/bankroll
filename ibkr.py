@@ -1,5 +1,5 @@
 from datetime import datetime
-from decimal import Decimal
+from decimal import Context, Decimal, DivisionByZero, Overflow, InvalidOperation, localcontext
 from enum import IntEnum
 from model import Currency, Cash, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, TradeFlags, Trade, LiveDataProvider, Quote
 from parsetools import lenientParse
@@ -10,6 +10,15 @@ import ib_insync as IB
 import logging
 import math
 import re
+
+
+def parseFiniteDecimal(input: str) -> Decimal:
+    with localcontext(ctx=Context(traps=[DivisionByZero, Overflow])):
+        value = Decimal(input)
+        if not value.is_finite():
+            raise ValueError('Input is not numeric: {}'.format(input))
+
+        return value
 
 
 def parseOption(symbol: str,
@@ -32,7 +41,7 @@ def parseOption(symbol: str,
                currency=currency,
                optionType=optionType,
                expiration=datetime.strptime(match['date'], '%y%m%d').date(),
-               strike=Decimal(match['strike']) / 1000)
+               strike=parseFiniteDecimal(match['strike']) / 1000)
 
 
 def parseForex(symbol: str, currency: Currency) -> Forex:
@@ -50,39 +59,77 @@ def parseForex(symbol: str, currency: Currency) -> Forex:
     return Forex(baseCurrency=baseCurrency, quoteCurrency=quoteCurrency)
 
 
+def parseFutureOptionContract(contract: IB.Contract,
+                              currency: Currency) -> Instrument:
+    if contract.right.startswith('C'):
+        optionType = OptionType.CALL
+    elif contract.right.startswith('P'):
+        optionType = OptionType.PUT
+    else:
+        raise ValueError(
+            'Unexpected right in IB contract: {}'.format(contract))
+
+    return FutureOption(symbol=contract.localSymbol,
+                        currency=currency,
+                        underlying=contract.symbol,
+                        optionType=optionType,
+                        expiration=datetime.strptime(
+                            contract.lastTradeDateOrContractMonth,
+                            '%Y%m%d').date(),
+                        strike=parseFiniteDecimal(contract.strike),
+                        multiplier=parseFiniteDecimal(contract.multiplier))
+
+
 def extractPosition(p: IB.Position) -> Position:
     tag = p.contract.secType
     symbol = p.contract.localSymbol
+
+    if p.contract.currency not in Currency.__members__:
+        raise ValueError('Unrecognized currency in position: {}'.format(p))
+
     currency = Currency[p.contract.currency]
 
-    instrument: Instrument
-    if tag == 'STK':
-        instrument = Stock(symbol=symbol, currency=currency)
-    elif tag == 'BOND':
-        instrument = Bond(symbol=symbol,
-                          currency=currency,
-                          validateSymbol=False)
-    elif tag == 'OPT':
-        instrument = parseOption(symbol=symbol,
-                                 currency=currency,
-                                 multiplier=Decimal(p.contract.multiplier))
-    elif tag == 'FUT':
-        instrument = Future(symbol=symbol,
-                            currency=currency,
-                            multiplier=Decimal(p.contract.multiplier))
-    elif tag == 'CASH':
-        instrument = parseForex(symbol=symbol, currency=currency)
-    else:
+    try:
+        instrument: Instrument
+        if tag == 'STK':
+            instrument = Stock(symbol=symbol, currency=currency)
+        elif tag == 'BOND':
+            instrument = Bond(symbol=symbol,
+                              currency=currency,
+                              validateSymbol=False)
+        elif tag == 'OPT':
+            instrument = parseOption(symbol=symbol,
+                                     currency=currency,
+                                     multiplier=parseFiniteDecimal(
+                                         p.contract.multiplier))
+        elif tag == 'FUT':
+            instrument = Future(
+                symbol=symbol,
+                currency=currency,
+                multiplier=parseFiniteDecimal(p.contract.multiplier),
+                expiration=datetime.strptime(
+                    p.contract.lastTradeDateOrContractMonth, '%Y%m%d').date())
+        elif tag == 'FOP':
+            instrument = parseFutureOptionContract(p.contract,
+                                                   currency=currency)
+        elif tag == 'CASH':
+            instrument = parseForex(symbol=symbol, currency=currency)
+        else:
+            raise ValueError(
+                'Unrecognized/unsupported security type in position: {}'.
+                format(p))
+
+        qty = parseFiniteDecimal(p.position)
+        costBasis = parseFiniteDecimal(p.avgCost) * qty
+
+        return Position(instrument=instrument,
+                        quantity=qty,
+                        costBasis=Cash(currency=Currency[p.contract.currency],
+                                       quantity=costBasis))
+    except InvalidOperation:
         raise ValueError(
-            'Unrecognized/unsupported security type in position: {}'.format(p))
-
-    qty = Decimal(p.position)
-    costBasis = Decimal(p.avgCost) * qty
-
-    return Position(instrument=instrument,
-                    quantity=qty,
-                    costBasis=Cash(currency=Currency[p.contract.currency],
-                                   quantity=costBasis))
+            'One of the numeric position or contract values is out of range: {}'
+            .format(p))
 
 
 def downloadPositions(ib: IB.IB, lenient: bool) -> List[Position]:
@@ -171,78 +218,97 @@ def parseFutureOptionTrade(trade: IBTradeConfirm) -> Instrument:
                         optionType=optionType,
                         expiration=datetime.strptime(trade.expiry,
                                                      '%Y%m%d').date(),
-                        strike=Decimal(trade.strike),
-                        multiplier=Decimal(trade.multiplier))
+                        strike=parseFiniteDecimal(trade.strike),
+                        multiplier=parseFiniteDecimal(trade.multiplier))
 
 
 def parseTradeConfirm(trade: IBTradeConfirm) -> Trade:
     tag = trade.assetCategory
     symbol = trade.symbol
+    if not symbol:
+        raise ValueError('Missing symbol in trade: {}'.format(trade))
+
+    if trade.currency not in Currency.__members__:
+        raise ValueError('Unrecognized currency in trade: {}'.format(trade))
+
     currency = Currency[trade.currency]
 
-    instrument: Instrument
-    if tag == 'STK':
-        instrument = Stock(symbol=symbol, currency=currency)
-    elif tag == 'BOND':
-        instrument = Bond(symbol=symbol,
-                          currency=currency,
-                          validateSymbol=False)
-    elif tag == 'OPT':
-        instrument = parseOption(symbol=symbol,
-                                 currency=currency,
-                                 multiplier=Decimal(trade.multiplier))
-    elif tag == 'FUT':
-        instrument = Future(symbol=symbol,
-                            currency=currency,
-                            multiplier=Decimal(trade.multiplier))
-    elif tag == 'CASH':
-        instrument = parseForex(symbol=symbol, currency=currency)
-    elif tag == 'FOP':
-        instrument = parseFutureOptionTrade(trade)
-    else:
-        raise ValueError(
-            'Unrecognized/unsupported security type in trade: {}'.format(
-                trade))
-
-    flagsByCode = {
-        'O': TradeFlags.OPEN,
-        'C': TradeFlags.CLOSE,
-        'A': TradeFlags.ASSIGNED_OR_EXERCISED,
-        'Ex': TradeFlags.ASSIGNED_OR_EXERCISED,
-        'Ep': TradeFlags.EXPIRED,
-        'R': TradeFlags.DRIP,
-
-        # Partial execution
-        'P': TradeFlags.NONE,
-
-        # Unknown code, spotted on a complex futures trade
-        'D': TradeFlags.NONE,
-    }
-
-    codes = trade.code.split(';')
-    flags = TradeFlags.NONE
-    for c in codes:
-        if c == '':
-            continue
-
-        flags |= flagsByCode[c]
-
-    # Codes are not always populated with open/close, not sure why
-    if flags & (TradeFlags.OPEN | TradeFlags.CLOSE) == TradeFlags.NONE:
-        if trade.buySell == 'BUY':
-            flags |= TradeFlags.OPEN
+    try:
+        instrument: Instrument
+        if tag == 'STK':
+            instrument = Stock(symbol=symbol, currency=currency)
+        elif tag == 'BOND':
+            instrument = Bond(symbol=symbol,
+                              currency=currency,
+                              validateSymbol=False)
+        elif tag == 'OPT':
+            instrument = parseOption(symbol=symbol,
+                                     currency=currency,
+                                     multiplier=parseFiniteDecimal(
+                                         trade.multiplier))
+        elif tag == 'FUT':
+            instrument = Future(
+                symbol=symbol,
+                currency=currency,
+                multiplier=parseFiniteDecimal(trade.multiplier),
+                expiration=datetime.strptime(trade.expiry, '%Y%m%d').date())
+        elif tag == 'CASH':
+            instrument = parseForex(symbol=symbol, currency=currency)
+        elif tag == 'FOP':
+            instrument = parseFutureOptionTrade(trade)
         else:
-            flags |= TradeFlags.CLOSE
+            raise ValueError(
+                'Unrecognized/unsupported security type in trade: {}'.format(
+                    trade))
 
-    return Trade(
-        date=datetime.strptime(trade.tradeDate, '%Y%m%d'),
-        instrument=instrument,
-        quantity=Decimal(trade.quantity),
-        amount=Cash(currency=Currency(trade.currency),
-                    quantity=Decimal(trade.proceeds)),
-        fees=Cash(currency=Currency(trade.commissionCurrency),
-                  quantity=-(Decimal(trade.commission) + Decimal(trade.tax))),
-        flags=flags)
+        flagsByCode = {
+            'O': TradeFlags.OPEN,
+            'C': TradeFlags.CLOSE,
+            'A': TradeFlags.ASSIGNED_OR_EXERCISED,
+            'Ex': TradeFlags.ASSIGNED_OR_EXERCISED,
+            'Ep': TradeFlags.EXPIRED,
+            'R': TradeFlags.DRIP,
+
+            # Partial execution
+            'P': TradeFlags.NONE,
+
+            # Unknown code, spotted on a complex futures trade
+            'D': TradeFlags.NONE,
+        }
+
+        codes = trade.code.split(';')
+        flags = TradeFlags.NONE
+        for c in codes:
+            if c == '':
+                continue
+
+            if c not in flagsByCode:
+                raise ValueError('Unrecognized code {} in trade: {}'.format(
+                    c, trade))
+
+            flags |= flagsByCode[c]
+
+        # Codes are not always populated with open/close, not sure why
+        if flags & (TradeFlags.OPEN | TradeFlags.CLOSE) == TradeFlags.NONE:
+            if trade.buySell == 'BUY':
+                flags |= TradeFlags.OPEN
+            else:
+                flags |= TradeFlags.CLOSE
+
+        return Trade(date=datetime.strptime(trade.tradeDate, '%Y%m%d'),
+                     instrument=instrument,
+                     quantity=parseFiniteDecimal(trade.quantity),
+                     amount=Cash(currency=Currency(trade.currency),
+                                 quantity=parseFiniteDecimal(trade.proceeds)),
+                     fees=Cash(
+                         currency=Currency(trade.commissionCurrency),
+                         quantity=-(parseFiniteDecimal(trade.commission) +
+                                    parseFiniteDecimal(trade.tax))),
+                     flags=flags)
+    except InvalidOperation:
+        raise ValueError(
+            'One of the numeric trade values is out of range: {}'.format(
+                trade))
 
 
 def tradesFromReport(report: IB.FlexReport, lenient: bool) -> List[Trade]:
@@ -290,10 +356,13 @@ def optionContract(option: Option,
 
 
 def futuresContract(future: Future) -> IB.Contract:
+    lastTradeDate = future.expiration.strftime('%Y%m%d')
+
     return IB.Future(symbol=future.symbol,
                      exchange='SMART',
                      currency=future.currency.value,
-                     multiplier=str(future.multiplier))
+                     multiplier=str(future.multiplier),
+                     lastTradeDateOrContractMonth=lastTradeDate)
 
 
 def forexContract(forex: Forex) -> IB.Contract:

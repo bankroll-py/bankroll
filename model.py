@@ -52,8 +52,9 @@ class Cash:
         return d.quantize(cls.quantization, rounding=ROUND_HALF_EVEN)
 
     def __init__(self, currency: Currency, quantity: Decimal):
-        assert quantity.is_finite(
-        ), 'Cash quantity {} is not a finite number'.format(quantity)
+        if not quantity.is_finite():
+            raise ValueError(
+                'Cash quantity {} is not a finite number'.format(quantity))
 
         self._currency = currency
         self._quantity = self.quantize(quantity)
@@ -76,8 +77,10 @@ class Cash:
 
     def __add__(self, other: Any) -> 'Cash':
         if isinstance(other, Cash):
-            assert self.currency == other.currency, 'Currency of {} must match {} for addition'.format(
-                self, other)
+            if self.currency != other.currency:
+                raise ValueError(
+                    'Currency of {} must match {} for arithmetic'.format(
+                        self, other))
 
             return Cash(currency=self.currency,
                         quantity=self.quantity + other.quantity)
@@ -86,8 +89,10 @@ class Cash:
 
     def __sub__(self, other: Any) -> 'Cash':
         if isinstance(other, Cash):
-            assert self.currency == other.currency, 'Currency of {} does not match {} for subtraction'.format(
-                self, other)
+            if self.currency != other.currency:
+                raise ValueError(
+                    'Currency of {} must match {} for arithmetic'.format(
+                        self, other))
 
             return Cash(currency=self.currency,
                         quantity=self.quantity - other.quantity)
@@ -115,23 +120,35 @@ class Cash:
         return self.currency == other.currency and self.quantity == other.quantity
 
     def __lt__(self, other: 'Cash') -> bool:
-        assert self.currency == other.currency, 'Currency of {} must match {} for comparison'.format(
-            self, other)
+        if self.currency != other.currency:
+            raise ValueError(
+                'Currency of {} must match {} for comparison'.format(
+                    self, other))
+
         return self.quantity < other.quantity
 
     def __le__(self, other: 'Cash') -> bool:
-        assert self.currency == other.currency, 'Currency of {} must match {} for comparison'.format(
-            self, other)
+        if self.currency != other.currency:
+            raise ValueError(
+                'Currency of {} must match {} for comparison'.format(
+                    self, other))
+
         return self.quantity <= other.quantity
 
     def __gt__(self, other: 'Cash') -> bool:
-        assert self.currency == other.currency, 'Currency of {} must match {} for comparison'.format(
-            self, other)
+        if self.currency != other.currency:
+            raise ValueError(
+                'Currency of {} must match {} for comparison'.format(
+                    self, other))
+
         return self.quantity > other.quantity
 
     def __ge__(self, other: 'Cash') -> bool:
-        assert self.currency == other.currency, 'Currency of {} must match {} for comparison'.format(
-            self, other)
+        if self.currency != other.currency:
+            raise ValueError(
+                'Currency of {} must match {} for comparison'.format(
+                    self, other))
+
         return self.quantity >= other.quantity
 
     def __hash__(self) -> int:
@@ -148,8 +165,10 @@ class Instrument(ABC):
 
     @abstractmethod
     def __init__(self, symbol: str, currency: Currency):
-        assert symbol, 'Expected non-empty symbol for instrument'
-        assert currency, 'Expected currency for instrument'
+        if not symbol:
+            raise ValueError('Expected non-empty symbol for instrument')
+        if not currency:
+            raise ValueError('Expected currency for instrument')
 
         self._symbol = symbol
         self._currency = currency
@@ -219,8 +238,9 @@ class Bond(Instrument):
                  symbol: str,
                  currency: Currency,
                  validateSymbol: bool = True):
-        assert not validateSymbol or self.validBondSymbol(
-            symbol), 'Expected symbol to be a bond CUSIP: {}'.format(symbol)
+        if validateSymbol and not self.validBondSymbol(symbol):
+            raise ValueError(
+                'Expected symbol to be a bond CUSIP: {}'.format(symbol))
 
         super().__init__(symbol, currency)
 
@@ -248,12 +268,14 @@ class Option(Instrument):
                  strike: Decimal,
                  multiplier: Decimal = Decimal(100),
                  symbol: Optional[str] = None):
-        assert underlying, 'Expected non-empty underlying symbol for Option'
-        assert strike.is_finite(
-        ) and strike > 0, 'Expected positive strike price: {}'.format(strike)
-        assert multiplier.is_finite(
-        ) and multiplier > 0, 'Expected positive multiplier: {}'.format(
-            multiplier)
+        if not underlying:
+            raise ValueError('Expected non-empty underlying symbol for Option')
+        if not strike.is_finite() or strike <= 0:
+            raise ValueError(
+                'Expected positive strike price: {}'.format(strike))
+        if not multiplier.is_finite() or multiplier <= 0:
+            raise ValueError(
+                'Expected positive multiplier: {}'.format(multiplier))
 
         self._underlying = underlying
         self._optionType = optionType
@@ -310,12 +332,14 @@ class FutureOption(Option):
 
 
 class Future(Instrument):
-    def __init__(self, symbol: str, currency: Currency, multiplier: Decimal):
-        assert multiplier.is_finite(
-        ) and multiplier > 0, 'Expected positive multiplier: {}'.format(
-            multiplier)
+    def __init__(self, symbol: str, currency: Currency, multiplier: Decimal,
+                 expiration: date):
+        if not multiplier.is_finite() or multiplier <= 0:
+            raise ValueError(
+                'Expected positive multiplier: {}'.format(multiplier))
 
         self._multiplier = self.quantizeMultiplier(multiplier)
+        self._expiration = expiration
 
         super().__init__(symbol, currency)
 
@@ -323,16 +347,23 @@ class Future(Instrument):
     def multiplier(self) -> Decimal:
         return self._multiplier
 
+    @property
+    def expiration(self) -> date:
+        return self._expiration
+
     def __repr__(self) -> str:
-        return '{}(symbol={}, currency={}, multiplier={})'.format(
+        return '{}(symbol={}, currency={}, multiplier={}, expiration={})'.format(
             repr(type(self)), repr(self.symbol), repr(self.currency),
-            repr(self.multiplier))
+            repr(self.multiplier), repr(self.expiration))
 
 
 class Forex(Instrument):
     def __init__(self, baseCurrency: Currency, quoteCurrency: Currency):
-        assert baseCurrency != quoteCurrency, 'Forex pair must be composed of different currencies, got {} and {}'.format(
-            repr(baseCurrency), repr(quoteCurrency))
+        if baseCurrency == quoteCurrency:
+            raise ValueError(
+                'Forex pair must be composed of different currencies, got {} and {}'
+                .format(repr(baseCurrency), repr(quoteCurrency)))
+
         self._baseCurrency = baseCurrency
 
         symbol = '{}{}'.format(baseCurrency.name, quoteCurrency.name)
@@ -369,14 +400,15 @@ class Quote:
                  ask: Optional[Cash] = None,
                  last: Optional[Cash] = None,
                  close: Optional[Cash] = None):
-        if bid and ask:
-            assert ask >= bid, 'Expected ask {} to be at least bid {}'.format(
-                ask, bid)
+        if bid and ask and ask < bid:
+            raise ValueError('Expected ask {} to be at least bid {}'.format(
+                ask, bid))
 
-        assert allEqual((price.currency for price in [bid, ask, last, close]
-                         if price is not None
-                         )), 'Currencies in a quote should match: {}'.format(
-                             [bid, ask, last, close])
+        if not allEqual(
+            (price.currency
+             for price in [bid, ask, last, close] if price is not None)):
+            raise ValueError('Currencies in a quote should match: {}'.format(
+                [bid, ask, last, close]))
 
         self._bid = bid
         self._ask = ask
@@ -430,13 +462,21 @@ class Position:
 
     def __init__(self, instrument: Instrument, quantity: Decimal,
                  costBasis: Cash):
-        assert instrument.currency == costBasis.currency, 'Cost basis {} should be in same currency as instrument {}'.format(
-            costBasis, instrument)
-        assert quantity.is_finite()
+        if instrument.currency != costBasis.currency:
+            raise ValueError(
+                'Cost basis {} should be in same currency as instrument {}'.
+                format(costBasis, instrument))
+
+        if not quantity.is_finite():
+            raise ValueError(
+                'Position quantity {} is not a finite number'.format(quantity))
+
         quantity = self.quantizeQuantity(quantity)
 
-        assert quantity != 0 or costBasis == 0, 'Cost basis {} should be zero if quantity is zero'.format(
-            repr(costBasis))
+        if quantity == 0 and costBasis != 0:
+            raise ValueError(
+                'Cost basis {} should be zero if quantity is zero'.format(
+                    repr(costBasis)))
 
         self._instrument = instrument
         self._quantity = quantity
@@ -444,8 +484,10 @@ class Position:
         super().__init__()
 
     def combine(self, other: 'Position') -> 'Position':
-        assert self.instrument == other.instrument, 'Cannot combine positions in two different instruments: {} and {}'.format(
-            self.instrument, other.instrument)
+        if self.instrument != other.instrument:
+            raise ValueError(
+                'Cannot combine positions in two different instruments: {} and {}'
+                .format(self.instrument, other.instrument))
 
         return Position(instrument=self.instrument,
                         quantity=self.quantity + other.quantity,
@@ -509,14 +551,18 @@ class Trade:
     def __init__(self, date: datetime, instrument: Instrument,
                  quantity: Decimal, amount: Cash, fees: Cash,
                  flags: TradeFlags):
-        assert quantity.is_finite()
-        assert flags in [
-            TradeFlags.OPEN, TradeFlags.CLOSE,
-            TradeFlags.OPEN | TradeFlags.DRIP,
-            TradeFlags.OPEN | TradeFlags.ASSIGNED_OR_EXERCISED,
-            TradeFlags.CLOSE | TradeFlags.EXPIRED,
-            TradeFlags.CLOSE | TradeFlags.ASSIGNED_OR_EXERCISED
-        ], 'Invalid combination of flags: {}'.format(flags)
+        if not quantity.is_finite():
+            raise ValueError(
+                'Trade quantity {} is not a finite number'.format(quantity))
+
+        if flags not in [
+                TradeFlags.OPEN, TradeFlags.CLOSE,
+                TradeFlags.OPEN | TradeFlags.DRIP,
+                TradeFlags.OPEN | TradeFlags.ASSIGNED_OR_EXERCISED,
+                TradeFlags.CLOSE | TradeFlags.EXPIRED,
+                TradeFlags.CLOSE | TradeFlags.ASSIGNED_OR_EXERCISED
+        ]:
+            raise ValueError('Invalid combination of flags: {}'.format(flags))
 
         self._date = date
         self._instrument = instrument

@@ -80,9 +80,9 @@ class TestAnalysis(unittest.TestCase):
 
     @no_type_check
     @given(
-        iterables(
-            from_type(Trade).filter(lambda t: not t.instrument.symbol.
-                                    startswith('SPY'))))
+        iterables(from_type(
+            Trade).filter(lambda t: not t.instrument.symbol.startswith('SPY')),
+                  max_size=100))
     def test_realizedBasisMissing(self, trades: Iterable[Trade]) -> None:
         self.assertIsNone(realizedBasisForSymbol('SPY', trades))
 
