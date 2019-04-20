@@ -83,6 +83,10 @@ def parseFutureOptionContract(contract: IB.Contract,
 def extractPosition(p: IB.Position) -> Position:
     tag = p.contract.secType
     symbol = p.contract.localSymbol
+
+    if p.contract.currency not in Currency.__members__:
+        raise ValueError('Unrecognized currency in position: {}'.format(p))
+
     currency = Currency[p.contract.currency]
 
     instrument: Instrument
