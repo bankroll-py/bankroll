@@ -339,10 +339,13 @@ def optionContract(option: Option,
 
 
 def futuresContract(future: Future) -> IB.Contract:
+    lastTradeDate = future.expiration.strftime('%Y%m%d')
+
     return IB.Future(symbol=future.symbol,
                      exchange='SMART',
                      currency=future.currency.value,
-                     multiplier=str(future.multiplier))
+                     multiplier=str(future.multiplier),
+                     lastTradeDateOrContractMonth=lastTradeDate)
 
 
 def forexContract(forex: Forex) -> IB.Contract:
