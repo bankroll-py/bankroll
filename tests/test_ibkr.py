@@ -1,7 +1,7 @@
 from datetime import date
 from decimal import Decimal
 from hypothesis import given
-from hypothesis.strategies import from_type
+from hypothesis.strategies import builds, from_type, one_of, text
 from itertools import groupby
 from model import Cash, Currency, Stock, Bond, Option, OptionType, Forex, Future, FutureOption, Trade, TradeFlags
 from pathlib import Path
@@ -198,16 +198,35 @@ class TestIBKRTrades(unittest.TestCase):
 
 
 class TestIBKRFuzzParsing(unittest.TestCase):
-    @given(from_type(ibkr.IBTradeConfirm))
+    def setUp(self) -> None:
+        self._tradeConfirmsAttempted = 0
+        self._tradeConfirmsParsed = 0
+
+        self.logger = logging.getLogger(self.id())
+        self.logger.setLevel(logging.WARNING)
+
+    def tearDown(self) -> None:
+        self.assertGreater(
+            self._tradeConfirmsParsed,
+            0,
+            msg='Expected at least one of {} attempted parses to succeed'.
+            format(self._tradeConfirmsAttempted))
+
+    @given(
+        builds(ibkr.IBTradeConfirm,
+               currency=one_of(
+                   from_type(Currency).map(lambda c: c.name), text())))
     def test_parseTradeConfirm(self,
                                tradeConfirm: ibkr.IBTradeConfirm) -> None:
         try:
+            self._tradeConfirmsAttempted = self._tradeConfirmsAttempted + 1
             trade = ibkr.parseTradeConfirm(tradeConfirm)
+            self._tradeConfirmsParsed = self._tradeConfirmsParsed + 1
         except ValueError as err:
-            logging.info(
-                'TradeConfirm {} failed to parse with error: {}'.format(
-                    tradeConfirm, err))
+            self.logger.warning('Failed to parse with error: {}'.format(err))
             return
+
+        self.logger.info('Parsed trade: {}'.format(trade))
 
         contract = ibkr.contract(trade.instrument)
         self.assertEqual(contract.secType, tradeConfirm.assetCategory)
