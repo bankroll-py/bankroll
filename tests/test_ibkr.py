@@ -266,8 +266,7 @@ class TestIBKRParsing(unittest.TestCase):
         self.assertEqual(contract.currency, tradeConfirm.currency)
 
         if isinstance(trade.instrument, Option):
-            self.assertEqual(Decimal(contract.strike),
-                             Decimal(tradeConfirm.strike))
+            self.assertAlmostEqual(contract.strike, float(tradeConfirm.strike))
             self.assertEqual(contract.right, tradeConfirm.putCall)
             # TODO: This should be supported for Futures too
             self.assertEqual(contract.lastTradeDateOrContractMonth,
