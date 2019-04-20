@@ -1,5 +1,5 @@
 from datetime import datetime
-from decimal import Decimal
+from decimal import Context, Decimal, DivisionByZero, Overflow, localcontext
 from enum import IntEnum
 from model import Currency, Cash, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, TradeFlags, Trade, LiveDataProvider, Quote
 from parsetools import lenientParse
@@ -10,6 +10,15 @@ import ib_insync as IB
 import logging
 import math
 import re
+
+
+def parseFiniteDecimal(input: str) -> Decimal:
+    with localcontext(ctx=Context(traps=[DivisionByZero, Overflow])):
+        value = Decimal(input)
+        if not value.is_finite():
+            raise ValueError('Input is not numeric: {}'.format(input))
+
+        return value
 
 
 def parseOption(symbol: str,
@@ -32,7 +41,7 @@ def parseOption(symbol: str,
                currency=currency,
                optionType=optionType,
                expiration=datetime.strptime(match['date'], '%y%m%d').date(),
-               strike=Decimal(match['strike']) / 1000)
+               strike=parseFiniteDecimal(match['strike']) / 1000)
 
 
 def parseForex(symbol: str, currency: Currency) -> Forex:
@@ -65,19 +74,21 @@ def extractPosition(p: IB.Position) -> Position:
     elif tag == 'OPT':
         instrument = parseOption(symbol=symbol,
                                  currency=currency,
-                                 multiplier=Decimal(p.contract.multiplier))
+                                 multiplier=parseFiniteDecimal(
+                                     p.contract.multiplier))
     elif tag == 'FUT':
         instrument = Future(symbol=symbol,
                             currency=currency,
-                            multiplier=Decimal(p.contract.multiplier))
+                            multiplier=parseFiniteDecimal(
+                                p.contract.multiplier))
     elif tag == 'CASH':
         instrument = parseForex(symbol=symbol, currency=currency)
     else:
         raise ValueError(
             'Unrecognized/unsupported security type in position: {}'.format(p))
 
-    qty = Decimal(p.position)
-    costBasis = Decimal(p.avgCost) * qty
+    qty = parseFiniteDecimal(p.position)
+    costBasis = parseFiniteDecimal(p.avgCost) * qty
 
     return Position(instrument=instrument,
                     quantity=qty,
@@ -171,8 +182,8 @@ def parseFutureOptionTrade(trade: IBTradeConfirm) -> Instrument:
                         optionType=optionType,
                         expiration=datetime.strptime(trade.expiry,
                                                      '%Y%m%d').date(),
-                        strike=Decimal(trade.strike),
-                        multiplier=Decimal(trade.multiplier))
+                        strike=parseFiniteDecimal(trade.strike),
+                        multiplier=parseFiniteDecimal(trade.multiplier))
 
 
 def parseTradeConfirm(trade: IBTradeConfirm) -> Trade:
@@ -196,11 +207,12 @@ def parseTradeConfirm(trade: IBTradeConfirm) -> Trade:
     elif tag == 'OPT':
         instrument = parseOption(symbol=symbol,
                                  currency=currency,
-                                 multiplier=Decimal(trade.multiplier))
+                                 multiplier=parseFiniteDecimal(
+                                     trade.multiplier))
     elif tag == 'FUT':
         instrument = Future(symbol=symbol,
                             currency=currency,
-                            multiplier=Decimal(trade.multiplier))
+                            multiplier=parseFiniteDecimal(trade.multiplier))
     elif tag == 'CASH':
         instrument = parseForex(symbol=symbol, currency=currency)
     elif tag == 'FOP':
@@ -231,6 +243,10 @@ def parseTradeConfirm(trade: IBTradeConfirm) -> Trade:
         if c == '':
             continue
 
+        if c not in flagsByCode:
+            raise ValueError('Unrecognized code {} in trade: {}'.format(
+                c, trade))
+
         flags |= flagsByCode[c]
 
     # Codes are not always populated with open/close, not sure why
@@ -240,15 +256,15 @@ def parseTradeConfirm(trade: IBTradeConfirm) -> Trade:
         else:
             flags |= TradeFlags.CLOSE
 
-    return Trade(
-        date=datetime.strptime(trade.tradeDate, '%Y%m%d'),
-        instrument=instrument,
-        quantity=Decimal(trade.quantity),
-        amount=Cash(currency=Currency(trade.currency),
-                    quantity=Decimal(trade.proceeds)),
-        fees=Cash(currency=Currency(trade.commissionCurrency),
-                  quantity=-(Decimal(trade.commission) + Decimal(trade.tax))),
-        flags=flags)
+    return Trade(date=datetime.strptime(trade.tradeDate, '%Y%m%d'),
+                 instrument=instrument,
+                 quantity=parseFiniteDecimal(trade.quantity),
+                 amount=Cash(currency=Currency(trade.currency),
+                             quantity=parseFiniteDecimal(trade.proceeds)),
+                 fees=Cash(currency=Currency(trade.commissionCurrency),
+                           quantity=-(parseFiniteDecimal(trade.commission) +
+                                      parseFiniteDecimal(trade.tax))),
+                 flags=flags)
 
 
 def tradesFromReport(report: IB.FlexReport, lenient: bool) -> List[Trade]:
