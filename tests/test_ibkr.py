@@ -348,6 +348,17 @@ class TestIBKRParsing(unittest.TestCase):
             self.assertEqual(contract.lastTradeDateOrContractMonth,
                              position.contract.lastTradeDateOrContractMonth)
 
+    @given(allPositions)
+    def test_fuzzPosition(self, position: IB.Position) -> None:
+        try:
+            parsedPosition = ibkr.extractPosition(position)
+        except ValueError:
+            return
+
+        self.assertEqual(parsedPosition.quantity, Decimal(position.position))
+        self.validatePositionContract(position, parsedPosition.instrument)
+
+    @unittest.skip('Exists to validate test data only')
     @given(validPositions)
     def test_parsedPositionConvertsToContract(self,
                                               position: IB.Position) -> None:
