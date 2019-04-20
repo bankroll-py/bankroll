@@ -310,12 +310,14 @@ class FutureOption(Option):
 
 
 class Future(Instrument):
-    def __init__(self, symbol: str, currency: Currency, multiplier: Decimal):
+    def __init__(self, symbol: str, currency: Currency, multiplier: Decimal,
+                 expiration: date):
         assert multiplier.is_finite(
         ) and multiplier > 0, 'Expected positive multiplier: {}'.format(
             multiplier)
 
         self._multiplier = self.quantizeMultiplier(multiplier)
+        self._expiration = expiration
 
         super().__init__(symbol, currency)
 
@@ -323,10 +325,14 @@ class Future(Instrument):
     def multiplier(self) -> Decimal:
         return self._multiplier
 
+    @property
+    def expiration(self) -> date:
+        return self._expiration
+
     def __repr__(self) -> str:
-        return '{}(symbol={}, currency={}, multiplier={})'.format(
+        return '{}(symbol={}, currency={}, multiplier={}, expiration={})'.format(
             repr(type(self)), repr(self.symbol), repr(self.currency),
-            repr(self.multiplier))
+            repr(self.multiplier), repr(self.expiration))
 
 
 class Forex(Instrument):

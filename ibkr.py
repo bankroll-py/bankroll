@@ -77,10 +77,12 @@ def extractPosition(p: IB.Position) -> Position:
                                  multiplier=parseFiniteDecimal(
                                      p.contract.multiplier))
     elif tag == 'FUT':
-        instrument = Future(symbol=symbol,
-                            currency=currency,
-                            multiplier=parseFiniteDecimal(
-                                p.contract.multiplier))
+        instrument = Future(
+            symbol=symbol,
+            currency=currency,
+            multiplier=parseFiniteDecimal(p.contract.multiplier),
+            expiration=datetime.strptime(
+                p.contract.lastTradeDateOrContractMonth, '%Y%m%d').date())
     elif tag == 'CASH':
         instrument = parseForex(symbol=symbol, currency=currency)
     else:
@@ -212,7 +214,9 @@ def parseTradeConfirm(trade: IBTradeConfirm) -> Trade:
     elif tag == 'FUT':
         instrument = Future(symbol=symbol,
                             currency=currency,
-                            multiplier=parseFiniteDecimal(trade.multiplier))
+                            multiplier=parseFiniteDecimal(trade.multiplier),
+                            expiration=datetime.strptime(
+                                trade.expiry, '%Y%m%d').date())
     elif tag == 'CASH':
         instrument = parseForex(symbol=symbol, currency=currency)
     elif tag == 'FOP':

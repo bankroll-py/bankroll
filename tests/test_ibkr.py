@@ -165,7 +165,8 @@ class TestIBKRTrades(unittest.TestCase):
             ts[0].instrument,
             Future(symbol=symbol,
                    currency=Currency.USD,
-                   multiplier=Decimal(50)))
+                   multiplier=Decimal(50),
+                   expiration=date(2019, 3, 15)))
         self.assertEqual(ts[0].quantity, Decimal('1'))
         self.assertEqual(ts[0].amount, helpers.cashUSD(Decimal('-139687.5')))
         self.assertEqual(ts[0].fees, helpers.cashUSD(Decimal('2.05')))
