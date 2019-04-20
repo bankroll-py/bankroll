@@ -276,34 +276,24 @@ def bondContract(bond: Bond) -> IB.Contract:
                    currency=bond.currency.value)
 
 
-def optionContract(option: Option) -> IB.Contract:
+def optionContract(option: Option,
+                   cls: Type[IB.Contract] = IB.Option) -> IB.Contract:
     lastTradeDate = option.expiration.strftime('%Y%m%d')
 
-    return IB.Option(
-        localSymbol=option.symbol,
-        exchange='SMART',
-        currency=option.currency.value,
-        lastTradeDateOrContractMonth=lastTradeDate,
-        right=option.optionType.value,
-        strike=float(option.strike),
-        # TODO: Support non-standard multipliers
-        multiplier='100')
-
-
-def fopContract(option: FutureOption) -> IB.Contract:
-    lastTradeDate = option.expiration.strftime('%Y%m%d')
-
-    return IB.FuturesOption(symbol=option.symbol,
-                            exchange='SMART',
-                            currency=option.currency.value,
-                            lastTradeDateOrContractMonth=lastTradeDate,
-                            right=option.optionType.value)
+    return cls(localSymbol=option.symbol,
+               exchange='SMART',
+               currency=option.currency.value,
+               lastTradeDateOrContractMonth=lastTradeDate,
+               right=option.optionType.value,
+               strike=float(option.strike),
+               multiplier=str(option.multiplier))
 
 
 def futuresContract(future: Future) -> IB.Contract:
     return IB.Future(symbol=future.symbol,
                      exchange='SMART',
-                     currency=future.currency.value)
+                     currency=future.currency.value,
+                     multiplier=str(future.multiplier))
 
 
 def forexContract(forex: Forex) -> IB.Contract:
@@ -316,7 +306,7 @@ def contract(instrument: Instrument) -> IB.Contract:
     elif isinstance(instrument, Bond):
         return bondContract(instrument)
     elif isinstance(instrument, FutureOption):
-        return fopContract(instrument)
+        return optionContract(instrument, cls=IB.FuturesOption)
     elif isinstance(instrument, Option):
         return optionContract(instrument)
     elif isinstance(instrument, Future):
