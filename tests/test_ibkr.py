@@ -1,6 +1,6 @@
 from datetime import date
 from decimal import Decimal
-from hypothesis import given
+from hypothesis import given, reproduce_failure
 from hypothesis.strategies import builds, dates, decimals, from_regex, from_type, lists, one_of, sampled_from, text
 from itertools import groupby
 from model import Cash, Currency, Instrument, Stock, Bond, Option, OptionType, Forex, Future, FutureOption, Trade, TradeFlags
@@ -339,7 +339,8 @@ class TestIBKRParsing(unittest.TestCase):
         self.assertEqual(contract.currency, position.contract.currency)
 
         if isinstance(instrument, Option):
-            self.assertAlmostEqual(contract.strike, position.contract.strike)
+            self.assertAlmostEqual(float(contract.strike),
+                                   float(position.contract.strike))
             self.assertEqual(contract.right, position.contract.right)
 
         if isinstance(instrument, Option) or isinstance(instrument, Future):
@@ -351,7 +352,7 @@ class TestIBKRParsing(unittest.TestCase):
     def test_parsedPositionConvertsToContract(self,
                                               position: IB.Position) -> None:
         parsedPosition = ibkr.extractPosition(position)
-        self.assertEqual(parsedPosition.quantity, position.position)
+        self.assertEqual(parsedPosition.quantity, Decimal(position.position))
         self.validatePositionContract(position, parsedPosition.instrument)
 
 
