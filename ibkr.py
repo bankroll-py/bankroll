@@ -59,6 +59,27 @@ def parseForex(symbol: str, currency: Currency) -> Forex:
     return Forex(baseCurrency=baseCurrency, quoteCurrency=quoteCurrency)
 
 
+def parseFutureOptionContract(contract: IB.Contract,
+                              currency: Currency) -> Instrument:
+    if re.match(contract.right, 'C'):
+        optionType = OptionType.CALL
+    elif re.match(contract.right, 'P'):
+        optionType = OptionType.PUT
+    else:
+        raise ValueError(
+            'Unexpected right in IB contract: {}'.format(contract))
+
+    return FutureOption(symbol=contract.localSymbol,
+                        currency=currency,
+                        underlying=contract.symbol,
+                        optionType=optionType,
+                        expiration=datetime.strptime(
+                            contract.lastTradeDateOrContractMonth,
+                            '%Y%m%d').date(),
+                        strike=Decimal(contract.strike),
+                        multiplier=parseFiniteDecimal(contract.multiplier))
+
+
 def extractPosition(p: IB.Position) -> Position:
     tag = p.contract.secType
     symbol = p.contract.localSymbol
@@ -83,6 +104,8 @@ def extractPosition(p: IB.Position) -> Position:
             multiplier=parseFiniteDecimal(p.contract.multiplier),
             expiration=datetime.strptime(
                 p.contract.lastTradeDateOrContractMonth, '%Y%m%d').date())
+    elif tag == 'FOP':
+        instrument = parseFutureOptionContract(p.contract, currency=currency)
     elif tag == 'CASH':
         instrument = parseForex(symbol=symbol, currency=currency)
     else:
