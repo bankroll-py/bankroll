@@ -308,7 +308,9 @@ class TestIBKRParsing(unittest.TestCase):
         self.assertEqual(contract.currency, tradeConfirm.currency)
 
         if isinstance(instrument, Option):
-            self.assertAlmostEqual(contract.strike, float(tradeConfirm.strike))
+            self.assertAlmostEqual(contract.strike,
+                                   float(tradeConfirm.strike),
+                                   places=1)
             self.assertEqual(contract.right, tradeConfirm.putCall)
 
         if isinstance(instrument, Option) or isinstance(instrument, Future):
@@ -340,7 +342,8 @@ class TestIBKRParsing(unittest.TestCase):
 
         if isinstance(instrument, Option):
             self.assertAlmostEqual(float(contract.strike),
-                                   float(position.contract.strike))
+                                   float(position.contract.strike),
+                                   places=1)
             self.assertEqual(contract.right, position.contract.right)
 
         if isinstance(instrument, Option) or isinstance(instrument, Future):
