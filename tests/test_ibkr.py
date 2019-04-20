@@ -1,7 +1,7 @@
 from datetime import date
 from decimal import Decimal
 from hypothesis import given
-from hypothesis.strategies import builds, from_type, one_of, text
+from hypothesis.strategies import builds, from_type, one_of, sampled_from, text
 from itertools import groupby
 from model import Cash, Currency, Stock, Bond, Option, OptionType, Forex, Future, FutureOption, Trade, TradeFlags
 from pathlib import Path
@@ -215,7 +215,12 @@ class TestIBKRFuzzParsing(unittest.TestCase):
     @given(
         builds(ibkr.IBTradeConfirm,
                currency=one_of(
-                   from_type(Currency).map(lambda c: c.name), text())))
+                   from_type(Currency).map(lambda c: c.name), text()),
+               assetCategory=one_of(
+                   sampled_from([
+                       'STK', 'BOND', 'OPT', 'FUT', 'CASH', 'FOP', 'IND',
+                       'CFD', 'FUND', 'CMDTY', 'IOPT'
+                   ]), text())))
     def test_parseTradeConfirm(self,
                                tradeConfirm: ibkr.IBTradeConfirm) -> None:
         try:
