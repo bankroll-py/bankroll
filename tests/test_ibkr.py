@@ -1,11 +1,15 @@
 from datetime import date
 from decimal import Decimal
+from hypothesis import given
+from hypothesis.strategies import from_type
 from itertools import groupby
 from model import Cash, Currency, Stock, Bond, Option, OptionType, Forex, Future, FutureOption, Trade, TradeFlags
 from pathlib import Path
 
 import helpers
+import ib_insync as IB
 import ibkr
+import logging
 import unittest
 
 
@@ -191,6 +195,28 @@ class TestIBKRTrades(unittest.TestCase):
             ts[0].price, Cash(currency=Currency.USD,
                               quantity=Decimal('0.0147')))
         self.assertEqual(ts[0].flags, TradeFlags.OPEN)
+
+
+class TestIBKRFuzzParsing(unittest.TestCase):
+    @given(from_type(ibkr.IBTradeConfirm))
+    def test_parseTradeConfirm(self,
+                               tradeConfirm: ibkr.IBTradeConfirm) -> None:
+        try:
+            trade = ibkr.parseTradeConfirm(tradeConfirm)
+        except ValueError as err:
+            logging.info(
+                'TradeConfirm {} failed to parse with error: {}'.format(
+                    tradeConfirm, err))
+            return
+
+        contract = ibkr.contract(trade.instrument)
+        self.assertEqual(contract.secType, tradeConfirm.assetCategory)
+        self.assertEqual(contract.strike, tradeConfirm.strike)
+        self.assertEqual(contract.multiplier, tradeConfirm.multiplier)
+        self.assertEqual(contract.currency, tradeConfirm.currency)
+        self.assertEqual(contract.right, tradeConfirm.putCall)
+        self.assertEqual(contract.lastTradeDateOrContractMonth,
+                         tradeConfirm.expiry)
 
 
 if __name__ == '__main__':
