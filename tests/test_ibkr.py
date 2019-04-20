@@ -3,7 +3,7 @@ from decimal import Decimal
 from hypothesis import given, reproduce_failure
 from hypothesis.strategies import builds, dates, decimals, from_regex, from_type, lists, one_of, sampled_from, text
 from itertools import groupby
-from model import Cash, Currency, Instrument, Stock, Bond, Option, OptionType, Forex, Future, FutureOption, Trade, TradeFlags
+from model import Cash, Currency, Position, Instrument, Stock, Bond, Option, OptionType, Forex, Future, FutureOption, Trade, TradeFlags
 from pathlib import Path
 
 import helpers
@@ -355,7 +355,8 @@ class TestIBKRParsing(unittest.TestCase):
         except ValueError:
             return
 
-        self.assertEqual(parsedPosition.quantity, Decimal(position.position))
+        self.assertEqual(parsedPosition.quantity,
+                         Position.quantizeQuantity(Decimal(position.position)))
         self.validatePositionContract(position, parsedPosition.instrument)
 
     @unittest.skip('Exists to validate test data only')
@@ -363,7 +364,8 @@ class TestIBKRParsing(unittest.TestCase):
     def test_parsedPositionConvertsToContract(self,
                                               position: IB.Position) -> None:
         parsedPosition = ibkr.extractPosition(position)
-        self.assertEqual(parsedPosition.quantity, Decimal(position.position))
+        self.assertEqual(parsedPosition.quantity,
+                         Position.quantizeQuantity(Decimal(position.position)))
         self.validatePositionContract(position, parsedPosition.instrument)
 
 
