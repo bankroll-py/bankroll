@@ -1,7 +1,7 @@
 from datetime import date
 from decimal import Decimal
 from hypothesis import given
-from hypothesis.strategies import builds, from_type, one_of, sampled_from, text
+from hypothesis.strategies import builds, dates, decimals, from_regex, from_type, lists, one_of, sampled_from, text
 from itertools import groupby
 from model import Cash, Currency, Stock, Bond, Option, OptionType, Forex, Future, FutureOption, Trade, TradeFlags
 from pathlib import Path
@@ -197,50 +197,101 @@ class TestIBKRTrades(unittest.TestCase):
         self.assertEqual(ts[0].flags, TradeFlags.OPEN)
 
 
-class TestIBKRFuzzParsing(unittest.TestCase):
-    def setUp(self) -> None:
-        self._tradeConfirmsAttempted = 0
-        self._tradeConfirmsParsed = 0
+class TestIBKRParsing(unittest.TestCase):
+    validSymbols = text(min_size=1)
+    validCurrencies = from_type(Currency).map(lambda c: c.name)
+    validAssetCategories = sampled_from(
+        ['STK', 'BOND', 'OPT', 'FUT', 'CASH', 'FOP'])
+    allAssetCategories = one_of(
+        validAssetCategories,
+        sampled_from(['IND', 'CFD', 'FUND', 'CMDTY', 'IOPT']))
+    validDates = dates().map(lambda d: d.strftime('%Y%m%d'))
+    validQuantities = helpers.positionQuantities().map(str)
+    validCodes = lists(sampled_from(['O', 'C', 'A', 'Ep', 'Ex', 'R', 'P',
+                                     'D']),
+                       max_size=3,
+                       unique=True).map(lambda l: ';'.join(l))
+    allCodes = one_of(validCodes,
+                      from_regex(r'([A-Z][A-Za-z]*(;[A-Z][A-Za-z]*)*)?'))
+    validMultipliers = helpers.multipliers().map(str)
+    validCashAmounts = helpers.cashAmounts().map(str)
+    validStrikes = helpers.strikes().map(str)
+    validPutCalls = sampled_from(['P', 'C'])
 
-        self.logger = logging.getLogger(self.id())
-        self.logger.setLevel(logging.WARNING)
+    validTradeConfirms = builds(ibkr.IBTradeConfirm,
+                                symbol=validSymbols,
+                                underlyingSymbol=validSymbols,
+                                currency=validCurrencies,
+                                commissionCurrency=validCurrencies,
+                                assetCategory=validAssetCategories,
+                                tradeDate=validDates,
+                                expiry=validDates,
+                                quantity=validQuantities,
+                                multiplier=validMultipliers,
+                                proceeds=validCashAmounts,
+                                tax=validCashAmounts,
+                                commission=validCashAmounts,
+                                strike=validStrikes,
+                                putCall=validPutCalls,
+                                code=validCodes)
 
-    def tearDown(self) -> None:
-        self.assertGreater(
-            self._tradeConfirmsParsed,
-            0,
-            msg='Expected at least one of {} attempted parses to succeed'.
-            format(self._tradeConfirmsAttempted))
+    allTradeConfirms = builds(ibkr.IBTradeConfirm,
+                              symbol=one_of(validSymbols, text()),
+                              underlyingSymbol=one_of(validSymbols, text()),
+                              currency=one_of(validCurrencies, text()),
+                              commissionCurrency=one_of(
+                                  validCurrencies, text()),
+                              assetCategory=one_of(allAssetCategories, text()),
+                              tradeDate=one_of(validDates, text()),
+                              expiry=one_of(validDates, text()),
+                              quantity=one_of(validQuantities,
+                                              decimals().map(str), text()),
+                              multiplier=one_of(validMultipliers,
+                                                decimals().map(str), text()),
+                              proceeds=one_of(validCashAmounts,
+                                              decimals().map(str), text()),
+                              tax=one_of(validCashAmounts,
+                                         decimals().map(str), text()),
+                              commission=one_of(validCashAmounts,
+                                                decimals().map(str), text()),
+                              strike=one_of(validStrikes,
+                                            decimals().map(str), text()),
+                              putCall=one_of(validPutCalls, text()),
+                              code=one_of(allCodes, text()))
 
-    @given(
-        builds(ibkr.IBTradeConfirm,
-               currency=one_of(
-                   from_type(Currency).map(lambda c: c.name), text()),
-               assetCategory=one_of(
-                   sampled_from([
-                       'STK', 'BOND', 'OPT', 'FUT', 'CASH', 'FOP', 'IND',
-                       'CFD', 'FUND', 'CMDTY', 'IOPT'
-                   ]), text())))
-    def test_parseTradeConfirm(self,
-                               tradeConfirm: ibkr.IBTradeConfirm) -> None:
-        try:
-            self._tradeConfirmsAttempted = self._tradeConfirmsAttempted + 1
-            trade = ibkr.parseTradeConfirm(tradeConfirm)
-            self._tradeConfirmsParsed = self._tradeConfirmsParsed + 1
-        except ValueError as err:
-            self.logger.warning('Failed to parse with error: {}'.format(err))
-            return
-
-        self.logger.info('Parsed trade: {}'.format(trade))
-
+    def validateContract(self, tradeConfirm: ibkr.IBTradeConfirm,
+                         trade: Trade) -> None:
         contract = ibkr.contract(trade.instrument)
         self.assertEqual(contract.secType, tradeConfirm.assetCategory)
-        self.assertEqual(contract.strike, tradeConfirm.strike)
-        self.assertEqual(contract.multiplier, tradeConfirm.multiplier)
         self.assertEqual(contract.currency, tradeConfirm.currency)
-        self.assertEqual(contract.right, tradeConfirm.putCall)
-        self.assertEqual(contract.lastTradeDateOrContractMonth,
-                         tradeConfirm.expiry)
+
+        if isinstance(trade.instrument, Option):
+            self.assertEqual(Decimal(contract.strike),
+                             Decimal(tradeConfirm.strike))
+            self.assertEqual(contract.right, tradeConfirm.putCall)
+            # TODO: This should be supported for Futures too
+            self.assertEqual(contract.lastTradeDateOrContractMonth,
+                             tradeConfirm.expiry)
+
+        if isinstance(trade.instrument, Option) or isinstance(
+                trade.instrument, Future):
+            self.assertEqual(contract.multiplier, tradeConfirm.multiplier)
+
+    @given(allTradeConfirms)
+    def test_fuzzTradeConfirm(self, tradeConfirm: ibkr.IBTradeConfirm) -> None:
+        try:
+            trade = ibkr.parseTradeConfirm(tradeConfirm)
+        except ValueError:
+            return
+
+        self.validateContract(tradeConfirm, trade)
+
+    @unittest.skip('Exists to validate test data only')
+    @given(validTradeConfirms)
+    def test_parsedTradeConfirmConvertsToContract(
+            self, tradeConfirm: ibkr.IBTradeConfirm) -> None:
+        trade = ibkr.parseTradeConfirm(tradeConfirm)
+        self.validateContract(tradeConfirm, trade)
 
 
 if __name__ == '__main__':
