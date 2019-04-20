@@ -99,9 +99,12 @@ dataProvider: Optional[LiveDataProvider] = None
 def printPositions(args: Namespace) -> None:
     values: Dict[Position, Cash] = {}
     if args.live_value:
-        assert dataProvider, 'Live data connection required to fetch market values'
-        values = analysis.liveValuesForPositions(positions,
-                                                 dataProvider=dataProvider)
+        if dataProvider:
+            values = analysis.liveValuesForPositions(positions,
+                                                     dataProvider=dataProvider)
+        else:
+            logging.error(
+                'Live data connection required to fetch market values')
 
     for p in sorted(positions, key=lambda p: p.instrument):
         print(p)
