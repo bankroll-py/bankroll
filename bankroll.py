@@ -4,6 +4,7 @@ from ib_insync import IB
 from itertools import groupby
 from model import Instrument, Stock, Position, Trade, Cash, LiveDataProvider
 from pathlib import Path
+from progress.bar import Bar
 from typing import Dict, Iterable, List, Optional
 
 import analysis
@@ -100,8 +101,10 @@ def printPositions(args: Namespace) -> None:
     values: Dict[Position, Cash] = {}
     if args.live_value:
         if dataProvider:
-            values = analysis.liveValuesForPositions(positions,
-                                                     dataProvider=dataProvider)
+            values = analysis.liveValuesForPositions(
+                positions,
+                dataProvider=dataProvider,
+                progressBar=Bar('Loading market data for positions'))
         else:
             logging.error(
                 'Live data connection required to fetch market values')
