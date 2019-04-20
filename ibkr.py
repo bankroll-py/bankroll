@@ -61,9 +61,9 @@ def parseForex(symbol: str, currency: Currency) -> Forex:
 
 def parseFutureOptionContract(contract: IB.Contract,
                               currency: Currency) -> Instrument:
-    if re.match(contract.right, 'C'):
+    if contract.right.startswith('C'):
         optionType = OptionType.CALL
-    elif re.match(contract.right, 'P'):
+    elif contract.right.startswith('P'):
         optionType = OptionType.PUT
     else:
         raise ValueError(
@@ -76,7 +76,7 @@ def parseFutureOptionContract(contract: IB.Contract,
                         expiration=datetime.strptime(
                             contract.lastTradeDateOrContractMonth,
                             '%Y%m%d').date(),
-                        strike=Decimal(contract.strike),
+                        strike=parseFiniteDecimal(contract.strike),
                         multiplier=parseFiniteDecimal(contract.multiplier))
 
 
@@ -129,7 +129,7 @@ def extractPosition(p: IB.Position) -> Position:
     except InvalidOperation:
         raise ValueError(
             'One of the numeric position or contract values is out of range: {}'
-            .format(position))
+            .format(p))
 
 
 def downloadPositions(ib: IB.IB, lenient: bool) -> List[Position]:
