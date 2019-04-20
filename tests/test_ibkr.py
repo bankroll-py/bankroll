@@ -1,6 +1,6 @@
 from datetime import date
 from decimal import Decimal
-from hypothesis import given
+from hypothesis import given, reproduce_failure
 from hypothesis.strategies import builds, dates, decimals, from_regex, from_type, lists, one_of, sampled_from, text
 from itertools import groupby
 from model import Cash, Currency, Stock, Bond, Option, OptionType, Forex, Future, FutureOption, Trade, TradeFlags

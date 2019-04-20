@@ -37,7 +37,12 @@ def parseOption(symbol: str,
     else:
         optionType = OptionType.CALL
 
-    return cls(underlying=match['underlying'].rstrip(),
+    underlying = match['underlying'].rstrip()
+    if not underlying:
+        raise ValueError(
+            'Could not find underlying in IB option symbol: {}'.format(symbol))
+
+    return cls(underlying=underlying,
                currency=currency,
                optionType=optionType,
                expiration=datetime.strptime(match['date'], '%y%m%d').date(),
@@ -177,6 +182,11 @@ def parseFutureOptionTrade(trade: IBTradeConfirm) -> Instrument:
     else:
         raise ValueError(
             'Unexpected value for putCall in IB trade: {}'.format(trade))
+
+    if not trade.underlyingSymbol:
+        raise ValueError(
+            'Trade is missing information about the underlying: {}'.format(
+                trade))
 
     return FutureOption(symbol=trade.symbol,
                         currency=Currency[trade.currency],
