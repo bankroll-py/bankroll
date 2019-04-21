@@ -161,7 +161,7 @@ def delta(val: pd.DataFrame, i: str, t: int) -> Decimal:
     before: Decimal = Decimal(val[i].loc["close"][t - 1])
     after: Decimal = Decimal(val[i].loc["close"][t])
     if (math.isnan(before) or math.isnan(after)):
-        return 0
+        return Decimal(0)
 
     return after - before
 
