@@ -144,7 +144,7 @@ def holdings(val: pd.DataFrame, hodls: np.ndarray, i: pd.DataFrame, t: int,
         # we may not know the closing price of a new contract at roll time.
         # If open prices are unavailable, then the last close price at t will work too.
         next_open = val[i].loc['close'][t]
-        if math.isnan(next_open):
+        if not next_open.is_finite():
             last_close_price: Decimal = hodls[t - 1][val.columns.get_loc(i)]
             return last_close_price
 
