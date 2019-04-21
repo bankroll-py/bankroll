@@ -12,12 +12,12 @@ def etf(portfolio: pd.DataFrame) -> pd.Series:
     @param val: A DataFrame of instruments containing Open, Close, and Weight data indexed by Date.
     """
     # Initialize a zero'd out T-sized array where T is the length of the date range.
-    etf = np.zeros(portfolio.loc['Open'].shape[0])
+    etf = np.zeros(portfolio.loc['open'].shape[0])
     etf[0] = 1  # Initial AUM for this instrument is $1.
 
     # Initialize an I x T array of holdings over time so we can keep track of how we've divided our AUM
     # across the given instruments over time.
-    hodls = np.zeros(portfolio.loc['Open'].shape)
+    hodls = np.zeros(portfolio.loc['open'].shape)
 
     for t in range(1, etf.shape[0]):
         portfolio_sum: float = 0
@@ -108,7 +108,7 @@ def tear_sheet_from_returns(returns: pd.Series,
 
 def holdings(val: pd.DataFrame, hodls: np.ndarray, i: pd.DataFrame, t: int,
              aum_t: int) -> float:
-    open_price = val[i].loc['Open'][t]
+    open_price = val[i].loc['open'][t]
 
     # If the open price is NaN, this instrument's open wasn't recorded at time t.
     # So let's use the previous day's calculation.
@@ -138,8 +138,8 @@ def delta(val: pd.DataFrame, i: str, t: int) -> float:
     """
     This function measures the change in market value from t - 1 to t.
     """
-    before: float = val[i].loc["Close"][t - 1]
-    after: float = val[i].loc["Close"][t]
+    before: float = val[i].loc["close"][t - 1]
+    after: float = val[i].loc["close"][t]
     if (math.isnan(before) or math.isnan(after)):
         return 0
 
