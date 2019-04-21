@@ -22,7 +22,7 @@ def etf(portfolio: pd.DataFrame) -> pd.Series:
 
     # Initialize an I x T array of holdings over time so we can keep track of how we've divided our AUM
     # across the given instruments over time.
-    hodls = np.zeros(portfolio.loc['open'].shape)
+    holds = np.zeros(portfolio.loc['open'].shape)
 
     for t in range(1, etf.shape[0]):
         portfolio_sum: Decimal = Decimal(0)
