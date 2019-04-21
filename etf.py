@@ -131,7 +131,7 @@ def holdings(val: pd.DataFrame, hodls: np.ndarray, i: pd.DataFrame, t: int,
 
     # If the open price is NaN, this instrument's open wasn't recorded at time t.
     # So let's use the previous day's calculation.
-    if math.isnan(open_price):
+    if not open_price.is_finite():
         prev_day: Decimal = hodls[t - 1][val.columns.get_loc(i)]
         return prev_day
     else:
