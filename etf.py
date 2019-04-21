@@ -2,7 +2,7 @@ import math
 import pandas as pd
 import numpy as np
 import pyfolio as pf
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Iterable
 from decimal import Decimal
 import model
 from dataclasses import asdict
@@ -35,10 +35,10 @@ def etf(portfolio: pd.DataFrame) -> pd.Series:
             dividend = Decimal(0)
             exchange_rate = Decimal(1)
 
-            # Calculate the holdings of instrument i at t - 1 and store it in our hodls matrix.
-            holdings_t_minus_1 = holdings(portfolio, hodls, i, t - 1,
+            # Calculate the holdings of instrument i at t - 1 and store it in our holds matrix.
+            holdings_t_minus_1 = holdings(portfolio, holds, i, t - 1,
                                           etf[t - 1])
-            hodls[t - 1][portfolio.columns.get_loc(i)] = holdings_t_minus_1
+            holds[t - 1][portfolio.columns.get_loc(i)] = holdings_t_minus_1
 
             portfolio_sum += holdings_t_minus_1 * exchange_rate * (change +
                                                                    dividend)
@@ -125,14 +125,14 @@ def position_dataframe_to_history(ib: ibapi.IB,
     return list(map(util.df, bars))
 
 
-def holdings(val: pd.DataFrame, hodls: np.ndarray, i: pd.DataFrame, t: int,
+def holdings(val: pd.DataFrame, holds: np.ndarray, i: pd.DataFrame, t: int,
              aum_t: int) -> Decimal:
     open_price = val[i].loc['open'][t]
 
     # If the open price is NaN, this instrument's open wasn't recorded at time t.
     # So let's use the previous day's calculation.
     if not open_price.is_finite():
-        prev_day: Decimal = hodls[t - 1][val.columns.get_loc(i)]
+        prev_day: Decimal = holds[t - 1][val.columns.get_loc(i)]
         return prev_day
     else:
         # TODO: make the exchange rate flexible. This should generally be the dollar value of 1 point of instrument i.
@@ -145,7 +145,7 @@ def holdings(val: pd.DataFrame, hodls: np.ndarray, i: pd.DataFrame, t: int,
         # If open prices are unavailable, then the last close price at t will work too.
         next_open = val[i].loc['close'][t]
         if not next_open.is_finite():
-            last_close_price: Decimal = hodls[t - 1][val.columns.get_loc(i)]
+            last_close_price: Decimal = holds[t - 1][val.columns.get_loc(i)]
             return last_close_price
 
         weighted_holding: Decimal = Decimal(
