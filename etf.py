@@ -70,11 +70,13 @@ def positions_to_dataframe(positions: List[model.Position]) -> pd.DataFrame:
     calculated from the averagePrice and quantity.
     """
     is_stock = lambda position: type(position.instrument) == model.Stock
-    stocks = list(map(lambda p: asdict(p), filter(is_stock, positions)))
-    for i, stock in enumerate(stocks):
-        cash = stock['averagePrice']
-        stock['averagePrice'] = cash.quantity
-        stock['currency'] = cash.currency.value
+    stocks = []
+    for p in filter(is_stock, positions):
+        stock = asdict(p)
+        avgPrice = p.averagePrice
+        stock['averagePrice'] = avgPrice.quantity
+        stock['currency'] = avgPrice.currency.value
+        stocks.append(stock)
 
     frame = pd.DataFrame.from_dict(stocks)
     frame["value"] = frame["averagePrice"] * frame["quantity"]
