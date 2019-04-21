@@ -459,20 +459,19 @@ class Position:
     instrument: Instrument
     quantity: Decimal
     costBasis: Cash
-    averagePrice: Cash
 
     @classmethod
     def quantizeQuantity(cls, quantity: Decimal) -> Decimal:
         return quantity.quantize(cls.quantityQuantization,
                                  rounding=ROUND_HALF_EVEN)
 
-    @classmethod
-    def averagePrice(cls, instrument, quantity, costBasis) -> Cash:
-        if quantity == 0:
-            assert costBasis == 0
-            return costBasis
+    @property
+    def averagePrice(self) -> Cash:
+        if self.quantity == 0:
+            assert self.costBasis == 0
+            return self.costBasis
 
-        return costBasis / quantity / instrument.multiplier
+        return self.costBasis / self.quantity / self.instrument.multiplier
 
     def __post_init__(self):
         if self.instrument.currency != self.costBasis.currency:
@@ -485,14 +484,12 @@ class Position:
                 'Position quantity {} is not a finite number'.format(
                     self.quantity))
 
-        quantity = self.quantizeQuantity(self.quantity)
+        self.quantity = self.quantizeQuantity(self.quantity)
 
         if self.quantity == 0 and self.costBasis != 0:
             raise ValueError(
                 'Cost basis {} should be zero if quantity is zero'.format(
                     repr(self.costBasis)))
-
-        self.quantity = quantity
 
     def combine(self, other: 'Position') -> 'Position':
         if self.instrument != other.instrument:
@@ -503,10 +500,6 @@ class Position:
         return Position(instrument=self.instrument,
                         quantity=self.quantity + other.quantity,
                         costBasis=self.costBasis + other.costBasis)
-
-    def __repr__(self) -> str:
-        return 'Position(instrument={}, quantity={}, costBasis={})'.format(
-            repr(self.instrument), repr(self.quantity), repr(self.costBasis))
 
     def __str__(self) -> str:
         return '{:21} {:>14,f} @ {}'.format(self.instrument,
