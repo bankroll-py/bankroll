@@ -100,7 +100,7 @@ class TestVanguardTransactions(unittest.TestCase):
     def setUp(self) -> None:
         self.trades = vanguard.parsePositionsAndTrades(
             Path('tests/vanguard_positions_and_transactions.csv'),
-            Path('tests/sensitive/vanguard_activity_exported.csv')).trades
+            Path('tests/vanguard_activity_converted.csv')).trades
         self.trades.sort(key=lambda t: (t.date, t.instrument.symbol))
 
         self.tradesByDate = {
