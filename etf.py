@@ -22,7 +22,7 @@ def etf(portfolio: pd.DataFrame) -> pd.Series:
 
     # Initialize an I x T array of holdings over time so we can keep track of how we've divided our AUM
     # across the given instruments over time.
-    hodls = np.zeros(portfolio.loc['open'].shape)
+    holds = np.zeros(portfolio.loc['open'].shape)
 
     for t in range(1, etf.shape[0]):
         portfolio_sum: Decimal = Decimal(0)
@@ -64,7 +64,7 @@ def prices_to_daily_returns(prices: pd.Series) -> pd.Series:
     return (prices / prices.shift(1) - 1)[1:]
 
 
-def positions_to_dataframe(positions: List[model.Position]) -> pd.DataFrame:
+def positions_to_dataframe(positions: Iterable[model.Position]) -> pd.DataFrame:
     """
     Returns a dataframe of positions with an additional `value` and `allocation` columns
     calculated from the averagePrice and quantity.
@@ -131,7 +131,7 @@ def holdings(val: pd.DataFrame, hodls: np.ndarray, i: pd.DataFrame, t: int,
 
     # If the open price is NaN, this instrument's open wasn't recorded at time t.
     # So let's use the previous day's calculation.
-    if math.isnan(open_price):
+    if not open_price.is_finite():
         prev_day: Decimal = hodls[t - 1][val.columns.get_loc(i)]
         return prev_day
     else:
@@ -144,7 +144,7 @@ def holdings(val: pd.DataFrame, hodls: np.ndarray, i: pd.DataFrame, t: int,
         # we may not know the closing price of a new contract at roll time.
         # If open prices are unavailable, then the last close price at t will work too.
         next_open = val[i].loc['close'][t]
-        if math.isnan(next_open):
+        if not next_open.is_finite():
             last_close_price: Decimal = hodls[t - 1][val.columns.get_loc(i)]
             return last_close_price
 
