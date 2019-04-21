@@ -453,7 +453,7 @@ class LiveDataProvider(ABC):
         pass
 
 
-@dataclass
+@dataclass(unsafe_hash=True)
 class Position:
     quantityQuantization = Decimal('0.0001')
     instrument: Instrument
@@ -473,7 +473,7 @@ class Position:
 
         return self.costBasis / self.quantity / self.instrument.multiplier
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.instrument.currency != self.costBasis.currency:
             raise ValueError(
                 'Cost basis {} should be in same currency as instrument {}'.
@@ -484,7 +484,7 @@ class Position:
                 'Position quantity {} is not a finite number'.format(
                     self.quantity))
 
-        self.quantity = self.quantizeQuantity(self.quantity)
+        self._quantity = self.quantizeQuantity(self.quantity)
 
         if self.quantity == 0 and self.costBasis != 0:
             raise ValueError(
