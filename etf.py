@@ -64,7 +64,7 @@ def prices_to_daily_returns(prices: pd.Series) -> pd.Series:
     return (prices / prices.shift(1) - 1)[1:]
 
 
-def positions_to_dataframe(positions: List[model.Position]) -> pd.DataFrame:
+def positions_to_dataframe(positions: Iterable[model.Position]) -> pd.DataFrame:
     """
     Returns a dataframe of positions with an additional `value` and `allocation` columns
     calculated from the averagePrice and quantity.
