@@ -4,6 +4,7 @@ from decimal import Decimal, ROUND_HALF_EVEN
 from enum import Enum, Flag, auto, unique
 from itertools import permutations
 from typing import Any, Dict, Iterable, NamedTuple, Optional, TypeVar, Union
+from dataclasses import dataclass
 
 import re
 
@@ -452,36 +453,46 @@ class LiveDataProvider(ABC):
         pass
 
 
+@dataclass
 class Position:
     quantityQuantization = Decimal('0.0001')
+    instrument: Instrument
+    quantity: Decimal
+    costBasis: Cash
+    averagePrice: Cash
 
     @classmethod
     def quantizeQuantity(cls, quantity: Decimal) -> Decimal:
         return quantity.quantize(cls.quantityQuantization,
                                  rounding=ROUND_HALF_EVEN)
 
-    def __init__(self, instrument: Instrument, quantity: Decimal,
-                 costBasis: Cash):
-        if instrument.currency != costBasis.currency:
+    @classmethod
+    def averagePrice(cls, instrument, quantity, costBasis) -> Cash:
+        if quantity == 0:
+            assert costBasis == 0
+            return costBasis
+
+        return costBasis / quantity / instrument.multiplier
+
+
+    def __post_init__(self):
+        if self.instrument.currency != self.costBasis.currency:
             raise ValueError(
                 'Cost basis {} should be in same currency as instrument {}'.
-                format(costBasis, instrument))
+                format(self.costBasis, self.instrument))
 
-        if not quantity.is_finite():
+        if not self.quantity.is_finite():
             raise ValueError(
-                'Position quantity {} is not a finite number'.format(quantity))
+                'Position quantity {} is not a finite number'.format(self.quantity))
 
-        quantity = self.quantizeQuantity(quantity)
+        quantity = self.quantizeQuantity(self.quantity)
 
-        if quantity == 0 and costBasis != 0:
+        if self.quantity == 0 and self.costBasis != 0:
             raise ValueError(
                 'Cost basis {} should be zero if quantity is zero'.format(
-                    repr(costBasis)))
+                    repr(self.costBasis)))
 
-        self._instrument = instrument
-        self._quantity = quantity
-        self._costBasis = costBasis
-        super().__init__()
+        self.quantity = quantity
 
     def combine(self, other: 'Position') -> 'Position':
         if self.instrument != other.instrument:
@@ -492,35 +503,6 @@ class Position:
         return Position(instrument=self.instrument,
                         quantity=self.quantity + other.quantity,
                         costBasis=self.costBasis + other.costBasis)
-
-    def __eq__(self, other: Any) -> bool:
-        if not isinstance(other, Position):
-            return False
-
-        return self.instrument == other.instrument and self.quantity == other.quantity and self.averagePrice == other.averagePrice
-
-    def __hash__(self) -> int:
-        return hash((self.instrument, self.quantity, self.averagePrice))
-
-    @property
-    def instrument(self) -> Instrument:
-        return self._instrument
-
-    @property
-    def quantity(self) -> Decimal:
-        return self._quantity
-
-    @property
-    def averagePrice(self) -> Cash:
-        if self.quantity == 0:
-            assert self.costBasis == 0
-            return self.costBasis
-
-        return self.costBasis / self.quantity / self.instrument.multiplier
-
-    @property
-    def costBasis(self) -> Cash:
-        return self._costBasis
 
     def __repr__(self) -> str:
         return 'Position(instrument={}, quantity={}, costBasis={})'.format(
