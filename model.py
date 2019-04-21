@@ -474,7 +474,6 @@ class Position:
 
         return costBasis / quantity / instrument.multiplier
 
-
     def __post_init__(self):
         if self.instrument.currency != self.costBasis.currency:
             raise ValueError(
@@ -483,7 +482,8 @@ class Position:
 
         if not self.quantity.is_finite():
             raise ValueError(
-                'Position quantity {} is not a finite number'.format(self.quantity))
+                'Position quantity {} is not a finite number'.format(
+                    self.quantity))
 
         quantity = self.quantizeQuantity(self.quantity)
 

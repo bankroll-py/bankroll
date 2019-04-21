@@ -55,12 +55,14 @@ def portfolio_to_returns(portfolio: pd.DataFrame, timezone: str) -> pd.Series:
     prices = pd.Series(etf(portfolio), index=index)
     return prices_to_daily_returns(prices)
 
+
 def prices_to_daily_returns(prices: pd.Series) -> pd.Series:
     """
     Calculates daily returns for a Series of prices.
     Note: drops the first value of the given Series.
     """
     return (prices / prices.shift(1) - 1)[1:]
+
 
 def positions_to_dataframe(positions: List[model.Position]) -> pd.DataFrame:
     """
@@ -79,7 +81,10 @@ def positions_to_dataframe(positions: List[model.Position]) -> pd.DataFrame:
     frame["allocation"] = frame["value"] / frame["value"].sum()
     return frame
 
-def positions_and_history_to_returns(frame: pd.DataFrame, historical_data: pd.DataFrame, timezone: str) -> pd.Series:
+
+def positions_and_history_to_returns(frame: pd.DataFrame,
+                                     historical_data: pd.DataFrame,
+                                     timezone: str) -> pd.Series:
     """
     Returns a Series of returns calculated by allocating $1 to the given historical data assets by the allocations specified in a positions frame.
     The timezones of the returns series are localized to the given timezone.
@@ -94,7 +99,9 @@ def positions_and_history_to_returns(frame: pd.DataFrame, historical_data: pd.Da
 
     return portfolio_to_returns(portfolio, timezone)
 
-def position_dataframe_to_history(ib: ibapi.IB, frame: pd.DataFrame) -> List[pd.DataFrame]:
+
+def position_dataframe_to_history(ib: ibapi.IB,
+                                  frame: pd.DataFrame) -> List[pd.DataFrame]:
     """
     Returns 1 year of daily historical data for a dataframe of positions.
     """
@@ -102,16 +109,17 @@ def position_dataframe_to_history(ib: ibapi.IB, frame: pd.DataFrame) -> List[pd.
     for i, row in frame.iterrows():
         stock = ibapi.Stock(row['instrument'], 'SMART', row['currency'])
         contracts = ib.reqContractDetails(stock)
-        ib.qualifyContracts(stock) # Fill in the stock struct with contract details from IB.
+        ib.qualifyContracts(
+            stock)  # Fill in the stock struct with contract details from IB.
 
-        bars.append(ib.reqHistoricalData(
-            stock,
-            endDateTime='',
-            durationStr='1 Y',
-            barSizeSetting='1 day',
-            whatToShow='TRADES',
-            useRTH=True,
-            formatDate=1))
+        bars.append(
+            ib.reqHistoricalData(stock,
+                                 endDateTime='',
+                                 durationStr='1 Y',
+                                 barSizeSetting='1 day',
+                                 whatToShow='TRADES',
+                                 useRTH=True,
+                                 formatDate=1))
     return list(map(util.df, bars))
 
 
@@ -128,7 +136,7 @@ def holdings(val: pd.DataFrame, hodls: np.ndarray, i: pd.DataFrame, t: int,
         # TODO: make the exchange rate flexible. This should generally be the dollar value of 1 point of instrument i.
         exchange_rate = Decimal(1)
         # The purpose of the (weights_i_t * sum_of_weights ^ -1) in the holdings calculation is to de-lever the allocations.
-        sum_of_weights : Decimal = val.loc['weight'].iloc[t].abs().sum()
+        sum_of_weights: Decimal = val.loc['weight'].iloc[t].abs().sum()
 
         # If today was t + 1, one way to calculate today's holdings would be by using the opening price, since for a future
         # we may not know the closing price of a new contract at roll time.
@@ -138,8 +146,9 @@ def holdings(val: pd.DataFrame, hodls: np.ndarray, i: pd.DataFrame, t: int,
             last_close_price: Decimal = hodls[t - 1][val.columns.get_loc(i)]
             return last_close_price
 
-        weighted_holding: Decimal = Decimal(val[i].loc['weight'][
-            t]) * Decimal(aum_t) / Decimal(next_open) * exchange_rate * Decimal(sum_of_weights)
+        weighted_holding: Decimal = Decimal(
+            val[i].loc['weight'][t]) * Decimal(aum_t) / Decimal(
+                next_open) * exchange_rate * Decimal(sum_of_weights)
         return weighted_holding
 
 
@@ -154,23 +163,27 @@ def delta(val: pd.DataFrame, i: str, t: int) -> Decimal:
 
     return after - before
 
-def stocks_to_portfolio(components: Dict[str, pd.DataFrame], weights: Dict[str, float]) -> pd.DataFrame:
+
+def stocks_to_portfolio(components: Dict[str, pd.DataFrame],
+                        weights: Dict[str, float]) -> pd.DataFrame:
     instruments = []
     for key, val in components.items():
         arrays = [[
-            'date', 'open', 'high', 'low', 'close', 'volume', 'barCount', 'average'
+            'date', 'open', 'high', 'low', 'close', 'volume', 'barCount',
+            'average'
         ],
-                pd.DatetimeIndex(val['date'])]
+                  pd.DatetimeIndex(val['date'])]
         index = pd.MultiIndex.from_product(arrays, names=['field', 'date'])
         df = pd.DataFrame(val.unstack().values, index=index)
         df.columns = [key]
         arrays = [[
-            'date', 'open', 'high', 'low', 'close', 'volume', 'barCount', 'average', 'weight'
+            'date', 'open', 'high', 'low', 'close', 'volume', 'barCount',
+            'average', 'weight'
         ],
-                pd.DatetimeIndex(val['date'])]
+                  pd.DatetimeIndex(val['date'])]
         df = df.reindex(
             pd.MultiIndex.from_product(arrays, names=['field', 'date']))
         df[key].loc['weight'] = np.repeat(weights[key],
-                                        df[key].loc['weight'].index.shape[0])
+                                          df[key].loc['weight'].index.shape[0])
         instruments.append(df)
     return pd.concat(instruments, join='inner', sort=False, axis=1)

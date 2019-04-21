@@ -123,12 +123,13 @@ def extractPosition(p: IB.Position) -> Position:
         qty = parseFiniteDecimal(p.position)
         costBasis = parseFiniteDecimal(p.avgCost) * qty
         basis = Cash(currency=Currency[p.contract.currency],
-                                       quantity=costBasis)
+                     quantity=costBasis)
 
         return Position(instrument=instrument,
                         quantity=qty,
                         costBasis=basis,
-                        averagePrice=Position.averagePrice(instrument, qty, basis))
+                        averagePrice=Position.averagePrice(
+                            instrument, qty, basis))
     except InvalidOperation:
         raise ValueError(
             'One of the numeric position or contract values is out of range: {}'
