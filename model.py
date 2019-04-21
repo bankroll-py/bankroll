@@ -484,7 +484,7 @@ class Position:
                 'Position quantity {} is not a finite number'.format(
                     self.quantity))
 
-        self._quantity = self.quantizeQuantity(self.quantity)
+        self.quantity = self.quantizeQuantity(self.quantity)
 
         if self.quantity == 0 and self.costBasis != 0:
             raise ValueError(
