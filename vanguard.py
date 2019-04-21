@@ -160,7 +160,7 @@ def parseActivityPDFRows(path: Path) -> List[List[str]]:
         df = df.replace({'- ': '-'}, regex=True)
 
         for index, row in df.iterrows():
-            allRows.append(row)
+            allRows.append(row.tolist())
 
     return allRows
 
