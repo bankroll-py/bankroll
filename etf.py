@@ -109,11 +109,10 @@ def position_dataframe_to_history(ib: ibapi.IB,
     Returns 1 year of daily historical data for a dataframe of positions.
     """
     bars = []
-    for i, row in frame.iterrows():
+    for _, row in frame.iterrows():
         stock = ibapi.Stock(row['instrument'], 'SMART', row['currency'])
-        contracts = ib.reqContractDetails(stock)
-        ib.qualifyContracts(
-            stock)  # Fill in the stock struct with contract details from IB.
+        # Fill in the stock struct with contract details from IB.
+        ib.qualifyContracts(stock)
 
         bars.append(
             ib.reqHistoricalData(stock,
