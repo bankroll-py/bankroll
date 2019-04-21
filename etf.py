@@ -14,7 +14,7 @@ def etf(portfolio: pd.DataFrame) -> pd.Series:
     """
     Returns a time series representing the investment of $1 in a basket of instruments weighted proportionally by the given weights.
 
-    @param val: A DataFrame of instruments containing Open, Close, and Weight data indexed by Date.
+    @param portfolio: A DataFrame of instruments containing Open, Close, and Weight data indexed by Date.
     """
     # Initialize a zero'd out T-sized array where T is the length of the date range.
     etf = np.zeros(portfolio.loc['open'].shape[0])
