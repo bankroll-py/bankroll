@@ -48,7 +48,7 @@ class TestCash(unittest.TestCase):
         cashA = Cash(currency=curs[0], quantity=a)
         cashB = Cash(currency=curs[1], quantity=b)
 
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             cashA + cashB
 
     @given(
@@ -61,7 +61,7 @@ class TestCash(unittest.TestCase):
         cashA = Cash(currency=curs[0], quantity=a)
         cashB = Cash(currency=curs[1], quantity=b)
 
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             cashA - cashB
 
     @given(
@@ -155,7 +155,7 @@ class TestPosition(unittest.TestCase):
     def test_combineError(self, a: Position, b: Position) -> None:
         assume(a.instrument != b.instrument)
 
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             a.combine(b)
 
     @given(from_type(Instrument))
