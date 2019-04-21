@@ -67,11 +67,33 @@ class TestVanguardParseActivityPDFRows(unittest.TestCase):
         self.rows = vanguard.parseActivityPDFRows(
             Path('tests/vanguard_activity.pdf'))
 
-        # vanguard.exportActivityCSV(Path('tests/vanguard_activity.pdf'),
-        #                            Path('tests/vanguard_output.csv'))
-
-    def test_tradeValidity(self) -> None:
+    def test_totalRows(self) -> None:
         self.assertEqual(len(self.rows), 20)
+
+    def test_rowValues(self) -> None:
+        self.assertEqual(
+            self.rows[0],
+            helpers.splitAndStripCSVString(
+                "01/04/2015,01/04/2015,VMMXX,Prime Money Mkt Fund,Buy,,1000.0000,1.00,Free,-1000.00"
+            ))
+
+        self.assertEqual(
+            self.rows[10],
+            helpers.splitAndStripCSVString(
+                "11/12/2015,11/12/2015,BND,VANGUARD TOTAL BOND MARKET ETF,Capital gain (LT),Cash,—,—,—,0.45"
+            ))
+
+        self.assertEqual(
+            self.rows[11],
+            helpers.splitAndStripCSVString(
+                "01/01/2018,01/01/2018,—,FROM: HSBC NORTH AMERICA HOLDINGS INC,Funds Received,Cash,—,—,—,2000.00"
+            ))
+
+        self.assertEqual(
+            self.rows[19],
+            helpers.splitAndStripCSVString(
+                "12/31/2018,12/31/2018,—,U S TREASURY BILL CPN 0.00000 % MTD 2018-06-30 DTD 2018-12-31,Corp Action (Redemption),Cash,10000.0000,—,—,9987.65"
+            ))
 
 
 class TestVanguardTransactions(unittest.TestCase):
@@ -120,6 +142,7 @@ class TestVanguardTransactions(unittest.TestCase):
             ts[0].instrument,
             Bond(
                 'U S TREASURY BILL CPN 0.00000 % MTD 2018-06-30 DTD 2018-12-31',
+                Currency.USD,
                 validateSymbol=False))
         self.assertEqual(ts[0].quantity, Decimal('10000'))
         self.assertEqual(
@@ -152,7 +175,10 @@ class TestVanguardTransactions(unittest.TestCase):
         ts = self.tradesByDate[date(2018, 10, 29)]
         self.assertEqual(len(ts), 1)
 
-        self.assertEqual(ts[0].instrument, Stock('TLT'))
+        self.assertEqual(ts[0].instrument, Stock(
+            'TLT',
+            Currency.USD,
+        ))
         self.assertEqual(ts[0].quantity, Decimal('-9'))
         self.assertEqual(
             ts[0].amount,
