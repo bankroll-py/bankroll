@@ -7,4 +7,4 @@ set -o pipefail
 . venv/bin/activate
 
 mypy --strict --ignore-missing-imports -- *.py
-python -m unittest discover -s tests -v
+python -W ignore:ResourceWarning -m unittest discover -s tests -v
