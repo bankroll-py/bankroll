@@ -85,7 +85,10 @@ def positions_to_dataframe(positions: Iterable[model.Position]
     frame["allocation"] = frame["value"] / frame["value"].sum()
     return frame
 
-def positions_to_returns(provider: model.LiveDataProvider, positions: Iterable[model.Position], timezone: str) -> pd.Series:
+
+def positions_to_returns(provider: model.LiveDataProvider,
+                         positions: Iterable[model.Position],
+                         timezone: str) -> pd.Series:
     frame = positions_to_dataframe(positions)
     history = positions_to_history(provider, positions)
     return positions_and_history_to_returns(frame, history, timezone)
@@ -100,6 +103,7 @@ def positions_and_history_to_returns(frame: pd.DataFrame,
     """
     portfolio = positions_to_portfolio(frame, historical_data, timezone)
     return portfolio_to_returns(portfolio, timezone)
+
 
 def positions_to_portfolio(frame: pd.DataFrame,
                            historical_data: List[pd.DataFrame],
@@ -117,7 +121,8 @@ def positions_to_portfolio(frame: pd.DataFrame,
 
 
 def positions_to_history(provider: model.LiveDataProvider,
-                         positions: Iterable[model.Position]) -> List[pd.DataFrame]:
+                         positions: Iterable[model.Position]
+                         ) -> List[pd.DataFrame]:
     """
     Returns 1 year of daily historical data for a dataframe of positions.
     """
@@ -191,4 +196,5 @@ def stocks_to_portfolio(components: Dict[str, pd.DataFrame],
         df[key].loc['weight'] = np.repeat(weights[key],
                                           df[key].loc['weight'].index.shape[0])
         instruments.append(df)
-    return pd.concat(instruments, join='inner', sort=False, axis=1).sort_index()
+    return pd.concat(instruments, join='inner', sort=False,
+                     axis=1).sort_index()
