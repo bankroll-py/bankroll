@@ -6,6 +6,7 @@ from itertools import permutations
 from typing import Any, Dict, Iterable, NamedTuple, Optional, TypeVar, Union
 from dataclasses import dataclass
 
+import pandas as pd
 import re
 
 
@@ -452,7 +453,7 @@ class LiveDataProvider(ABC):
     def fetchQuote(self, instrument: Instrument) -> Quote:
         pass
 
-    def fetchHistoricalData(self, instrument: Instrument) -> Portfolio:
+    def fetchHistoricalData(self, instrument: Instrument) -> pd.DataFrame:
         pass
 
 
