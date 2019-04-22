@@ -113,20 +113,19 @@ def printPositions(args: Namespace) -> None:
         print(p)
 
         if p in values:
-            print('\tMarket value: {}'.format(values[p]))
+            print(f'\tMarket value: {values[p]}')
         elif args.live_value:
-            logging.warning('Could not fetch market value for {}'.format(
-                p.instrument))
+            logging.warning(f'Could not fetch market value for {p.instrument}')
 
         if not isinstance(p.instrument, Stock):
             continue
 
-        print('\tCost basis: {}'.format(p.costBasis))
+        print(f'\tCost basis: {p.costBasis}')
 
         if args.realized_basis:
             realizedBasis = analysis.realizedBasisForSymbol(
                 p.instrument.symbol, trades=trades)
-            print('\tRealized basis: {}'.format(realizedBasis))
+            print(f'\tRealized basis: {realizedBasis}')
 
 
 def printTrades(args: Namespace) -> None:

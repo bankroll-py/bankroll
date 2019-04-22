@@ -128,22 +128,17 @@ class TestCash(unittest.TestCase):
         cashB = Cash(currency=cur, quantity=a + b)
         self.assertLessEqual(cashA,
                              cashB,
-                             msg='{} not less than itself plus {}: {}'.format(
-                                 a, b, a + b))
+                             msg=f'{a} not less than itself plus {b}: {a + b}')
         self.assertGreaterEqual(
-            cashB,
-            cashA,
-            msg='{} plus {} not greater than itself: {}'.format(a, b, a + b))
+            cashB, cashA, msg=f'{a} plus {b} not greater than itself: {a + b}')
 
         cashB = Cash(currency=cur, quantity=a - b)
-        self.assertLessEqual(cashB,
-                             cashA,
-                             msg='{} minus {} not less than itself: {}'.format(
-                                 a, b, a - b))
+        self.assertLessEqual(
+            cashB, cashA, msg=f'{a} minus {b} not less than itself: {a - b}')
         self.assertGreaterEqual(
             cashA,
             cashB,
-            msg='{} not greater than itself minus {}: {}'.format(a, b, a - b))
+            msg=f'{a} not greater than itself minus {b}: {a - b}')
 
 
 class TestPosition(unittest.TestCase):
