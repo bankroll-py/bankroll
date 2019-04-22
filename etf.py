@@ -97,7 +97,7 @@ def positions_and_history_to_returns(frame: pd.DataFrame,
     return portfolio_to_returns(portfolio, timezone)
 
 def positions_to_portfolio(frame: pd.DataFrame,
-                           historical_data: pd.DataFrame,
+                           historical_data: Iterable[pd.DataFrame],
                            timezone: str) -> pd.DataFrame:
     """
     Returns a DataFrame of position histories with weights and allocation columns.
