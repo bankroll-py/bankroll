@@ -116,14 +116,14 @@ def positions_to_portfolio(frame: pd.DataFrame,
 
 
 def positions_to_history(provider: model.LiveDataProvider,
-                                  frame: pd.DataFrame) -> Iterable[pd.DataFrame]:
+                         positions: Iterable[model.Position]) -> Iterable[pd.DataFrame]:
     """
     Returns 1 year of daily historical data for a dataframe of positions.
     """
+    is_stock = lambda position: type(position.instrument) == model.Stock
     bars = []
-    for i, row in frame.iterrows():
-        stock = Stock(row['instrument'], row['currency'])
-        bars.append(provider.fetchHistoricalData(stock))
+    for position in filter(is_stock, positions):
+        bars.append(provider.fetchHistoricalData(position.instrument))
     return list(map(util.df, bars))
 
 
