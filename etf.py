@@ -92,7 +92,7 @@ def positions_to_returns(provider: model.LiveDataProvider, positions: Iterable[m
 
 
 def positions_and_history_to_returns(frame: pd.DataFrame,
-                                     historical_data: Iterable[pd.DataFrame],
+                                     historical_data: List[pd.DataFrame],
                                      timezone: str) -> pd.Series:
     """
     Returns a Series of returns calculated by allocating $1 to the given historical data assets by the allocations specified in a positions frame.
@@ -102,7 +102,7 @@ def positions_and_history_to_returns(frame: pd.DataFrame,
     return portfolio_to_returns(portfolio, timezone)
 
 def positions_to_portfolio(frame: pd.DataFrame,
-                           historical_data: Iterable[pd.DataFrame],
+                           historical_data: List[pd.DataFrame],
                            timezone: str) -> pd.DataFrame:
     """
     Returns a DataFrame of position histories with weights and allocation columns.
@@ -117,7 +117,7 @@ def positions_to_portfolio(frame: pd.DataFrame,
 
 
 def positions_to_history(provider: model.LiveDataProvider,
-                         positions: Iterable[model.Position]) -> Iterable[pd.DataFrame]:
+                         positions: Iterable[model.Position]) -> List[pd.DataFrame]:
     """
     Returns 1 year of daily historical data for a dataframe of positions.
     """
