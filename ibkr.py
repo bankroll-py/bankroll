@@ -430,12 +430,12 @@ class IBDataProvider(LiveDataProvider):
     def fetchHistoricalData(self, instrument: Instrument) -> pd.DataFrame:
         contract = self.qualifyContract(instrument)
         data = self._client.reqHistoricalData(contract,
-                                            endDateTime='',
-                                            durationStr='10 Y',
-                                            barSizeSetting='1 day',
-                                            whatToShow='TRADES',
-                                            useRTH=True,
-                                            formatDate=1)
+                                              endDateTime='',
+                                              durationStr='10 Y',
+                                              barSizeSetting='1 day',
+                                              whatToShow='TRADES',
+                                              useRTH=True,
+                                              formatDate=1)
         return IB.util.df(data)
 
     def fetchQuote(self,
