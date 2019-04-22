@@ -109,25 +109,15 @@ def position_dataframe_to_history(ib: ibapi.IB,
     Returns 1 year of daily historical data for a dataframe of positions.
     """
     bars = []
-    for _, row in frame.iterrows():
-        stock = ibapi.Stock(row['instrument'], 'SMART', row['currency'])
-        # Fill in the stock struct with contract details from IB.
-        ib.qualifyContracts(stock)
-
-        bars.append(
-            ib.reqHistoricalData(stock,
-                                 endDateTime='',
-                                 durationStr='1 Y',
-                                 barSizeSetting='1 day',
-                                 whatToShow='TRADES',
-                                 useRTH=True,
-                                 formatDate=1))
+    for i, row in frame.iterrows():
+        stock = Stock(row['instrument'], row['currency'])
+        bars.append(provider.fetchHistoricalData(stock))
     return list(map(util.df, bars))
 
 
 def holdings(val: pd.DataFrame, holds: np.ndarray, i: pd.DataFrame, t: int,
              aum_t: int) -> Decimal:
-    open_price = val[i].loc['open'][t]
+    open_price = Decimal(val[i].loc['open'][t])
 
     # If the open price is NaN, this instrument's open wasn't recorded at time t.
     # So let's use the previous day's calculation.
@@ -143,7 +133,7 @@ def holdings(val: pd.DataFrame, holds: np.ndarray, i: pd.DataFrame, t: int,
         # If today was t + 1, one way to calculate today's holdings would be by using the opening price, since for a future
         # we may not know the closing price of a new contract at roll time.
         # If open prices are unavailable, then the last close price at t will work too.
-        next_open = val[i].loc['close'][t]
+        next_open = Decimal(val[i].loc['close'][t])
         if not next_open.is_finite():
             last_close_price: Decimal = holds[t - 1][val.columns.get_loc(i)]
             return last_close_price
