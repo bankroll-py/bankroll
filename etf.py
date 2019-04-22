@@ -186,4 +186,4 @@ def stocks_to_portfolio(components: Dict[str, pd.DataFrame],
         df[key].loc['weight'] = np.repeat(weights[key],
                                           df[key].loc['weight'].index.shape[0])
         instruments.append(df)
-    return pd.concat(instruments, join='inner', sort=False, axis=1)
+    return pd.concat(instruments, join='inner', sort=False, axis=1).sort_index()
