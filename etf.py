@@ -38,7 +38,7 @@ def etf(portfolio: pd.DataFrame, timezone: str) -> pd.Series:
 
             # Calculate the holdings of instrument i at t - 1 and store it in our holds matrix.
             holdings_t_minus_1 = holdings(portfolio, holds, i, t - 1,
-                                          etf[t - 1])
+                                          Decimal(etf[t - 1]))
             holds[t - 1][portfolio.columns.get_loc(i)] = holdings_t_minus_1
 
             portfolio_sum += holdings_t_minus_1 * exchange_rate * (change +
@@ -124,7 +124,7 @@ def position_dataframe_to_history(provider: model.LiveDataProvider,
 
 
 def holdings(val: pd.DataFrame, holds: np.ndarray, i: pd.DataFrame, t: int,
-             aum_t: int) -> Decimal:
+             aum_t: Decimal) -> Decimal:
     open_price = Decimal(val[i].loc['open'][t])
 
     # If the open price is NaN, this instrument's open wasn't recorded at time t.
@@ -147,7 +147,7 @@ def holdings(val: pd.DataFrame, holds: np.ndarray, i: pd.DataFrame, t: int,
             return last_close_price
 
         weighted_holding: Decimal = Decimal(
-            val[i].loc['weight'][t]) * Decimal(aum_t) / Decimal(
+            val[i].loc['weight'][t]) * aum_t / Decimal(
                 next_open) * exchange_rate * Decimal(sum_of_weights)
         return weighted_holding
 
