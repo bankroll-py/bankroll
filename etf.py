@@ -87,7 +87,7 @@ def positions_to_dataframe(positions: Iterable[model.Position]
 
 
 def positions_and_history_to_returns(frame: pd.DataFrame,
-                                     historical_data: pd.DataFrame,
+                                     historical_data: Iterable[pd.DataFrame],
                                      timezone: str) -> pd.Series:
     """
     Returns a Series of returns calculated by allocating $1 to the given historical data assets by the allocations specified in a positions frame.
