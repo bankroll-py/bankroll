@@ -1,4 +1,4 @@
-from analysis import realizedBasisForSymbol, liveValuesForPositions
+from analysis import normalizeSymbol, realizedBasisForSymbol, liveValuesForPositions
 from datetime import datetime, date
 from decimal import Decimal
 from hypothesis import given, reproduce_failure, seed
@@ -79,6 +79,10 @@ class TestAnalysis(unittest.TestCase):
         self.assertEqual(basis, helpers.cashUSD(Decimal('900')))
 
     separatedSymbols = ['BRK.B', 'BRKB', 'BRK B', 'BRK/B']
+
+    @given(sampled_from(separatedSymbols))
+    def test_normalizeSymbol(self, symbol: str) -> None:
+        self.assertEqual(normalizeSymbol(symbol), 'BRKB')
 
     @given(lists(sampled_from(separatedSymbols), min_size=3, max_size=3))
     def test_realizedBasisWithSeparatedSymbol(self,
