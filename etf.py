@@ -111,8 +111,8 @@ def positions_to_portfolio(frame: pd.DataFrame,
     return stocks_to_portfolio(components, weights)
 
 
-def position_dataframe_to_history(provider: model.LiveDataProvider,
-                                  frame: pd.DataFrame) -> List[pd.DataFrame]:
+def positions_to_history(provider: model.LiveDataProvider,
+                                  frame: pd.DataFrame) -> Iterable[pd.DataFrame]:
     """
     Returns 1 year of daily historical data for a dataframe of positions.
     """
