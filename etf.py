@@ -76,7 +76,7 @@ def positions_to_dataframe(positions: Iterable[model.Position]
         stock = asdict(p)
         avgPrice = p.averagePrice
         stock['averagePrice'] = avgPrice.quantity
-        stock['currency'] = avgPrice.currency.value
+        stock['currency'] = avgPrice.currency
         stocks.append(stock)
 
     frame = pd.DataFrame.from_dict(stocks)
@@ -110,7 +110,7 @@ def positions_to_portfolio(frame: pd.DataFrame,
     return stocks_to_portfolio(components, weights)
 
 
-def position_dataframe_to_history(ib: ibapi.IB,
+def position_dataframe_to_history(provider: model.LiveDataProvider,
                                   frame: pd.DataFrame) -> List[pd.DataFrame]:
     """
     Returns 1 year of daily historical data for a dataframe of positions.
