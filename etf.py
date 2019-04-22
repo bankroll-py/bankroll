@@ -85,6 +85,10 @@ def positions_to_dataframe(positions: Iterable[model.Position]
     frame["allocation"] = frame["value"] / frame["value"].sum()
     return frame
 
+def positions_to_returns(provider: model.LiveDataProvider, frame: pd.DataFrame, timezone: str) -> pd.Series:
+    history = positions_to_history(provider, frame)
+    return positions_and_history_to_returns(frame, history, timezone)
+
 
 def positions_and_history_to_returns(frame: pd.DataFrame,
                                      historical_data: Iterable[pd.DataFrame],
