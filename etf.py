@@ -92,15 +92,22 @@ def positions_and_history_to_returns(frame: pd.DataFrame,
     Returns a Series of returns calculated by allocating $1 to the given historical data assets by the allocations specified in a positions frame.
     The timezones of the returns series are localized to the given timezone.
     """
+    portfolio = positions_to_portfolio(frame, historical_data, timezone)
+    return portfolio_to_returns(portfolio, timezone)
+
+def positions_to_portfolio(frame: pd.DataFrame,
+                           historical_data: pd.DataFrame,
+                           timezone: str) -> pd.DataFrame:
+    """
+    Returns a DataFrame of position histories with weights and allocation columns.
+    """
     weights = {}
     components = {}
     for i, row in frame.iterrows():
         weights[row['instrument'].symbol] = row['allocation']
         components[row['instrument'].symbol] = historical_data[i]
 
-    portfolio = stocks_to_portfolio(components, weights)
-
-    return portfolio_to_returns(portfolio, timezone)
+    return stocks_to_portfolio(components, weights)
 
 
 def position_dataframe_to_history(ib: ibapi.IB,
