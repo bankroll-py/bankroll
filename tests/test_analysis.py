@@ -1,8 +1,8 @@
-from analysis import realizedBasisForSymbol, liveValuesForPositions
+from analysis import normalizeSymbol, realizedBasisForSymbol, liveValuesForPositions
 from datetime import datetime, date
 from decimal import Decimal
 from hypothesis import given, reproduce_failure, seed
-from hypothesis.strategies import builds, composite, dates, datetimes, decimals, from_type, iterables, just, lists, one_of, text, tuples, SearchStrategy
+from hypothesis.strategies import builds, composite, dates, datetimes, decimals, from_type, iterables, just, lists, one_of, sampled_from, text, tuples, SearchStrategy
 from model import Cash, Currency, Instrument, Stock, Option, OptionType, Quote, Trade, TradeFlags, LiveDataProvider, Position
 from typing import Any, Dict, Iterable, List, Tuple, no_type_check
 
@@ -76,6 +76,37 @@ class TestAnalysis(unittest.TestCase):
         ]
 
         basis = realizedBasisForSymbol('SPY', trades=trades)
+        self.assertEqual(basis, helpers.cashUSD(Decimal('900')))
+
+    separatedSymbols = ['BRK.B', 'BRKB', 'BRK B', 'BRK/B']
+
+    @given(sampled_from(separatedSymbols))
+    def test_normalizeSymbol(self, symbol: str) -> None:
+        self.assertEqual(normalizeSymbol(symbol), 'BRKB')
+
+    @given(lists(sampled_from(separatedSymbols), min_size=3, max_size=3))
+    def test_realizedBasisWithSeparatedSymbol(self,
+                                              symbols: List[str]) -> None:
+        trades = [
+            Trade(date=datetime.now(),
+                  instrument=Stock(symbols[0], Currency.USD),
+                  quantity=Decimal('5'),
+                  amount=helpers.cashUSD(Decimal('-999')),
+                  fees=helpers.cashUSD(Decimal('1')),
+                  flags=TradeFlags.OPEN),
+            Trade(date=datetime.now(),
+                  instrument=Option(underlying=symbols[1],
+                                    currency=Currency.USD,
+                                    optionType=OptionType.CALL,
+                                    expiration=date.today(),
+                                    strike=Decimal('123')),
+                  quantity=Decimal('1'),
+                  amount=helpers.cashUSD(Decimal('101')),
+                  fees=helpers.cashUSD(Decimal('1')),
+                  flags=TradeFlags.OPEN),
+        ]
+
+        basis = realizedBasisForSymbol(symbols[2], trades=trades)
         self.assertEqual(basis, helpers.cashUSD(Decimal('900')))
 
     @no_type_check
