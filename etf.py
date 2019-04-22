@@ -64,7 +64,6 @@ def prices_to_daily_returns(prices: pd.Series) -> pd.Series:
     """
     return (prices / prices.shift(1) - 1)[1:]
 
-
 def positions_to_dataframe(positions: Iterable[model.Position]
                            ) -> pd.DataFrame:
     """
@@ -130,7 +129,7 @@ def positions_to_history(provider: model.LiveDataProvider,
     bars = []
     for position in filter(is_stock, positions):
         bars.append(provider.fetchHistoricalData(position.instrument))
-    return list(map(util.df, bars))
+    return bars
 
 
 def holdings(val: pd.DataFrame, holds: np.ndarray, i: pd.DataFrame, t: int,

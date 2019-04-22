@@ -12,6 +12,7 @@ import logging
 import math
 import re
 from dataclasses import dataclass
+import pandas as pd
 
 
 def parseFiniteDecimal(input: str) -> Decimal:
@@ -426,15 +427,16 @@ class IBDataProvider(LiveDataProvider):
         self._client.qualifyContracts(con)
         return con
 
-    def fetchHistoricalData(self, instrument: Instrument) -> IB.BarDataList:
+    def fetchHistoricalData(self, instrument: Instrument) -> pd.DataFrame:
         contract = self.qualifyContract(instrument)
-        return self._client.reqHistoricalData(contract,
-                                              endDateTime='',
-                                              durationStr='10 Y',
-                                              barSizeSetting='1 day',
-                                              whatToShow='TRADES',
-                                              useRTH=True,
-                                              formatDate=1)
+        data = self._client.reqHistoricalData(contract,
+                                            endDateTime='',
+                                            durationStr='10 Y',
+                                            barSizeSetting='1 day',
+                                            whatToShow='TRADES',
+                                            useRTH=True,
+                                            formatDate=1)
+        return IB.util.df(data)
 
     def fetchQuote(self,
                    instrument: Instrument,
