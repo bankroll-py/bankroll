@@ -10,12 +10,13 @@ from ib_insync import util
 import ib_insync as ibapi
 
 
-def etf(portfolio: pd.DataFrame) -> pd.Series:
+def etf(portfolio: pd.DataFrame, timezone: str) -> pd.Series:
     """
     Returns a time series representing the investment of $1 in a basket of instruments weighted proportionally by the given weights.
 
     @param portfolio: A DataFrame of instruments containing open, close, and weight data indexed by Date.
     """
+    index = portfolio.index.levels[1].tz_localize(timezone)
     # Initialize a zero'd out T-sized array where T is the length of the date range.
     etf = np.zeros(portfolio.loc['open'].shape[0])
     etf[0] = Decimal(1)  # Initial AUM for this instrument is $1.
@@ -47,12 +48,12 @@ def etf(portfolio: pd.DataFrame) -> pd.Series:
         # the sum of the changes in the instruments from t-1 to t accounting
         # for exchange rates, transaction costs, and dividends.
         etf[t] = Decimal(etf[t - 1]) + portfolio_sum
-    return etf
+
+    return pd.Series(etf, index=index)
 
 
 def portfolio_to_returns(portfolio: pd.DataFrame, timezone: str) -> pd.Series:
-    index = portfolio.index.levels[1].tz_localize(timezone)
-    prices = pd.Series(etf(portfolio), index=index)
+    prices = etf(portfolio, timezone)
     return prices_to_daily_returns(prices)
 
 
