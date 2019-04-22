@@ -452,6 +452,9 @@ class LiveDataProvider(ABC):
     def fetchQuote(self, instrument: Instrument) -> Quote:
         pass
 
+    def fetchHistoricalData(self, instrument: Instrument) -> Portfolio:
+        pass
+
 
 @dataclass(unsafe_hash=True)
 class Position:

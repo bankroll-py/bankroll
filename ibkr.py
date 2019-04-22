@@ -5,12 +5,13 @@ from model import Currency, Cash, Instrument, Stock, Bond, Option, OptionType, F
 from parsetools import lenientParse
 from pathlib import Path
 from progress.spinner import Spinner
-from typing import Awaitable, Callable, Dict, List, NamedTuple, Optional, Type
+from typing import Awaitable, Callable, Dict, List, NamedTuple, Optional, Type, Iterable
 
 import ib_insync as IB
 import logging
 import math
 import re
+from dataclasses import dataclass
 
 
 def parseFiniteDecimal(input: str) -> Decimal:
@@ -139,7 +140,8 @@ def downloadPositions(ib: IB.IB, lenient: bool) -> List[Position]:
                      lenient=lenient))
 
 
-class IBTradeConfirm(NamedTuple):
+@dataclass
+class IBTradeConfirm():
     accountId: str
     acctAlias: str
     model: str
@@ -418,6 +420,21 @@ class IBDataProvider(LiveDataProvider):
     def __init__(self, client: IB.IB):
         self._client = client
         super().__init__()
+
+    def qualifyContract(self, instrument: Instrument) -> IB.Contract:
+        con = contract(instrument)
+        self._client.qualifyContracts(con)
+        return con
+
+    def fetchHistoricalData(self, instrument: Instrument) -> IB.BarDataList:
+        contract = self.qualifyContract(instrument)
+        return self._client.reqHistoricalData(contract,
+                                              endDateTime='',
+                                              durationStr='10 Y',
+                                              barSizeSetting='1 day',
+                                              whatToShow='TRADES',
+                                              useRTH=True,
+                                              formatDate=1)
 
     def fetchQuote(self,
                    instrument: Instrument,
