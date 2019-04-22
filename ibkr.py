@@ -397,7 +397,7 @@ def contract(instrument: Instrument) -> IB.Contract:
     elif isinstance(instrument, Forex):
         return forexContract(instrument)
     else:
-        raise ValueError(f'Unexpected type of instrument: {repr(instrument)}')
+        raise ValueError(f'Unexpected type of instrument: {instrument!r}')
 
 
 # https://interactivebrokers.github.io/tws-api/market_data_type.html
@@ -423,7 +423,7 @@ class IBDataProvider(LiveDataProvider):
         self._client.qualifyContracts(con)
 
         ticker = self._client.reqTickers(con)[0]
-        logging.info(f'Received ticker: {repr(ticker)}')
+        logging.info(f'Received ticker: {ticker!r}')
 
         bid: Optional[Cash] = None
         ask: Optional[Cash] = None

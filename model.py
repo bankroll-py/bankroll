@@ -451,8 +451,7 @@ class Position:
 
         if quantity == 0 and costBasis != 0:
             raise ValueError(
-                f'Cost basis {repr(costBasis)} should be zero if quantity is zero'
-            )
+                f'Cost basis {costBasis!r} should be zero if quantity is zero')
 
         self._instrument = instrument
         self._quantity = quantity
