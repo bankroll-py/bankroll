@@ -21,8 +21,7 @@ def parseOption(symbol: str) -> Option:
         r'^(?P<underlying>[A-Z0-9/]+) (?P<month>\d{2})/(?P<day>\d{2})/(?P<year>\d{4}) (?P<strike>[0-9\.]+) (?P<putCall>P|C)$',
         symbol)
     if not match:
-        raise ValueError(
-            'Could not parse Schwab options symbol: {}'.format(symbol))
+        raise ValueError(f'Could not parse Schwab options symbol: {symbol}')
 
     if match['putCall'] == 'P':
         optionType = OptionType.PUT
@@ -74,8 +73,7 @@ def parseSchwabPosition(p: SchwabPosition) -> Optional[Position]:
     elif re.match(r'Fixed Income', p.securityType):
         instrument = Bond(p.symbol, currency=Currency.USD)
     else:
-        raise ValueError('Unrecognized security type: {}'.format(
-            p.securityType))
+        raise ValueError(f'Unrecognized security type: {p.securityType}')
 
     return Position(instrument=instrument,
                     quantity=schwabDecimal(p.quantity),

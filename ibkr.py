@@ -19,7 +19,7 @@ def parseFiniteDecimal(input: str) -> Decimal:
     with localcontext(ctx=Context(traps=[DivisionByZero, Overflow])):
         value = Decimal(input)
         if not value.is_finite():
-            raise ValueError('Input is not numeric: {}'.format(input))
+            raise ValueError(f'Input is not numeric: {input}')
 
         return value
 
@@ -33,7 +33,7 @@ def parseOption(symbol: str,
         r'^(?P<underlying>.{6})(?P<date>\d{6})(?P<putCall>P|C)(?P<strike>\d{8})$',
         symbol)
     if not match:
-        raise ValueError('Could not parse IB option symbol: {}'.format(symbol))
+        raise ValueError(f'Could not parse IB option symbol: {symbol}')
 
     if match['putCall'] == 'P':
         optionType = OptionType.PUT
@@ -50,14 +50,14 @@ def parseOption(symbol: str,
 def parseForex(symbol: str, currency: Currency) -> Forex:
     match = re.match(r'^(?P<base>[A-Z]{3})\.(?P<quote>[A-Z]{3})', symbol)
     if not match:
-        raise ValueError('Could not parse IB cash symbol: {}'.format(symbol))
+        raise ValueError(f'Could not parse IB cash symbol: {symbol}')
 
     baseCurrency = Currency[match['base']]
     quoteCurrency = Currency[match['quote']]
     if currency != quoteCurrency:
         raise ValueError(
-            'Expected quote currency {} to match position currency {}'.format(
-                quoteCurrency, currency))
+            f'Expected quote currency {quoteCurrency} to match position currency {currency}'
+        )
 
     return Forex(baseCurrency=baseCurrency, quoteCurrency=quoteCurrency)
 
@@ -69,8 +69,7 @@ def parseFutureOptionContract(contract: IB.Contract,
     elif contract.right.startswith('P'):
         optionType = OptionType.PUT
     else:
-        raise ValueError(
-            'Unexpected right in IB contract: {}'.format(contract))
+        raise ValueError(f'Unexpected right in IB contract: {contract}')
 
     return FutureOption(symbol=contract.localSymbol,
                         currency=currency,
@@ -88,7 +87,7 @@ def extractPosition(p: IB.Position) -> Position:
     symbol = p.contract.localSymbol
 
     if p.contract.currency not in Currency.__members__:
-        raise ValueError('Unrecognized currency in position: {}'.format(p))
+        raise ValueError(f'Unrecognized currency in position: {p}')
 
     currency = Currency[p.contract.currency]
 
@@ -119,8 +118,7 @@ def extractPosition(p: IB.Position) -> Position:
             instrument = parseForex(symbol=symbol, currency=currency)
         else:
             raise ValueError(
-                'Unrecognized/unsupported security type in position: {}'.
-                format(p))
+                f'Unrecognized/unsupported security type in position: {p}')
 
         qty = parseFiniteDecimal(p.position)
         costBasis = parseFiniteDecimal(p.avgCost) * qty
@@ -130,8 +128,8 @@ def extractPosition(p: IB.Position) -> Position:
         return Position(instrument=instrument, quantity=qty, costBasis=basis)
     except InvalidOperation:
         raise ValueError(
-            'One of the numeric position or contract values is out of range: {}'
-            .format(p))
+            f'One of the numeric position or contract values is out of range: {p}'
+        )
 
 
 def downloadPositions(ib: IB.IB, lenient: bool) -> List[Position]:
@@ -212,8 +210,7 @@ def parseFutureOptionTrade(trade: IBTradeConfirm) -> Instrument:
     elif trade.putCall == 'P':
         optionType = OptionType.PUT
     else:
-        raise ValueError(
-            'Unexpected value for putCall in IB trade: {}'.format(trade))
+        raise ValueError(f'Unexpected value for putCall in IB trade: {trade}')
 
     return FutureOption(symbol=trade.symbol,
                         currency=Currency[trade.currency],
@@ -229,10 +226,10 @@ def parseTradeConfirm(trade: IBTradeConfirm) -> Trade:
     tag = trade.assetCategory
     symbol = trade.symbol
     if not symbol:
-        raise ValueError('Missing symbol in trade: {}'.format(trade))
+        raise ValueError(f'Missing symbol in trade: {trade}')
 
     if trade.currency not in Currency.__members__:
-        raise ValueError('Unrecognized currency in trade: {}'.format(trade))
+        raise ValueError(f'Unrecognized currency in trade: {trade}')
 
     currency = Currency[trade.currency]
 
@@ -261,8 +258,7 @@ def parseTradeConfirm(trade: IBTradeConfirm) -> Trade:
             instrument = parseFutureOptionTrade(trade)
         else:
             raise ValueError(
-                'Unrecognized/unsupported security type in trade: {}'.format(
-                    trade))
+                f'Unrecognized/unsupported security type in trade: {trade}')
 
         flagsByCode = {
             'O': TradeFlags.OPEN,
@@ -286,8 +282,7 @@ def parseTradeConfirm(trade: IBTradeConfirm) -> Trade:
                 continue
 
             if c not in flagsByCode:
-                raise ValueError('Unrecognized code {} in trade: {}'.format(
-                    c, trade))
+                raise ValueError(f'Unrecognized code {c} in trade: {trade}')
 
             flags |= flagsByCode[c]
 
@@ -310,8 +305,7 @@ def parseTradeConfirm(trade: IBTradeConfirm) -> Trade:
                      flags=flags)
     except InvalidOperation:
         raise ValueError(
-            'One of the numeric trade values is out of range: {}'.format(
-                trade))
+            f'One of the numeric trade values is out of range: {trade}')
 
 
 def tradesFromReport(report: IB.FlexReport, lenient: bool) -> List[Trade]:
@@ -405,8 +399,7 @@ def contract(instrument: Instrument) -> IB.Contract:
     elif isinstance(instrument, Forex):
         return forexContract(instrument)
     else:
-        raise ValueError('Unexpected type of instrument: {}'.format(
-            repr(instrument)))
+        raise ValueError(f'Unexpected type of instrument: {instrument!r}')
 
 
 # https://interactivebrokers.github.io/tws-api/market_data_type.html
@@ -448,7 +441,7 @@ class IBDataProvider(LiveDataProvider):
         self._client.qualifyContracts(con)
 
         ticker = self._client.reqTickers(con)[0]
-        logging.info('Received ticker: {}'.format(repr(ticker)))
+        logging.info(f'Received ticker: {ticker!r}')
 
         bid: Optional[Cash] = None
         ask: Optional[Cash] = None

@@ -14,7 +14,7 @@ def lenientParse(xs: Iterable[T], transform: Callable[[T], U],
         except ValueError as err:
             if lenient:
                 warn(
-                    'Failed to parse {}: {}'.format(input, err),
+                    f'Failed to parse {input}: {err}',
                     category=RuntimeWarning,
                     # Pop all the way out of lenientParse() to show the warning
                     stacklevel=4)

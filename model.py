@@ -23,24 +23,24 @@ class Currency(Enum):
 
     def format(self, quantity: Decimal) -> str:
         if quantity < 0:
-            return '({})'.format(self.format(abs(quantity)))
+            return f'({self.format(abs(quantity))})'
 
         if self == Currency.USD:
-            return '${:,.2f}'.format(quantity)
+            return f'${quantity:,.2f}'
         elif self == Currency.GBP:
-            return '£{:,.2f}'.format(quantity)
+            return f'£{quantity:,.2f}'
         elif self == Currency.AUD:
-            return 'AU${:,.2f}'.format(quantity)
+            return f'AU${quantity:,.2f}'
         elif self == Currency.EUR:
-            return '€{:,.2f}'.format(quantity)
+            return f'€{quantity:,.2f}'
         elif self == Currency.JPY:
-            return '¥{:,.0f}'.format(quantity)
+            return f'¥{quantity:,.0f}'
         elif self == Currency.CAD:
-            return 'C${:,.2f}'.format(quantity)
+            return f'C${quantity:,.2f}'
         elif self == Currency.NZD:
-            return 'NZ${:,.2f}'.format(quantity)
+            return f'NZ${quantity:,.2f}'
         else:
-            return '{} {:,}'.format(self.value, quantity)
+            return f'{self.value} {quantity:,}'
 
 
 T = TypeVar('T', Decimal, int)
@@ -56,7 +56,7 @@ class Cash:
     def __init__(self, currency: Currency, quantity: Decimal):
         if not quantity.is_finite():
             raise ValueError(
-                'Cash quantity {} is not a finite number'.format(quantity))
+                f'Cash quantity {quantity} is not a finite number')
 
         self._currency = currency
         self._quantity = self.quantize(quantity)
@@ -71,8 +71,7 @@ class Cash:
         return self._quantity
 
     def __repr__(self) -> str:
-        return 'Cash(currency={}, quantity={})'.format(repr(self.currency),
-                                                       repr(self.quantity))
+        return f'Cash(currency={self.currency!r}, quantity={self.quantity!r})'
 
     def __str__(self) -> str:
         return self.currency.format(self.quantity)
@@ -81,8 +80,7 @@ class Cash:
         if isinstance(other, Cash):
             if self.currency != other.currency:
                 raise ValueError(
-                    'Currency of {} must match {} for arithmetic'.format(
-                        self, other))
+                    f'Currency of {self} must match {other} for arithmetic')
 
             return Cash(currency=self.currency,
                         quantity=self.quantity + other.quantity)
@@ -93,8 +91,7 @@ class Cash:
         if isinstance(other, Cash):
             if self.currency != other.currency:
                 raise ValueError(
-                    'Currency of {} must match {} for arithmetic'.format(
-                        self, other))
+                    f'Currency of {self} must match {other} for arithmetic')
 
             return Cash(currency=self.currency,
                         quantity=self.quantity - other.quantity)
@@ -124,32 +121,28 @@ class Cash:
     def __lt__(self, other: 'Cash') -> bool:
         if self.currency != other.currency:
             raise ValueError(
-                'Currency of {} must match {} for comparison'.format(
-                    self, other))
+                f'Currency of {self} must match {other} for comparison')
 
         return self.quantity < other.quantity
 
     def __le__(self, other: 'Cash') -> bool:
         if self.currency != other.currency:
             raise ValueError(
-                'Currency of {} must match {} for comparison'.format(
-                    self, other))
+                f'Currency of {self} must match {other} for comparison')
 
         return self.quantity <= other.quantity
 
     def __gt__(self, other: 'Cash') -> bool:
         if self.currency != other.currency:
             raise ValueError(
-                'Currency of {} must match {} for comparison'.format(
-                    self, other))
+                f'Currency of {self} must match {other} for comparison')
 
         return self.quantity > other.quantity
 
     def __ge__(self, other: 'Cash') -> bool:
         if self.currency != other.currency:
             raise ValueError(
-                'Currency of {} must match {} for comparison'.format(
-                    self, other))
+                f'Currency of {self} must match {other} for comparison')
 
         return self.quantity >= other.quantity
 
@@ -215,9 +208,7 @@ class Instrument(ABC):
         return format(self.symbol, spec)
 
     def __repr__(self) -> str:
-        return '{}(symbol={}, currency={})'.format(repr(type(self)),
-                                                   repr(self.symbol),
-                                                   repr(self.currency))
+        return f'{type(self)!r}(symbol={self.symbol!r}, currency={self.currency!r})'
 
     def __str__(self) -> str:
         return self._symbol
@@ -241,8 +232,7 @@ class Bond(Instrument):
                  currency: Currency,
                  validateSymbol: bool = True):
         if validateSymbol and not self.validBondSymbol(symbol):
-            raise ValueError(
-                'Expected symbol to be a bond CUSIP: {}'.format(symbol))
+            raise ValueError(f'Expected symbol to be a bond CUSIP: {symbol}')
 
         super().__init__(symbol, currency)
 
@@ -273,11 +263,9 @@ class Option(Instrument):
         if not underlying:
             raise ValueError('Expected non-empty underlying symbol for Option')
         if not strike.is_finite() or strike <= 0:
-            raise ValueError(
-                'Expected positive strike price: {}'.format(strike))
+            raise ValueError(f'Expected positive strike price: {strike}')
         if not multiplier.is_finite() or multiplier <= 0:
-            raise ValueError(
-                'Expected positive multiplier: {}'.format(multiplier))
+            raise ValueError(f'Expected positive multiplier: {multiplier}')
 
         self._underlying = underlying
         self._optionType = optionType
@@ -287,9 +275,7 @@ class Option(Instrument):
 
         if symbol is None:
             # https://en.wikipedia.org/wiki/Option_symbol#The_OCC_Option_Symbol
-            symbol = '{:6}{}{}{:08.0f}'.format(underlying,
-                                               expiration.strftime('%y%m%d'),
-                                               optionType.value, strike * 1000)
+            symbol = f"{underlying:6}{expiration.strftime('%y%m%d')}{optionType.value}{(strike * 1000):08.0f}"
 
         super().__init__(symbol, currency)
 
@@ -314,10 +300,7 @@ class Option(Instrument):
         return self._multiplier
 
     def __repr__(self) -> str:
-        return '{}(underlying={}, optionType={}, expiration={}, strike={}, currency={}, multiplier={})'.format(
-            repr(type(self)), repr(self.underlying), repr(self.optionType),
-            repr(self.expiration), repr(self.strike), repr(self.currency),
-            repr(self.multiplier))
+        return f'{type(self)!r}(underlying={self.underlying!r}, optionType={self.optionType!r}, expiration={self.expiration!r}, strike={self.strike!r}, currency={self.currency!r}, multiplier={self.multiplier!r})'
 
 
 class FutureOption(Option):
@@ -337,8 +320,7 @@ class Future(Instrument):
     def __init__(self, symbol: str, currency: Currency, multiplier: Decimal,
                  expiration: date):
         if not multiplier.is_finite() or multiplier <= 0:
-            raise ValueError(
-                'Expected positive multiplier: {}'.format(multiplier))
+            raise ValueError(f'Expected positive multiplier: {multiplier}')
 
         self._multiplier = self.quantizeMultiplier(multiplier)
         self._expiration = expiration
@@ -354,21 +336,18 @@ class Future(Instrument):
         return self._expiration
 
     def __repr__(self) -> str:
-        return '{}(symbol={}, currency={}, multiplier={}, expiration={})'.format(
-            repr(type(self)), repr(self.symbol), repr(self.currency),
-            repr(self.multiplier), repr(self.expiration))
+        return f'{type(self)!r}(symbol={self.symbol!r}, currency={self.currency!r}, multiplier={self.multiplier!r}, expiration={self.expiration!r})'
 
 
 class Forex(Instrument):
     def __init__(self, baseCurrency: Currency, quoteCurrency: Currency):
         if baseCurrency == quoteCurrency:
             raise ValueError(
-                'Forex pair must be composed of different currencies, got {} and {}'
-                .format(repr(baseCurrency), repr(quoteCurrency)))
+                f'Forex pair must be composed of different currencies, got {baseCurrency!r} and {quoteCurrency!r}'
+            )
 
         self._baseCurrency = baseCurrency
-
-        symbol = '{}{}'.format(baseCurrency.name, quoteCurrency.name)
+        symbol = f'{baseCurrency.name}{quoteCurrency.name}'
         super().__init__(symbol, quoteCurrency)
 
     @property
@@ -380,9 +359,7 @@ class Forex(Instrument):
         return self._baseCurrency
 
     def __repr__(self) -> str:
-        return '{}(baseCurrency={}, quoteCurrency={})'.format(
-            repr(type(self)), repr(self.baseCurrency),
-            repr(self.quoteCurrency))
+        return f'{type(self)!r}(baseCurrency={self.baseCurrency!r}, quoteCurrency={self.quoteCurrency!r})'
 
 
 Item = TypeVar('Item')
@@ -403,14 +380,14 @@ class Quote:
                  last: Optional[Cash] = None,
                  close: Optional[Cash] = None):
         if bid and ask and ask < bid:
-            raise ValueError('Expected ask {} to be at least bid {}'.format(
-                ask, bid))
+            raise ValueError(f'Expected ask {ask} to be at least bid {bid}')
 
         if not allEqual(
             (price.currency
              for price in [bid, ask, last, close] if price is not None)):
-            raise ValueError('Currencies in a quote should match: {}'.format(
-                [bid, ask, last, close]))
+            raise ValueError(
+                f'Currencies in a quote should match: {[bid, ask, last, close]}'
+            )
 
         self._bid = bid
         self._ask = ask
@@ -444,8 +421,7 @@ class Quote:
         return hash((self.bid, self.ask, self.last, self.close))
 
     def __repr__(self) -> str:
-        return 'Quote(bid={}, ask={}, last={}, close={})'.format(
-            repr(self.bid), repr(self.ask), repr(self.last), repr(self.close))
+        return f'Quote(bid={self.bid!r}, ask={self.ask!r}, last={self.last!r}, close={self.close!r})'
 
 
 class LiveDataProvider(ABC):
@@ -480,35 +456,31 @@ class Position:
     def __post_init__(self) -> None:
         if self.instrument.currency != self.costBasis.currency:
             raise ValueError(
-                'Cost basis {} should be in same currency as instrument {}'.
-                format(self.costBasis, self.instrument))
+                f'Cost basis {self.costBasis} should be in same currency as instrument {self.instrument}'
+            )
 
         if not self.quantity.is_finite():
             raise ValueError(
-                'Position quantity {} is not a finite number'.format(
-                    self.quantity))
+                f'Position quantity {self.quantity} is not a finite number')
 
         self.quantity = self.quantizeQuantity(self.quantity)
 
         if self.quantity == 0 and self.costBasis != 0:
             raise ValueError(
-                'Cost basis {} should be zero if quantity is zero'.format(
-                    repr(self.costBasis)))
+                f'Cost basis {self.costBasis!r} should be zero if quantity is zero')
 
     def combine(self, other: 'Position') -> 'Position':
         if self.instrument != other.instrument:
             raise ValueError(
-                'Cannot combine positions in two different instruments: {} and {}'
-                .format(self.instrument, other.instrument))
+                f'Cannot combine positions in two different instruments: {self.instrument} and {other.instrument}'
+            )
 
         return Position(instrument=self.instrument,
                         quantity=self.quantity + other.quantity,
                         costBasis=self.costBasis + other.costBasis)
 
     def __str__(self) -> str:
-        return '{:21} {:>14,f} @ {}'.format(self.instrument,
-                                            self.quantity.normalize(),
-                                            self.averagePrice)
+        return f'{self.instrument:21} {self.quantity.normalize():>14,f} @ {self.averagePrice}'
 
 
 class TradeFlags(Flag):
@@ -532,7 +504,7 @@ class Trade:
                  flags: TradeFlags):
         if not quantity.is_finite():
             raise ValueError(
-                'Trade quantity {} is not a finite number'.format(quantity))
+                f'Trade quantity {quantity} is not a finite number')
 
         if flags not in [
                 TradeFlags.OPEN, TradeFlags.CLOSE,
@@ -541,7 +513,7 @@ class Trade:
                 TradeFlags.CLOSE | TradeFlags.EXPIRED,
                 TradeFlags.CLOSE | TradeFlags.ASSIGNED_OR_EXERCISED
         ]:
-            raise ValueError('Invalid combination of flags: {}'.format(flags))
+            raise ValueError(f'Invalid combination of flags: {flags}')
 
         self._date = date
         self._instrument = instrument
@@ -601,19 +573,14 @@ class Trade:
                      self.fees, self.flags))
 
     def __repr__(self) -> str:
-        return 'Trade(date={}, instrument={}, quantity={}, amount={}, fees={}, flags={})'.format(
-            repr(self.date), repr(self.instrument), repr(self.quantity),
-            repr(self.amount), repr(self.fees), repr(self.flags))
+        return f'Trade(date={self.date!r}, instrument={self.instrument!r}, quantity={self.quantity!r}, amount={self.amount!r}, fees={self.fees!r}, flags={self.flags!r})'
 
     def __str__(self) -> str:
         if self.quantity > 0:
             action = 'Buy'
         else:
             action = 'Sell'
-
-        return '{} {} {} {}: {} (before {} in fees)'.format(
-            self.date.date(), action, abs(self.quantity), self.instrument,
-            self.amount, self.fees)
+        return f'{self.date.date()} {action} {abs(self.quantity)} {self.instrument}: {self.amount} (before {self.fees} in fees)'
 
     def _replace(self, **kwargs: Any) -> 'Trade':
         vals: Dict[str, Any] = {
