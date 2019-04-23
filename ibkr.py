@@ -93,7 +93,7 @@ def extractPosition(p: IB.Position) -> Position:
         instrument: Instrument
         if tag == 'STK':
             instrument = Stock(symbol=symbol, currency=currency)
-        elif tag == 'BOND':
+        elif tag == 'BOND' or tag == 'BILL':
             instrument = Bond(symbol=symbol,
                               currency=currency,
                               validateSymbol=False)
