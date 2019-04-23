@@ -467,7 +467,8 @@ class Position:
 
         if self.quantity == 0 and self.costBasis != 0:
             raise ValueError(
-                f'Cost basis {self.costBasis!r} should be zero if quantity is zero')
+                f'Cost basis {self.costBasis!r} should be zero if quantity is zero'
+            )
 
     def combine(self, other: 'Position') -> 'Position':
         if self.instrument != other.instrument:
