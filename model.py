@@ -20,25 +20,32 @@ class Currency(Enum):
     NZD = "NZD"
 
     def format(self, quantity: Decimal) -> str:
-        if quantity < 0:
-            return f'({self.format(abs(quantity))})'
+        return self.formatWithPadding(quantity, 0)
 
+    def formatWithPadding(self, quantity: Decimal, padding: int) -> str:
+        symbol: str
         if self == Currency.USD:
-            return f'${quantity:,.2f}'
+            symbol = '$'
         elif self == Currency.GBP:
-            return f'£{quantity:,.2f}'
+            symbol = '£'
         elif self == Currency.AUD:
-            return f'AU${quantity:,.2f}'
+            symbol = 'AU$'
         elif self == Currency.EUR:
-            return f'€{quantity:,.2f}'
+            symbol = '€'
         elif self == Currency.JPY:
-            return f'¥{quantity:,.0f}'
+            symbol = '¥'
         elif self == Currency.CAD:
-            return f'C${quantity:,.2f}'
+            symbol = 'C$'
         elif self == Currency.NZD:
-            return f'NZ${quantity:,.2f}'
+            symbol = 'NZ$'
         else:
-            return f'{self.value} {quantity:,}'
+            symbol = ''
+
+        if padding > 0:
+            assert len(symbol) <= 3
+            symbol = '%s%s' % (' ' * (3 - len(symbol)), symbol)
+
+        return f'{symbol}{quantity:{padding},.2f}'
 
 
 T = TypeVar('T', Decimal, int)
@@ -67,6 +74,9 @@ class Cash:
     @property
     def quantity(self) -> Decimal:
         return self._quantity
+
+    def paddedString(self, padding: int = 0) -> str:
+        return self.currency.formatWithPadding(self.quantity, padding)
 
     def __repr__(self) -> str:
         return f'Cash(currency={self.currency!r}, quantity={self.quantity!r})'
@@ -598,10 +608,10 @@ class Trade:
 
     def __str__(self) -> str:
         if self.quantity > 0:
-            action = 'Buy'
+            action = 'Buy '
         else:
             action = 'Sell'
-        return f'{self.date.date()} {action} {abs(self.quantity)} {self.instrument}: {self.amount} (before {self.fees} in fees)'
+        return f'{self.date.date()} {action} {abs(self.quantity):>9} {self.instrument:21} {self.amount.paddedString(padding=10)} (before {self.fees.paddedString(padding=5)} in fees)'
 
     def _replace(self, **kwargs: Any) -> 'Trade':
         vals: Dict[str, Any] = {
