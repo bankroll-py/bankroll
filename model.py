@@ -43,7 +43,7 @@ class Currency(Enum):
 
         if padding > 0:
             assert len(symbol) <= 3
-            symbol = '%s%s' % (' ' * (3 - len(symbol)), symbol)
+            symbol = symbol.rjust(3)
 
         return f'{symbol}{quantity:{padding},.2f}'
 
