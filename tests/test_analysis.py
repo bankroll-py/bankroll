@@ -1,7 +1,7 @@
 from analysis import normalizeSymbol, realizedBasisForSymbol, liveValuesForPositions
 from datetime import datetime, date
 from decimal import Decimal
-from hypothesis import given, reproduce_failure, seed
+from hypothesis import given, reproduce_failure, seed, settings, HealthCheck
 from hypothesis.strategies import builds, composite, dates, datetimes, decimals, from_type, iterables, just, lists, one_of, sampled_from, text, tuples, SearchStrategy
 from model import Cash, Currency, Instrument, Stock, Option, OptionType, Quote, Trade, TradeFlags, LiveDataProvider, Position
 from typing import Any, Dict, Iterable, List, Tuple, no_type_check
@@ -114,6 +114,7 @@ class TestAnalysis(unittest.TestCase):
         iterables(from_type(
             Trade).filter(lambda t: not t.instrument.symbol.startswith('SPY')),
                   max_size=100))
+    @settings(suppress_health_check=[HealthCheck.too_slow])
     def test_realizedBasisMissing(self, trades: Iterable[Trade]) -> None:
         self.assertIsNone(realizedBasisForSymbol('SPY', trades))
 
