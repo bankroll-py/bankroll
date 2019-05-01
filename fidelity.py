@@ -57,8 +57,7 @@ def parseOptionsPosition(description: str) -> Option:
         description)
     if not match:
         raise ValueError(
-            'Could not parse Fidelity options description: {}'.format(
-                description))
+            f'Could not parse Fidelity options description: {description}')
 
     if match['putCall'] == 'PUT':
         optionType = OptionType.PUT
@@ -133,8 +132,7 @@ def parseOptionTransaction(symbol: str) -> Option:
         r'^-(?P<underlying>[A-Z]+)(?P<date>\d{6})(?P<putCall>C|P)(?P<strike>[0-9\.]+)$',
         symbol)
     if not match:
-        raise ValueError(
-            'Could not parse Fidelity options symbol: {}'.format(symbol))
+        raise ValueError(f'Could not parse Fidelity options symbol: {symbol}')
 
     if match['putCall'] == 'P':
         optionType = OptionType.PUT

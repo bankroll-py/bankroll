@@ -202,7 +202,7 @@ class TestIBKRParsing(unittest.TestCase):
     validSymbols = text(min_size=1)
     validCurrencies = from_type(Currency).map(lambda c: c.name)
     validAssetCategories = sampled_from(
-        ['STK', 'BOND', 'OPT', 'FUT', 'CASH', 'FOP'])
+        ['STK', 'BILL', 'BOND', 'OPT', 'FUT', 'CASH', 'FOP'])
     allAssetCategories = one_of(
         validAssetCategories,
         sampled_from(
@@ -304,7 +304,10 @@ class TestIBKRParsing(unittest.TestCase):
     def validateTradeContract(self, tradeConfirm: ibkr.IBTradeConfirm,
                               instrument: Instrument) -> None:
         contract = ibkr.contract(instrument)
-        self.assertEqual(contract.secType, tradeConfirm.assetCategory)
+        if tradeConfirm.assetCategory == 'BILL':
+            self.assertEqual(contract.secType, 'BOND')
+        else:
+            self.assertEqual(contract.secType, tradeConfirm.assetCategory)
         self.assertEqual(contract.currency, tradeConfirm.currency)
 
         if isinstance(instrument, Option):
@@ -337,7 +340,10 @@ class TestIBKRParsing(unittest.TestCase):
     def validatePositionContract(self, position: IB.Position,
                                  instrument: Instrument) -> None:
         contract = ibkr.contract(instrument)
-        self.assertEqual(contract.secType, position.contract.secType)
+        if position.contract.secType == 'BILL':
+            self.assertEqual(contract.secType, 'BOND')
+        else:
+            self.assertEqual(contract.secType, position.contract.secType)
         self.assertEqual(contract.currency, position.contract.currency)
 
         if isinstance(instrument, Option):
@@ -347,7 +353,8 @@ class TestIBKRParsing(unittest.TestCase):
             self.assertEqual(contract.right, position.contract.right)
 
         if isinstance(instrument, Option) or isinstance(instrument, Future):
-            self.assertEqual(contract.multiplier, position.contract.multiplier)
+            self.assertEqual(Decimal(contract.multiplier),
+                             Decimal(position.contract.multiplier))
             self.assertEqual(contract.lastTradeDateOrContractMonth,
                              position.contract.lastTradeDateOrContractMonth)
 

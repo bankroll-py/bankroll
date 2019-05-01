@@ -4,11 +4,12 @@ Ingest portfolio and other data from multiple brokerages, and analyze it.
 **Table of contents:**
 
 1. [Getting started](#getting-started)
-1. [Usage](#usage)
+1. [Connecting to brokers](#connecting-to-brokers)
    1. [Interactive Brokers](#interactive-brokers)
    1. [Charles Schwab](#charles-schwab)
    1. [Fidelity](#fidelity)
    1. [Vanguard](#vanguard)
+1. [Extending `bankroll`](#extending-bankroll)
 
 # Getting started
 
@@ -24,7 +25,7 @@ After bootstrapping, confirm that the environment works by running the included 
 script/test
 ```
 
-# Usage
+# Connecting to brokers
 
 After being set up, `bankroll` can be used from the command line to bring together data from multiple brokerages.
 
@@ -134,3 +135,9 @@ python3 bankroll.py \
 ## Vanguard
 
 [Vanguard](https://investor.vanguard.com) is a **work in progress**, and may not be as fully-featured as the other brokerages listed here. [Contributions welcome](CONTRIBUTING.md)!
+
+# Extending `bankroll`
+
+Although the command-line interface exposes a basic set of functionality, it will never be able to capture the full set of possible use cases. For much greater flexibility, you can write Python code to use `bankroll` directly, and build on top of its APIs for your own purposes.
+
+For some examples, [see the included notebooks](notebooks/).

@@ -1,7 +1,6 @@
 from argparse import ArgumentParser, Namespace
 from functools import reduce
 from ib_insync import IB
-from itertools import groupby
 from model import Instrument, Stock, Position, Trade, Cash, LiveDataProvider
 from pathlib import Path
 from progress.bar import Bar
@@ -96,13 +95,6 @@ vanguardGroup.add_argument('--vanguardoutput',
                            help='Output path for converted activity',
                            type=Path)
 
-
-def combinePositions(positions: Iterable[Position]) -> Iterable[Position]:
-    return (reduce(lambda a, b: a.combine(b), ps)
-            for i, ps in groupby(sorted(positions, key=lambda p: p.instrument),
-                                 key=lambda p: p.instrument))
-
-
 positions: List[Position] = []
 trades: List[Trade] = []
 dataProvider: Optional[LiveDataProvider] = None
@@ -124,20 +116,19 @@ def printPositions(args: Namespace) -> None:
         print(p)
 
         if p in values:
-            print('\tMarket value: {}'.format(values[p]))
+            print(f'\tMarket value: {values[p]}')
         elif args.live_value:
-            logging.warning('Could not fetch market value for {}'.format(
-                p.instrument))
+            logging.warning(f'Could not fetch market value for {p.instrument}')
 
         if not isinstance(p.instrument, Stock):
             continue
 
-        print('\tCost basis: {}'.format(p.costBasis))
+        print(f'\tCost basis: {p.costBasis}')
 
         if args.realized_basis:
             realizedBasis = analysis.realizedBasisForSymbol(
                 p.instrument.symbol, trades=trades)
-            print('\tRealized basis: {}'.format(realizedBasis))
+            print(f'\tRealized basis: {realizedBasis}')
 
 
 def printTrades(args: Namespace) -> None:
@@ -246,5 +237,5 @@ if __name__ == '__main__':
     if args.ibtrades:
         trades += ibkr.parseTrades(args.ibtrades, lenient=args.lenient)
 
-    positions = list(combinePositions(positions))
+    positions = list(analysis.deduplicatePositions(positions))
     commands[args.command](args)
