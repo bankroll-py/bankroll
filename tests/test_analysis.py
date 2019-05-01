@@ -1,8 +1,9 @@
-from analysis import normalizeSymbol, realizedBasisForSymbol, liveValuesForPositions
+from analysis import normalizeSymbol, realizedBasisForSymbol, liveValuesForPositions, deduplicatePositions
 from datetime import datetime, date
 from decimal import Decimal
-from hypothesis import given, reproduce_failure, seed
+from hypothesis import given, reproduce_failure, seed, settings, HealthCheck
 from hypothesis.strategies import builds, composite, dates, datetimes, decimals, from_type, iterables, just, lists, one_of, sampled_from, text, tuples, SearchStrategy
+from itertools import chain
 from model import Cash, Currency, Instrument, Stock, Option, OptionType, Quote, Trade, TradeFlags, LiveDataProvider, Position
 from typing import Any, Dict, Iterable, List, Tuple, no_type_check
 
@@ -114,6 +115,7 @@ class TestAnalysis(unittest.TestCase):
         iterables(from_type(
             Trade).filter(lambda t: not t.instrument.symbol.startswith('SPY')),
                   max_size=100))
+    @settings(suppress_health_check=[HealthCheck.too_slow])
     def test_realizedBasisMissing(self, trades: Iterable[Trade]) -> None:
         self.assertIsNone(realizedBasisForSymbol('SPY', trades))
 
@@ -173,3 +175,19 @@ class TestAnalysis(unittest.TestCase):
             highest = max(valuesPerPrice, default=None)
             if highest is not None:
                 self.assertLessEqual(value, highest)
+
+    @given(lists(from_type(Position), max_size=10),
+           lists(from_type(Position), max_size=10))
+    def test_deduplicatePositions(self, a: List[Position],
+                                  b: List[Position]) -> None:
+        c = chain(a, b)
+        instruments = (p.instrument for p in c)
+        result = deduplicatePositions(c)
+
+        for i in instruments:
+            posA = next((p.quantity for p in a if p.instrument == i),
+                        Decimal(0))
+            posB = next((p.quantity for p in b if p.instrument == i),
+                        Decimal(0))
+            posC = next((p.quantity for p in result if p.instrument == i))
+            self.assertEqual(posC, Position.quantizeQuantity(posA + posB))

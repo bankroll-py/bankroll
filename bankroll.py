@@ -1,7 +1,6 @@
 from argparse import ArgumentParser, Namespace
 from functools import reduce
 from ib_insync import IB
-from itertools import groupby
 from model import Instrument, Stock, Position, Trade, Cash, LiveDataProvider
 from pathlib import Path
 from progress.bar import Bar
@@ -84,13 +83,6 @@ vanguardGroup.add_argument(
     '--vanguardstatement',
     help='Path to exported CSV of Vanguard positions and trades',
     type=Path)
-
-
-def combinePositions(positions: Iterable[Position]) -> Iterable[Position]:
-    return (reduce(lambda a, b: a.combine(b), ps)
-            for i, ps in groupby(sorted(positions, key=lambda p: p.instrument),
-                                 key=lambda p: p.instrument))
-
 
 positions: List[Position] = []
 trades: List[Trade] = []
@@ -210,5 +202,5 @@ if __name__ == '__main__':
     if args.ibtrades:
         trades += ibkr.parseTrades(args.ibtrades, lenient=args.lenient)
 
-    positions = list(combinePositions(positions))
+    positions = list(analysis.deduplicatePositions(positions))
     commands[args.command](args)
