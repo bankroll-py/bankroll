@@ -23,3 +23,4 @@ yapf==0.27.0
 progress==1.5
 camelot-py==0.7.2
 opencv-python==4.1.0.25
+diskcache==3.1.1

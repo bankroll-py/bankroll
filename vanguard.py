@@ -1,8 +1,11 @@
 from analysis import realizedBasisForSymbol
+from io import BytesIO
+from diskcache import Cache
 from collections import namedtuple
 from csvsectionslicer import parseSectionsForCSV, CSVSectionCriterion, CSVSectionResult
 from datetime import datetime
 from decimal import Decimal
+from io import StringIO
 from model import Bond, Cash, Currency, Instrument, Position, Stock, Trade, TradeFlags
 from parsetools import lenientParse, parseDecimal
 from pathlib import Path
@@ -10,7 +13,11 @@ from typing import Dict, List, NamedTuple, Optional, Set, Tuple
 
 import camelot
 import csv
+import hashlib
 import re
+
+# 50MB max cache size
+parsePDFCache = Cache('cache/pdfcache', size_limit=int(5e7))
 
 
 class VanguardPosition(NamedTuple):
@@ -108,67 +115,99 @@ def __parsePositions(path: Path, trades: List[Trade],
 
 def parsePositionsAndTrades(positionsPath: Path,
                             tradesPath: Path,
+                            csvExportPath: Optional[Path],
+                            allowPDFCache: bool = True,
                             lenient: bool = False) -> PositionsAndTrades:
     if tradesPath.suffix.lower() == '.pdf':
-        activityValues = parseActivityPDFRows(tradesPath)
+        activityValues = parseActivityPDFRows(tradesPath, allowPDFCache,
+                                              csvExportPath)
     elif tradesPath.suffix.lower() == '.csv':
-        activityValues = __rowsForActivtyCSV(tradesPath)
+        activityValues = _rowsForActivtyCSVFile(tradesPath)
     else:
         print('Error! Expected PDF or CSV for trades path: %s' % tradesPath)
         return PositionsAndTrades([], [])
 
     trades = __tradesForActivityRows(activityValues)
-    positions = __parsePositions(positionsPath, trades=trades, lenient=lenient)
+
+    positions: List[Position] = []
+    if positionsPath.exists():
+        positions = __parsePositions(positionsPath,
+                                     trades=trades,
+                                     lenient=lenient)
+
     return PositionsAndTrades(positions, trades)
 
 
-def exportActivityCSV(activityPath: Path, outputPath: Path) -> None:
-    with open(outputPath, 'w') as f:
-        activityValues = parseActivityPDFRows(activityPath)
-        csvLines = map(lambda r: ','.join(r), activityValues)
-
-        f.write(
-            "Settlement Date,Trade Date,Symbol,Name,Transaction Type,Account Type,Quantity,Price,Commission and Fees,Amount\n"
-        )
-
-        for line in csvLines:
-            f.write("%s\n" % line)
+def csvStringForActivityRows(rows: List[List[str]]) -> str:
+    lines: List[str] = []
+    lines.append(
+        "Settlement Date,Trade Date,Symbol,Name,Transaction Type,Account Type,Quantity,Price,Commission and Fees,Amount"
+    )
+    lines.extend(map(lambda r: ','.join(r), rows))
+    return "\n".join(lines)
 
 
-def parseActivityPDFRows(path: Path) -> List[List[str]]:
-    tables = camelot.read_pdf(str(path),
-                              pages='1-end',
-                              flavor='stream',
-                              row_tol=30)
-
+def parseActivityPDFRows(path: Path,
+                         allowPDFCache: bool = True,
+                         csvExportPath: Optional[Path] = None
+                         ) -> List[List[str]]:
     allRows: List[List[str]] = []
-    for index, t in enumerate(tables):
-        # print("parsing table %s of %s" % (index, len(tables)))
-        df = t.df.replace({'\n': ''}, regex=True)
-        headerValues = df.loc[df[0] == 'Settlement date'].index.values
 
-        if (len(headerValues) == 0):
-            # For now asserting that only the last page can be invalid which is true when exporting activity from Vanguard
-            assert index == len(
-                tables) - 1, "Invalid header for table: %s" % index
-            print("Skipping table %s of %s" % (index, len(tables)))
-            continue
+    pdfHash = hashForFileAtPath(path)
+    csvLines: Optional[str] = None
+    if allowPDFCache:
+        csvLines = parsePDFCache.get(StringIO(pdfHash))
 
-        df = df.iloc[(headerValues[0] + 1):]
-        df = df.replace({',': ''}, regex=True)
-        df = df.replace({'\$': ''}, regex=True)
-        df = df.replace({'- ': '-'}, regex=True)
+    if csvLines and len(csvLines) > 0:
+        allRows = _rowsForActivtyCSVString(csvLines)
+    else:
+        tables = camelot.read_pdf(str(path),
+                                  pages='1-end',
+                                  flavor='stream',
+                                  row_tol=30)
 
-        for index, row in df.iterrows():
-            allRows.append(row.tolist())
+        for index, t in enumerate(tables):
+            # print("parsing table %s of %s" % (index, len(tables)))
+            df = t.df.replace({'\n': ''}, regex=True)
+            headerValues = df.loc[df[0] == 'Settlement date'].index.values
+
+            if (len(headerValues) == 0):
+                # For now asserting that only the last page can be invalid which is true when exporting activity from Vanguard
+                assert index == len(
+                    tables) - 1, "Invalid header for table: %s" % index
+                print("Skipping table %s of %s" % (index, len(tables)))
+                continue
+
+            df = df.iloc[(headerValues[0] + 1):]
+            df = df.replace({',': ''}, regex=True)
+            df = df.replace({'\$': ''}, regex=True)
+            df = df.replace({'- ': '-'}, regex=True)
+
+            for index, row in df.iterrows():
+                allRows.append(row.tolist())
+
+        csvLines = csvStringForActivityRows(allRows)
+
+        # Cache parsed rows
+        parsePDFCache.set(StringIO(pdfHash), csvLines)
+
+    if csvExportPath:
+        with open(csvExportPath, 'w') as f:
+            f.write(csvLines)
 
     return allRows
 
 
-def __rowsForActivtyCSV(path: Path) -> List[List[str]]:
+def _rowsForActivtyCSVFile(path: Path) -> List[List[str]]:
     with open(path, newline='') as csvTradesFile:
         reader = csv.reader(csvTradesFile)
         return list(map(lambda r: r[0:], reader))
+
+
+def _rowsForActivtyCSVString(string: str) -> List[List[str]]:
+    buffer = StringIO(string)
+    reader = csv.reader(buffer)
+    return list(map(lambda r: r[0:], reader))
 
 
 def __tradesForActivityRows(rows: List[List[str]]) -> List[Trade]:
@@ -224,8 +263,21 @@ def parseVanguardTransaction(t: VanguardTransaction) -> Optional[Trade]:
         'Buy': TradeFlags.OPEN,
         'Sell': TradeFlags.CLOSE,
         'Reinvestment': TradeFlags.OPEN | TradeFlags.DRIP,
-        'Corp Action (Redemption)': TradeFlags.CLOSE
+        'Corp Action (Redemption)': TradeFlags.CLOSE,
+        'Transfer (outgoing)': TradeFlags.CLOSE,
     }
 
     return forceParseVanguardTransaction(
         t, flags=flagsByTransactionType[t.transactionType])
+
+
+def hashForFileAtPath(path: Path) -> str:
+    BLOCKSIZE = 65536
+    hasher = hashlib.md5()
+    with open(path, 'rb') as afile:
+        buf = afile.read(BLOCKSIZE)
+        while len(buf) > 0:
+            hasher.update(buf)
+            buf = afile.read(BLOCKSIZE)
+
+    return hasher.hexdigest()
