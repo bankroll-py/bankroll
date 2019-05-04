@@ -13,7 +13,9 @@ class TestVanguardPositions(unittest.TestCase):
     def setUp(self) -> None:
         self.positions = vanguard.parsePositionsAndTrades(
             Path('tests/vanguard_positions_and_transactions.csv'),
-            Path('tests/vanguard_activity.pdf'), None).positions
+            Path('tests/vanguard_activity.pdf'),
+            None,
+            allowPDFCache=False).positions
         self.positions.sort(key=lambda p: p.instrument.symbol)
 
     def test_positionValidity(self) -> None:
@@ -70,6 +72,12 @@ class TestVanguardParseActivityPDFRows(unittest.TestCase):
     def test_totalRows(self) -> None:
         self.assertEqual(len(self.rows), 20)
 
+    def test_cachedParsing(self) -> None:
+        cachedRows = vanguard.parseActivityPDFRows(
+            Path('tests/vanguard_activity.pdf'), allowPDFCache=True)
+        self.assertGreater(len(cachedRows), 0)
+        self.assertEqual(len(self.rows), len(cachedRows))
+
     def test_rowValues(self) -> None:
         self.assertEqual(
             self.rows[0],
@@ -100,7 +108,7 @@ class TestVanguardTransactions(unittest.TestCase):
     def setUp(self) -> None:
         self.trades = vanguard.parsePositionsAndTrades(
             Path('tests/vanguard_positions_and_transactions.csv'),
-            Path('tests/vanguard_activity_converted.csv'),
+            Path('tests/vanguard_activity.csv'),
             None,
             allowPDFCache=False).trades
         self.trades.sort(key=lambda t: (t.date, t.instrument.symbol))

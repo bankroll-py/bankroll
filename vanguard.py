@@ -9,7 +9,7 @@ from io import StringIO
 from model import Bond, Cash, Currency, Instrument, Position, Stock, Trade, TradeFlags
 from parsetools import lenientParse, parseDecimal
 from pathlib import Path
-from typing import Dict, List, NamedTuple, Optional, Set, Tuple
+from typing import Dict, Iterable, List, NamedTuple, Optional, Set, Tuple
 
 import camelot
 import csv
@@ -90,8 +90,8 @@ def parseVanguardPosition(p: VanguardPosition,
                     costBasis=realizedBasis)
 
 
-def __parsePositions(path: Path, trades: List[Trade],
-                     lenient: bool = False) -> List[Position]:
+def _parsePositions(path: Path, trades: List[Trade],
+                    lenient: bool = False) -> List[Position]:
     with open(path, newline='') as csvfile:
         criterion = CSVSectionCriterion(
             startSectionRowMatch=["Account Number"],
@@ -127,13 +127,13 @@ def parsePositionsAndTrades(positionsPath: Path,
         print('Error! Expected PDF or CSV for trades path: %s' % tradesPath)
         return PositionsAndTrades([], [])
 
-    trades = __tradesForActivityRows(activityValues)
+    trades = _tradesForActivityRows(activityValues)
 
     positions: List[Position] = []
-    if positionsPath.exists():
-        positions = __parsePositions(positionsPath,
-                                     trades=trades,
-                                     lenient=lenient)
+    if positionsPath and positionsPath.exists():
+        positions = _parsePositions(positionsPath,
+                                    trades=trades,
+                                    lenient=lenient)
 
     return PositionsAndTrades(positions, trades)
 
@@ -186,9 +186,8 @@ def parseActivityPDFRows(path: Path,
             for index, row in df.iterrows():
                 allRows.append(row.tolist())
 
-        csvLines = csvStringForActivityRows(allRows)
-
         # Cache parsed rows
+        csvLines = csvStringForActivityRows(allRows)
         parsePDFCache.set(StringIO(pdfHash), csvLines)
 
     if csvExportPath:
@@ -200,17 +199,21 @@ def parseActivityPDFRows(path: Path,
 
 def _rowsForActivtyCSVFile(path: Path) -> List[List[str]]:
     with open(path, newline='') as csvTradesFile:
-        reader = csv.reader(csvTradesFile)
-        return list(map(lambda r: r[0:], reader))
+        return _rowsForActivityCSVBuffer(csvTradesFile)
 
 
 def _rowsForActivtyCSVString(string: str) -> List[List[str]]:
-    buffer = StringIO(string)
+    return _rowsForActivityCSVBuffer(StringIO(string))
+
+
+def _rowsForActivityCSVBuffer(buffer: Iterable[str]) -> List[List[str]]:
     reader = csv.reader(buffer)
+    # assume the first row is a header row
+    next(reader)
     return list(map(lambda r: r[0:], reader))
 
 
-def __tradesForActivityRows(rows: List[List[str]]) -> List[Trade]:
+def _tradesForActivityRows(rows: List[List[str]]) -> List[Trade]:
     trades: List[Trade] = []
     for r in rows:
         trade = parseVanguardTransaction(VanguardTransaction._make(r))
