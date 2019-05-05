@@ -15,6 +15,7 @@ import camelot
 import csv
 import hashlib
 import re
+import warnings
 
 # 50MB max cache size
 parsePDFCache = Cache('cache/pdfcache', size_limit=int(5e7))
@@ -161,10 +162,12 @@ def parseActivityPDFRows(path: Path,
     if csvLines and len(csvLines) > 0:
         allRows = _rowsForActivtyCSVString(csvLines)
     else:
-        tables = camelot.read_pdf(str(path),
-                                  pages='1-end',
-                                  flavor='stream',
-                                  row_tol=30)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=ResourceWarning)
+            tables = camelot.read_pdf(str(path),
+                                      pages='1-end',
+                                      flavor='stream',
+                                      row_tol=30)
 
         for index, t in enumerate(tables):
             # print("parsing table %s of %s" % (index, len(tables)))
