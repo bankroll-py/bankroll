@@ -7,13 +7,6 @@ T = TypeVar('T')
 U = TypeVar('U')
 
 
-def parseDecimal(s: str) -> Decimal:
-    if s == 'N/A' or s == "—" or s.lower() == 'free':
-        return Decimal(0)
-    else:
-        return Decimal(s.replace(',', '').replace('$', ''))
-
-
 def lenientParse(xs: Iterable[T], transform: Callable[[T], U],
                  lenient: bool) -> Iterable[U]:
     def f(input: T) -> Optional[U]:

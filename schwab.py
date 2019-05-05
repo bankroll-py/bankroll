@@ -1,12 +1,19 @@
 from datetime import date, datetime
 from decimal import Decimal
 from model import Cash, Currency, Instrument, Stock, Bond, Option, OptionType, Position, Trade, TradeFlags
-from parsetools import lenientParse, parseDecimal
+from parsetools import lenientParse
 from pathlib import Path
 from typing import Dict, List, NamedTuple, Optional
 
 import csv
 import re
+
+
+def schwabDecimal(s: str) -> Decimal:
+    if s == 'N/A':
+        return Decimal(0)
+    else:
+        return Decimal(s.replace(',', '').replace('$', ''))
 
 
 def parseOption(symbol: str) -> Option:
@@ -69,9 +76,9 @@ def parseSchwabPosition(p: SchwabPosition) -> Optional[Position]:
         raise ValueError(f'Unrecognized security type: {p.securityType}')
 
     return Position(instrument=instrument,
-                    quantity=parseDecimal(p.quantity),
+                    quantity=schwabDecimal(p.quantity),
                     costBasis=Cash(currency=Currency.USD,
-                                   quantity=parseDecimal(p.costBasis)))
+                                   quantity=schwabDecimal(p.costBasis)))
 
 
 def parsePositions(path: Path, lenient: bool = False) -> List[Position]:
@@ -118,13 +125,13 @@ def forceParseSchwabTransaction(t: SchwabTransaction,
 
     fees = Decimal(0)
     if t.fees:
-        fees = parseDecimal(t.fees)
+        fees = schwabDecimal(t.fees)
 
     amount = Decimal(0)
     if t.amount:
         # Schwab automatically deducts the fees, but we need to add them back in for consistency with other brokers
         # (where the denominating currency of these two things may differ)
-        amount = parseDecimal(t.amount) + fees
+        amount = schwabDecimal(t.amount) + fees
 
     return Trade(date=datetime.strptime(t.date[0:10], '%m/%d/%Y'),
                  instrument=guessInstrumentFromSymbol(t.symbol),

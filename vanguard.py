@@ -7,7 +7,7 @@ from datetime import datetime
 from decimal import Decimal
 from io import StringIO
 from model import Bond, Cash, Currency, Instrument, Position, Stock, Trade, TradeFlags
-from parsetools import lenientParse, parseDecimal
+from parsetools import lenientParse
 from pathlib import Path
 from typing import Dict, Iterable, List, NamedTuple, Optional, Set, Tuple
 
@@ -54,7 +54,10 @@ class VanguardPositionAndTrades(NamedTuple):
 
 def parseVanguardDecimal(s: str) -> Decimal:
     # when negative amounts split between 2 lines we get a space after the minus sign
-    return parseDecimal(s.replace('- ', '-'))
+    if s == 'N/A' or s == "—" or s.lower() == 'free':
+        return Decimal(0)
+    else:
+        return Decimal(s.replace('- ', '-').replace(',', '').replace('$', ''))
 
 
 def guessInstrumentForInvestmentName(name: str) -> Instrument:
