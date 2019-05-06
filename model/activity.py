@@ -60,7 +60,7 @@ class DividendPayment(Activity):
         return f'DividendPayment(date={self.date!r}, stock={self.stock!r}, proceeds={self.proceeds!r})'
 
     def __str__(self) -> str:
-        return f'{self.date.date()} {self.stock:6} dividend paid: {self.proceeds.paddedString(padding=10)}'
+        return f'{self.date.date()} Dividend       {self.stock:21} {self.proceeds.paddedString(padding=10)}'
 
 
 class TradeFlags(Flag):
