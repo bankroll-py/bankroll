@@ -5,7 +5,7 @@ from enum import Flag, auto
 from typing import Any, Dict
 
 from .cash import Cash
-from .instrument import Instrument
+from .instrument import Instrument, Stock
 from .position import Position
 
 
@@ -29,6 +29,38 @@ class Activity(ABC):
     @abstractmethod
     def __hash__(self) -> int:
         return hash(self.date)
+
+
+# Represents dividend activity, whether or not it was cashed out or reinvested.
+class DividendPayment(Activity):
+    def __init__(self, date: datetime, stock: Stock, proceeds: Cash):
+        self._stock = stock
+        self._proceeds = proceeds
+        super().__init__(date)
+
+    @property
+    def stock(self) -> Stock:
+        return self._stock
+
+    @property
+    def proceeds(self) -> Cash:
+        return self._proceeds
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, DividendPayment) or not super().__eq__(other):
+            return False
+
+        return bool(self.stock == other.stock
+                    and self.proceeds == other.proceeds)
+
+    def __hash__(self) -> int:
+        return super().__hash__() ^ hash((self.stock, self.proceeds))
+
+    def __repr__(self) -> str:
+        return f'DividendPayment(date={self.date!r}, stock={self.stock!r}, proceeds={self.proceeds!r})'
+
+    def __str__(self) -> str:
+        return f'{self.date.date()} {self.stock:6} dividend paid: {self.proceeds.paddedString(padding=10)}'
 
 
 class TradeFlags(Flag):
