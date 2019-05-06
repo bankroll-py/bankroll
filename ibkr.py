@@ -5,8 +5,9 @@ from model import Currency, Cash, Instrument, Stock, Bond, Option, OptionType, F
 from parsetools import lenientParse
 from pathlib import Path
 from progress.spinner import Spinner
-from typing import Awaitable, Callable, Dict, List, NamedTuple, Optional, Type
+from typing import Any, Awaitable, Callable, Dict, List, NamedTuple, Optional, Type, no_type_check
 
+import backoff
 import ib_insync as IB
 import logging
 import math
@@ -328,8 +329,24 @@ class SpinnerOnLogHandler(logging.Handler):
         self._spinner.next()
 
 
-def downloadTrades(token: str, queryID: int,
-                   lenient: bool = False) -> List[Trade]:
+def backoffFlexReport(details: Dict[str, Any]) -> None:
+    wait: float = details['wait']
+    logging.warn(f'Backing off {wait:0.f} seconds before retrying…')
+
+
+def flexErrorIsFatal(exception: IB.FlexError) -> bool:
+    # https://www.interactivebrokers.co.uk/en/software/am/am/reports/version_3_error_codes.htm
+    return 'Please try again shortly.' not in str(exception)
+
+
+@no_type_check
+@backoff.on_exception(backoff.expo,
+                      IB.FlexError,
+                      base=3,
+                      max_tries=5,
+                      giveup=flexErrorIsFatal,
+                      on_backoff=backoffFlexReport)
+def downloadFlexReport(token: str, queryID: int) -> IB.FlexReport:
     with Spinner('Downloading trade report ') as spinner:
         handler = SpinnerOnLogHandler(spinner)
         logger = logging.getLogger('ib_insync.flexreport')
@@ -337,11 +354,15 @@ def downloadTrades(token: str, queryID: int,
 
         try:
             spinner.next()
-            report = IB.FlexReport(token=token, queryId=queryID)
+            return IB.FlexReport(token=token, queryId=queryID)
         finally:
             logger.removeHandler(handler)
 
-    return tradesFromReport(report, lenient=lenient)
+
+def downloadTrades(token: str, queryID: int,
+                   lenient: bool = False) -> List[Trade]:
+    return tradesFromReport(downloadFlexReport(token=token, queryID=queryID),
+                            lenient=lenient)
 
 
 def stockContract(stock: Stock) -> IB.Contract:
