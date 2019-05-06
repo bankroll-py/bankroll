@@ -43,7 +43,7 @@ def parseOption(symbol: str,
     return cls(underlying=match['underlying'].rstrip(),
                currency=currency,
                optionType=optionType,
-               expiration=_parseIBDate(match['date']).date(),
+               expiration=datetime.strptime(match['date'], '%y%m%d').date(),
                strike=parseFiniteDecimal(match['strike']) / 1000)
 
 
