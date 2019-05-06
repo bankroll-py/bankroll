@@ -1,7 +1,7 @@
 from argparse import ArgumentParser, Namespace
 from functools import reduce
 from ib_insync import IB
-from model import Instrument, Stock, Position, Trade, Cash, LiveDataProvider
+from model import Activity, Instrument, Stock, Position, Trade, Cash, LiveDataProvider
 from pathlib import Path
 from progress.bar import Bar
 from typing import Dict, Iterable, List, Optional
@@ -85,7 +85,7 @@ vanguardGroup.add_argument(
     type=Path)
 
 positions: List[Position] = []
-trades: List[Trade] = []
+activity: List[Activity] = []
 dataProvider: Optional[LiveDataProvider] = None
 
 
@@ -116,18 +116,18 @@ def printPositions(args: Namespace) -> None:
 
         if args.realized_basis:
             realizedBasis = analysis.realizedBasisForSymbol(
-                p.instrument.symbol, trades=trades)
+                p.instrument.symbol, activity=activity)
             print(f'\tRealized basis: {realizedBasis}')
 
 
-def printTrades(args: Namespace) -> None:
-    for t in sorted(trades, key=lambda t: t.date, reverse=True):
+def printActivity(args: Namespace) -> None:
+    for t in sorted(activity, key=lambda t: t.date, reverse=True):
         print(t)
 
 
 commands = {
     'positions': printPositions,
-    'trades': printTrades,
+    'activity': printActivity,
 }
 
 subparsers = parser.add_subparsers(dest='command', help='What to inspect')
@@ -146,8 +146,8 @@ positionsParser.add_argument(
     default=False,
     action='store_true')
 
-tradesParser = subparsers.add_parser(
-    'trades', help='Operations upon the imported list of trades')
+activityParser = subparsers.add_parser(
+    'activity', help='Operations upon imported portfolio activity')
 
 if __name__ == '__main__':
     args = parser.parse_args()
@@ -163,22 +163,22 @@ if __name__ == '__main__':
                                              lenient=args.lenient)
 
     if args.fidelitytransactions:
-        trades += fidelity.parseTransactions(args.fidelitytransactions,
-                                             lenient=args.lenient)
+        activity += fidelity.parseTransactions(args.fidelitytransactions,
+                                               lenient=args.lenient)
 
     if args.schwabpositions:
         positions += schwab.parsePositions(args.schwabpositions,
                                            lenient=args.lenient)
 
     if args.schwabtransactions:
-        trades += schwab.parseTransactions(args.schwabtransactions,
-                                           lenient=args.lenient)
+        activity += schwab.parseTransactions(args.schwabtransactions,
+                                             lenient=args.lenient)
 
     if args.vanguardstatement:
-        positionsAndTrades = vanguard.parsePositionsAndTrades(
+        positionsAndActivity = vanguard.parsePositionsAndActivity(
             args.vanguardstatement, lenient=args.lenient)
-        positions += positionsAndTrades.positions
-        trades += positionsAndTrades.trades
+        positions += positionsAndActivity.positions
+        activity += positionsAndActivity.activity
 
     if args.twsport:
         ib = IB()
@@ -195,12 +195,12 @@ if __name__ == '__main__':
                 'Both a Flex token and a Flex query ID are required to download trade reports'
             )
 
-        trades += ibkr.downloadTrades(token=args.flextoken,
-                                      queryID=args.flexquery,
-                                      lenient=args.lenient)
+        activity += ibkr.downloadTrades(token=args.flextoken,
+                                        queryID=args.flexquery,
+                                        lenient=args.lenient)
 
     if args.ibtrades:
-        trades += ibkr.parseTrades(args.ibtrades, lenient=args.lenient)
+        activity += ibkr.parseTrades(args.ibtrades, lenient=args.lenient)
 
     positions = list(analysis.deduplicatePositions(positions))
     commands[args.command](args)

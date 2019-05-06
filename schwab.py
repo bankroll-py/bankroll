@@ -1,9 +1,9 @@
 from datetime import date, datetime
 from decimal import Decimal
-from model import Cash, Currency, Instrument, Stock, Bond, Option, OptionType, Position, Trade, TradeFlags
+from model import Activity, Cash, Currency, Instrument, Stock, Bond, Option, OptionType, Position, Trade, TradeFlags
 from parsetools import lenientParse
 from pathlib import Path
-from typing import Dict, List, NamedTuple, Optional
+from typing import Dict, NamedTuple, Optional, Sequence
 
 import csv
 import re
@@ -81,7 +81,7 @@ def parseSchwabPosition(p: SchwabPosition) -> Optional[Position]:
                                    quantity=schwabDecimal(p.costBasis)))
 
 
-def parsePositions(path: Path, lenient: bool = False) -> List[Position]:
+def parsePositions(path: Path, lenient: bool = False) -> Sequence[Position]:
     with open(path, newline='') as csvfile:
         reader = csv.reader(csvfile)
 
@@ -182,7 +182,7 @@ def parseSchwabTransaction(t: SchwabTransaction) -> Optional[Trade]:
 
 
 # Transactions will be ordered from oldest to newest
-def parseTransactions(path: Path, lenient: bool = False) -> List[Trade]:
+def parseTransactions(path: Path, lenient: bool = False) -> Sequence[Activity]:
     with open(path, newline='') as csvfile:
         reader = csv.reader(csvfile)
 
@@ -206,8 +206,8 @@ def parseTransactions(path: Path, lenient: bool = False) -> List[Trade]:
         return fixUpShortSales(list(trades), inboundTransfers)
 
 
-def fixUpShortSales(trades: List[Trade],
-                    inboundTransfers: List[Trade]) -> List[Trade]:
+def fixUpShortSales(trades: Sequence[Trade],
+                    inboundTransfers: Sequence[Trade]) -> Sequence[Trade]:
     positionsBySymbol: Dict[str, Decimal] = {}
 
     def f(t: Trade) -> Trade:

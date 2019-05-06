@@ -2,7 +2,7 @@ from csvsectionslicer import parseSectionsForCSV, CSVSectionCriterion, CSVSectio
 from datetime import date, datetime
 from decimal import Decimal
 from enum import IntEnum, unique
-from model import Cash, Currency, Instrument, Stock, Bond, Option, OptionType, Position, Trade, TradeFlags
+from model import Activity, Cash, Currency, Instrument, Stock, Bond, Option, OptionType, Position, Trade, TradeFlags
 from parsetools import lenientParse
 from pathlib import Path
 from sys import stderr
@@ -193,7 +193,7 @@ def parseFidelityTransaction(t: FidelityTransaction) -> Optional[Trade]:
 
 
 # Transactions will be ordered from newest to oldest
-def parseTransactions(path: Path, lenient: bool = False) -> List[Trade]:
+def parseTransactions(path: Path, lenient: bool = False) -> List[Activity]:
     with open(path, newline='') as csvfile:
         transactionsCriterion = CSVSectionCriterion(
             startSectionRowMatch=["Run Date", "Account", "Action"],

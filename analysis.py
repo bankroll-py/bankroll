@@ -1,6 +1,6 @@
 from functools import reduce
 from itertools import groupby
-from model import Cash, Trade, Instrument, Option, LiveDataProvider, Quote, Position
+from model import Activity, Cash, Trade, Instrument, Option, LiveDataProvider, Quote, Position
 from progress.bar import Bar
 from typing import Dict, Iterable, Optional, Tuple
 
@@ -23,11 +23,13 @@ def tradeAffectsSymbol(trade: Trade, symbol: str) -> bool:
 
 # Calculates the "realized" basis for a particular symbol, given a trade history. This refers to the actual amounts paid in and out, including dividend payments, as well as money gained or lost on derivatives related to that symbol (e.g., short puts, covered calls).
 def realizedBasisForSymbol(symbol: str,
-                           trades: Iterable[Trade]) -> Optional[Cash]:
+                           activity: Iterable[Activity]) -> Optional[Cash]:
     def f(basis: Optional[Cash], trade: Trade) -> Optional[Cash]:
         return basis - trade.proceeds if basis else -trade.proceeds
 
-    return reduce(f, (t for t in trades if tradeAffectsSymbol(t, symbol)),
+    return reduce(f,
+                  (t for t in activity
+                   if isinstance(t, Trade) and tradeAffectsSymbol(t, symbol)),
                   None)
 
 

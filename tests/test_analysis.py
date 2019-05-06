@@ -76,7 +76,7 @@ class TestAnalysis(unittest.TestCase):
                   flags=TradeFlags.OPEN),
         ]
 
-        basis = realizedBasisForSymbol('SPY', trades=trades)
+        basis = realizedBasisForSymbol('SPY', trades)
         self.assertEqual(basis, helpers.cashUSD(Decimal('900')))
 
     separatedSymbols = ['BRK.B', 'BRKB', 'BRK B', 'BRK/B']
@@ -107,7 +107,7 @@ class TestAnalysis(unittest.TestCase):
                   flags=TradeFlags.OPEN),
         ]
 
-        basis = realizedBasisForSymbol(symbols[2], trades=trades)
+        basis = realizedBasisForSymbol(symbols[2], trades)
         self.assertEqual(basis, helpers.cashUSD(Decimal('900')))
 
     @no_type_check
