@@ -226,8 +226,8 @@ class TestAnalysis(unittest.TestCase):
             if highest is not None:
                 self.assertLessEqual(value, highest)
 
-    @given(lists(from_type(Position), max_size=10),
-           lists(from_type(Position), max_size=10))
+    @given(lists(from_type(Position), max_size=5),
+           lists(from_type(Position), max_size=5))
     def test_deduplicatePositions(self, a: List[Position],
                                   b: List[Position]) -> None:
         c = chain(a, b)
