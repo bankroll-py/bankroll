@@ -3,7 +3,7 @@ from decimal import Decimal
 from hypothesis import given, reproduce_failure
 from hypothesis.strategies import builds, dates, decimals, from_regex, from_type, lists, one_of, sampled_from, text
 from itertools import groupby
-from model import Cash, Currency, Position, Instrument, Stock, Bond, Option, OptionType, Forex, Future, FutureOption, Trade, TradeFlags
+from model import Cash, Currency, Position, Instrument, Stock, Bond, Option, OptionType, Forex, Future, FutureOption, Trade, TradeFlags, DividendPayment
 from pathlib import Path
 
 import helpers
@@ -198,6 +198,38 @@ class TestIBKRTrades(unittest.TestCase):
         self.assertEqual(ts[0].flags, TradeFlags.OPEN)
 
 
+class TestIBKRActivity(unittest.TestCase):
+    def setUp(self) -> None:
+        self.activity = ibkr.parseNonTradeActivity(
+            Path('tests/ibkr_activity.xml'))
+        self.activity.sort(key=lambda t: t.date)
+
+        self.activityByDate = {
+            d: list(t)
+            for d, t in groupby(self.activity, key=lambda t: t.date.date())
+        }
+
+    def test_activityValidity(self) -> None:
+        self.assertGreater(len(self.activity), 0)
+
+    def test_postedAndPaid(self) -> None:
+        ts = self.activityByDate[date(2019, 2, 14)]
+        self.assertEqual(len(ts), 1)
+        self.assertEqual(
+            ts[0],
+            DividendPayment(date=ts[0].date,
+                            stock=Stock('AAPL', Currency.USD),
+                            proceeds=helpers.cashUSD(Decimal('23.36'))))
+
+        self.assertNotIn(date(2019, 2, 7), self.activityByDate)
+        self.assertNotIn(date(2019, 2, 8), self.activityByDate)
+
+    def test_postedUnpaid(self) -> None:
+        self.assertNotIn(date(2018, 12, 19), self.activityByDate)
+        self.assertNotIn(date(2018, 12, 20), self.activityByDate)
+        self.assertNotIn(date(2019, 1, 25), self.activityByDate)
+
+
 class TestIBKRParsing(unittest.TestCase):
     validSymbols = text(min_size=1)
     validCurrencies = from_type(Currency).map(lambda c: c.name)
@@ -317,7 +349,8 @@ class TestIBKRParsing(unittest.TestCase):
             self.assertEqual(contract.right, tradeConfirm.putCall)
 
         if isinstance(instrument, Option) or isinstance(instrument, Future):
-            self.assertEqual(contract.multiplier, tradeConfirm.multiplier)
+            self.assertEqual(Decimal(contract.multiplier),
+                             Decimal(tradeConfirm.multiplier))
             self.assertEqual(contract.lastTradeDateOrContractMonth,
                              tradeConfirm.expiry)
 

@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 from hypothesis.strategies import builds, dates, datetimes, decimals, from_regex, from_type, just, lists, integers, none, one_of, register_type_strategy, sampled_from, text, SearchStrategy
-from model import Cash, Currency, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, Trade, TradeFlags, Quote
+from model import Activity, Cash, Currency, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, DividendPayment, Trade, TradeFlags, Quote
 from typing import List, Optional, TypeVar
 
 T = TypeVar('T')
@@ -143,6 +143,13 @@ def positions(instrument: SearchStrategy[Instrument] = instruments(),
                   costBasis=costBasis)
 
 
+def dividendPayments(date: SearchStrategy[datetime] = datetimes(),
+                     stock: SearchStrategy[Stock] = stocks(),
+                     proceeds: SearchStrategy[Cash] = cash()
+                     ) -> SearchStrategy[DividendPayment]:
+    return builds(DividendPayment, date=date, stock=stock, proceeds=proceeds)
+
+
 def trades(date: SearchStrategy[datetime] = datetimes(),
            instrument: SearchStrategy[Instrument] = instruments(),
            quantity: SearchStrategy[Decimal] = positionQuantities(),
@@ -158,6 +165,11 @@ def trades(date: SearchStrategy[datetime] = datetimes(),
                   amount=amount,
                   fees=fees,
                   flags=flags)
+
+
+def activity(date: SearchStrategy[datetime] = datetimes()
+             ) -> SearchStrategy[Activity]:
+    return one_of(dividendPayments(date=date), trades(date=date))
 
 
 def quotes(bid: SearchStrategy[Optional[Cash]] = optionals(cash()),
@@ -209,6 +221,9 @@ register_type_strategy(
     Position,
     from_type(Instrument).flatmap(lambda i: positions(
         instrument=just(i), costBasis=cash(currency=just(i.currency)))))
+
+register_type_strategy(Activity, activity())
+register_type_strategy(DividendPayment, dividendPayments())
 
 register_type_strategy(
     TradeFlags,

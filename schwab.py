@@ -1,9 +1,9 @@
 from datetime import date, datetime
 from decimal import Decimal
-from model import Cash, Currency, Instrument, Stock, Bond, Option, OptionType, Position, Trade, TradeFlags
+from model import Activity, Cash, Currency, Instrument, Stock, Bond, Option, OptionType, Position, DividendPayment, Trade, TradeFlags
 from parsetools import lenientParse
 from pathlib import Path
-from typing import Dict, List, NamedTuple, Optional
+from typing import Dict, List, NamedTuple, Optional, Sequence
 
 import csv
 import re
@@ -81,7 +81,7 @@ def parseSchwabPosition(p: SchwabPosition) -> Optional[Position]:
                                    quantity=schwabDecimal(p.costBasis)))
 
 
-def parsePositions(path: Path, lenient: bool = False) -> List[Position]:
+def parsePositions(path: Path, lenient: bool = False) -> Sequence[Position]:
     with open(path, newline='') as csvfile:
         reader = csv.reader(csvfile)
 
@@ -117,6 +117,10 @@ def guessInstrumentFromSymbol(symbol: str) -> Instrument:
         return Stock(symbol, currency=Currency.USD)
 
 
+def _parseSchwabTransactionDate(datestr: str) -> datetime:
+    return datetime.strptime(datestr[0:10], '%m/%d/%Y')
+
+
 def forceParseSchwabTransaction(t: SchwabTransaction,
                                 flags: TradeFlags) -> Trade:
     quantity = Decimal(t.quantity)
@@ -133,7 +137,7 @@ def forceParseSchwabTransaction(t: SchwabTransaction,
         # (where the denominating currency of these two things may differ)
         amount = schwabDecimal(t.amount) + fees
 
-    return Trade(date=datetime.strptime(t.date[0:10], '%m/%d/%Y'),
+    return Trade(date=_parseSchwabTransactionDate(t.date),
                  instrument=guessInstrumentFromSymbol(t.symbol),
                  quantity=quantity,
                  amount=Cash(currency=Currency.USD, quantity=amount),
@@ -141,14 +145,23 @@ def forceParseSchwabTransaction(t: SchwabTransaction,
                  flags=flags)
 
 
-def parseSchwabTransaction(t: SchwabTransaction) -> Optional[Trade]:
+def parseSchwabTransaction(t: SchwabTransaction) -> Optional[Activity]:
+    dividendActions = [
+        'Cash Dividend',
+        'Reinvest Dividend',
+    ]
+
+    if t.action in dividendActions:
+        return DividendPayment(date=_parseSchwabTransactionDate(t.date),
+                               stock=Stock(t.symbol, currency=Currency.USD),
+                               proceeds=Cash(currency=Currency.USD,
+                                             quantity=schwabDecimal(t.amount)))
+
     ignoredActions = [
         'Wire Funds',
         'Wire Funds Received',
         'MoneyLink Transfer',
         'MoneyLink Deposit',
-        'Cash Dividend',
-        'Reinvest Dividend',
         'Long Term Cap Gain Reinvest',
         'ATM Withdrawal',
         'Schwab ATM Rebate',
@@ -182,7 +195,7 @@ def parseSchwabTransaction(t: SchwabTransaction) -> Optional[Trade]:
 
 
 # Transactions will be ordered from oldest to newest
-def parseTransactions(path: Path, lenient: bool = False) -> List[Trade]:
+def parseTransactions(path: Path, lenient: bool = False) -> List[Activity]:
     with open(path, newline='') as csvfile:
         reader = csv.reader(csvfile)
 
@@ -198,19 +211,22 @@ def parseTransactions(path: Path, lenient: bool = False) -> List[Trade]:
             and Decimal(r.quantity) > 0
         ]
 
-        trades = filter(
+        activity = filter(
             None,
             lenientParse(rows,
                          transform=parseSchwabTransaction,
                          lenient=lenient))
-        return fixUpShortSales(list(trades), inboundTransfers)
+        return fixUpShortSales(list(activity), inboundTransfers)
 
 
-def fixUpShortSales(trades: List[Trade],
-                    inboundTransfers: List[Trade]) -> List[Trade]:
+def fixUpShortSales(activity: Sequence[Activity],
+                    inboundTransfers: Sequence[Trade]) -> List[Activity]:
     positionsBySymbol: Dict[str, Decimal] = {}
 
-    def f(t: Trade) -> Trade:
+    def f(t: Activity) -> Activity:
+        if not isinstance(t, Trade):
+            return t
+
         symbol = t.instrument.symbol
 
         pos = positionsBySymbol.setdefault(symbol, Decimal(0))
@@ -238,4 +254,4 @@ def fixUpShortSales(trades: List[Trade],
             return t
 
     # Start from oldest transactions, work to newer
-    return [f(t) for t in reversed(trades)]
+    return [f(t) for t in reversed(activity)]
