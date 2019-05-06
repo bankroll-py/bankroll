@@ -413,7 +413,7 @@ class SpinnerOnLogHandler(logging.Handler):
 
 def backoffFlexReport(details: Dict[str, Any]) -> None:
     wait: float = details['wait']
-    logging.warn(f'Backing off {wait:0.f} seconds before retrying…')
+    logging.warn(f'Backing off {wait:.0f} seconds before retrying…')
 
 
 def flexErrorIsFatal(exception: IB.FlexError) -> bool:
