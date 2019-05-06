@@ -542,6 +542,9 @@ class IBDataProvider(MarketDataProvider):
         }
 
         self._client.qualifyContracts(*contractsByInstrument.values())
+
+        # Note: this blocks until all tickers come back. When we want this to be async, we'll need to use reqMktData().
+        # See https://github.com/jspahrsummers/bankroll/issues/13.
         tickers = self._client.reqTickers(*contractsByInstrument.values())
 
         for ticker in tickers:
