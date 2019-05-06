@@ -1,7 +1,7 @@
 from datetime import date
 from decimal import Decimal
 from itertools import groupby
-from model import Cash, Currency, Stock, Bond, Option, OptionType, Position, Trade, TradeFlags
+from model import Cash, Currency, Stock, Bond, Option, OptionType, Position, DividendPayment, Trade, TradeFlags
 from pathlib import Path
 
 import helpers
@@ -73,6 +73,24 @@ class TestSchwabTransactions(unittest.TestCase):
                               quantity=Decimal('-4981.11')),
                   fees=Cash(currency=Currency.USD, quantity=Decimal('6.95')),
                   flags=TradeFlags.OPEN))
+
+    def test_dividendReinvested(self) -> None:
+        ts = self.activityByDate[date(2017, 3, 28)]
+        self.assertEqual(len(ts), 1)
+        self.assertEqual(
+            ts[0],
+            DividendPayment(date=ts[0].date,
+                            stock=Stock('VOO', Currency.USD),
+                            proceeds=helpers.cashUSD(Decimal('22.95'))))
+
+    def test_cashDividend(self) -> None:
+        ts = self.activityByDate[date(2018, 3, 6)]
+        self.assertEqual(len(ts), 1)
+        self.assertEqual(
+            ts[0],
+            DividendPayment(date=ts[0].date,
+                            stock=Stock('VGLT', Currency.USD),
+                            proceeds=helpers.cashUSD(Decimal('12.85'))))
 
     def test_reinvestShares(self) -> None:
         ts = self.activityByDate[date(2017, 3, 29)]
