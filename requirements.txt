@@ -1,4 +1,4 @@
-pip==19.0.3
+pip==19.1
 astroid==2.2.5
 attrs==19.1.0
 eventkit==0.8.4
