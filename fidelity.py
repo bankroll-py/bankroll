@@ -2,7 +2,7 @@ from csvsectionslicer import parseSectionsForCSV, CSVSectionCriterion, CSVSectio
 from datetime import date, datetime
 from decimal import Decimal
 from enum import IntEnum, unique
-from model import Activity, Cash, Currency, Instrument, Stock, Bond, Option, OptionType, Position, Trade, TradeFlags
+from model import Activity, Cash, Currency, Instrument, Stock, Bond, Option, OptionType, Position, DividendPayment, Trade, TradeFlags
 from parsetools import lenientParse
 from pathlib import Path
 from sys import stderr
@@ -127,7 +127,7 @@ class FidelityTransaction(NamedTuple):
     settlementDate: str
 
 
-def parseOptionTransaction(symbol: str) -> Option:
+def parseOptionTransaction(symbol: str, currency: Currency) -> Option:
     match = re.match(
         r'^-(?P<underlying>[A-Z]+)(?P<date>\d{6})(?P<putCall>C|P)(?P<strike>[0-9\.]+)$',
         symbol)
@@ -140,19 +140,23 @@ def parseOptionTransaction(symbol: str) -> Option:
         optionType = OptionType.CALL
 
     return Option(underlying=match['underlying'],
-                  currency=Currency.USD,
+                  currency=currency,
                   expiration=datetime.strptime(match['date'], '%y%m%d').date(),
                   optionType=optionType,
                   strike=Decimal(match['strike']))
 
 
-def guessInstrumentFromSymbol(symbol: str) -> Instrument:
+def guessInstrumentFromSymbol(symbol: str, currency: Currency) -> Instrument:
     if re.search(r'[0-9]+(C|P)[0-9]+$', symbol):
-        return parseOptionTransaction(symbol)
+        return parseOptionTransaction(symbol, currency)
     elif Bond.validBondSymbol(symbol):
-        return Bond(symbol, currency=Currency.USD)
+        return Bond(symbol, currency=currency)
     else:
-        return Stock(symbol, currency=Currency.USD)
+        return Stock(symbol, currency=currency)
+
+
+def _parseFidelityTransactionDate(datestr: str) -> datetime:
+    return datetime.strptime(datestr, '%m/%d/%Y')
 
 
 def forceParseFidelityTransaction(t: FidelityTransaction,
@@ -170,23 +174,33 @@ def forceParseFidelityTransaction(t: FidelityTransaction,
     if t.amount:
         amount = Decimal(t.amount) + totalFees
 
-    return Trade(date=datetime.strptime(t.date, '%m/%d/%Y'),
-                 instrument=guessInstrumentFromSymbol(t.symbol),
+    currency = Currency(t.currency)
+    return Trade(date=_parseFidelityTransactionDate(t.date),
+                 instrument=guessInstrumentFromSymbol(t.symbol, currency),
                  quantity=quantity,
-                 amount=Cash(currency=Currency(t.currency), quantity=amount),
-                 fees=Cash(currency=Currency(t.currency), quantity=totalFees),
+                 amount=Cash(currency=currency, quantity=amount),
+                 fees=Cash(currency=currency, quantity=totalFees),
                  flags=flags)
 
 
-def parseFidelityTransaction(t: FidelityTransaction) -> Optional[Trade]:
+def parseFidelityTransaction(t: FidelityTransaction) -> Optional[Activity]:
+    if t.action == 'DIVIDEND RECEIVED':
+        return DividendPayment(date=_parseFidelityTransactionDate(t.date),
+                               stock=Stock(t.symbol,
+                                           currency=Currency(t.currency)),
+                               proceeds=Cash(currency=Currency(t.currency),
+                                             quantity=Decimal(t.amount)))
+
     flags = None
+    # TODO: Handle 'OPENING TRANSACTION' and 'CLOSING TRANSACTION' text for options transactions
     if t.action.startswith('YOU BOUGHT'):
         flags = TradeFlags.OPEN
     elif t.action.startswith('YOU SOLD'):
         flags = TradeFlags.CLOSE
     elif t.action.startswith('REINVESTMENT'):
         flags = TradeFlags.OPEN | TradeFlags.DRIP
-    else:
+
+    if not flags:
         return None
 
     return forceParseFidelityTransaction(t, flags=flags)

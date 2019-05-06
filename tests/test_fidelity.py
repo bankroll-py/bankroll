@@ -1,7 +1,7 @@
 from datetime import date
 from decimal import Decimal
 from itertools import groupby
-from model import Cash, Currency, Stock, Bond, Option, OptionType, Position, Trade, TradeFlags
+from model import Cash, Currency, Stock, Bond, Option, OptionType, Position, DividendPayment, Trade, TradeFlags
 from pathlib import Path
 
 import fidelity
@@ -101,12 +101,20 @@ class TestFidelityTransactions(unittest.TestCase):
                   fees=Cash(currency=Currency.USD, quantity=Decimal('4.95')),
                   flags=TradeFlags.OPEN))
 
-    def test_reinvestShares(self) -> None:
+    def test_dividendPayment(self) -> None:
         ts = self.activityByDate[date(2017, 11, 9)]
-        self.assertEqual(len(ts), 3)
+        self.assertEqual(len(ts), 4)
         self.assertEqual(
             ts[1],
-            Trade(date=ts[1].date,
+            DividendPayment(date=ts[1].date,
+                            stock=Stock('ROBO', Currency.USD),
+                            proceeds=helpers.cashUSD(Decimal('6.78'))))
+
+    def test_reinvestShares(self) -> None:
+        ts = self.activityByDate[date(2017, 11, 9)]
+        self.assertEqual(
+            ts[2],
+            Trade(date=ts[2].date,
                   instrument=Stock('ROBO', Currency.USD),
                   quantity=Decimal('0.234'),
                   amount=Cash(currency=Currency.USD,
@@ -137,10 +145,9 @@ class TestFidelityTransactions(unittest.TestCase):
 
     def test_sellToCloseOption(self) -> None:
         ts = self.activityByDate[date(2017, 11, 9)]
-        self.assertEqual(len(ts), 3)
         self.assertEqual(
-            ts[2],
-            Trade(date=ts[2].date,
+            ts[3],
+            Trade(date=ts[3].date,
                   instrument=Option(underlying='SPY',
                                     currency=Currency.USD,
                                     optionType=OptionType.CALL,
