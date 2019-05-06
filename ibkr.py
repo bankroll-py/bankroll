@@ -2,11 +2,11 @@ from datetime import datetime
 from decimal import Context, Decimal, DivisionByZero, Overflow, InvalidOperation, localcontext
 from enum import IntEnum
 from itertools import count
-from model import Currency, Cash, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, TradeFlags, Trade, LiveDataProvider, Quote, Activity, DividendPayment
+from model import Currency, Cash, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, TradeFlags, Trade, MarketDataProvider, Quote, Activity, DividendPayment
 from parsetools import lenientParse
 from pathlib import Path
 from progress.spinner import Spinner
-from typing import Any, Awaitable, Callable, Dict, List, NamedTuple, Optional, Type, no_type_check
+from typing import Any, Awaitable, Callable, Dict, Iterable, List, NamedTuple, Optional, Tuple, Type, no_type_check
 
 import backoff
 import ib_insync as IB
@@ -523,42 +523,53 @@ class MarketDataType(IntEnum):
     DELAYED_FROZEN = 4
 
 
-class IBDataProvider(LiveDataProvider):
+class IBDataProvider(MarketDataProvider):
     def __init__(self, client: IB.IB):
         self._client = client
         super().__init__()
 
-    def fetchQuote(self,
-                   instrument: Instrument,
-                   dataType: MarketDataType = MarketDataType.DELAYED_FROZEN
-                   ) -> Quote:
+    def fetchQuotes(self,
+                    instruments: Iterable[Instrument],
+                    dataType: MarketDataType = MarketDataType.DELAYED_FROZEN
+                    ) -> Iterable[Tuple[Instrument, Quote]]:
         self._client.reqMarketDataType(dataType.value)
 
-        con = contract(instrument)
-        self._client.qualifyContracts(con)
+        # IB.Contract is not guaranteed to be hashable, so we orient the table this way, albeit less useful.
+        # TODO: Check uniqueness of instruments
+        contractsByInstrument: Dict[Instrument, IB.Contract] = {
+            i: contract(i)
+            for i in instruments
+        }
 
-        ticker = self._client.reqTickers(con)[0]
-        logging.info(f'Received ticker: {ticker!r}')
+        self._client.qualifyContracts(*contractsByInstrument.values())
 
-        bid: Optional[Cash] = None
-        ask: Optional[Cash] = None
-        last: Optional[Cash] = None
-        close: Optional[Cash] = None
+        # Note: this blocks until all tickers come back. When we want this to be async, we'll need to use reqMktData().
+        # See https://github.com/jspahrsummers/bankroll/issues/13.
+        tickers = self._client.reqTickers(*contractsByInstrument.values())
 
-        if (ticker.bid
-                and math.isfinite(ticker.bid)) and not ticker.bidSize == 0:
-            bid = Cash(currency=instrument.currency,
-                       quantity=Decimal(ticker.bid))
-        if (ticker.ask
-                and math.isfinite(ticker.ask)) and not ticker.askSize == 0:
-            ask = Cash(currency=instrument.currency,
-                       quantity=Decimal(ticker.ask))
-        if (ticker.last
-                and math.isfinite(ticker.last)) and not ticker.lastSize == 0:
-            last = Cash(currency=instrument.currency,
-                        quantity=Decimal(ticker.last))
-        if ticker.close and math.isfinite(ticker.close):
-            close = Cash(currency=instrument.currency,
-                         quantity=Decimal(ticker.close))
+        for ticker in tickers:
+            instrument = next((i for (i, c) in contractsByInstrument.items()
+                               if c == ticker.contract))
 
-        return Quote(bid=bid, ask=ask, last=last, close=close)
+            bid: Optional[Cash] = None
+            ask: Optional[Cash] = None
+            last: Optional[Cash] = None
+            close: Optional[Cash] = None
+
+            if (ticker.bid
+                    and math.isfinite(ticker.bid)) and not ticker.bidSize == 0:
+                bid = Cash(currency=instrument.currency,
+                           quantity=Decimal(ticker.bid))
+            if (ticker.ask
+                    and math.isfinite(ticker.ask)) and not ticker.askSize == 0:
+                ask = Cash(currency=instrument.currency,
+                           quantity=Decimal(ticker.ask))
+            if (ticker.last and math.isfinite(
+                    ticker.last)) and not ticker.lastSize == 0:
+                last = Cash(currency=instrument.currency,
+                            quantity=Decimal(ticker.last))
+            if ticker.close and math.isfinite(ticker.close):
+                close = Cash(currency=instrument.currency,
+                             quantity=Decimal(ticker.close))
+
+            yield (instrument, Quote(bid=bid, ask=ask, last=last, close=close))

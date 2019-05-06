@@ -4,7 +4,7 @@ from decimal import Decimal
 from hypothesis import given, reproduce_failure, seed, settings, HealthCheck
 from hypothesis.strategies import builds, composite, dates, datetimes, decimals, from_type, iterables, just, lists, one_of, sampled_from, text, tuples, SearchStrategy
 from itertools import chain
-from model import Cash, Currency, Instrument, Stock, Option, OptionType, Quote, Trade, TradeFlags, LiveDataProvider, Position, Activity, DividendPayment
+from model import Cash, Currency, Instrument, Stock, Option, OptionType, Quote, Trade, TradeFlags, MarketDataProvider, Position, Activity, DividendPayment
 from typing import Any, Dict, Iterable, List, Tuple, no_type_check
 
 import helpers
@@ -46,13 +46,16 @@ def positionAndQuote(
         helpers.uniformCurrencyQuotes(currency=just(i.currency))))
 
 
-class StubDataProvider(LiveDataProvider):
+class StubDataProvider(MarketDataProvider):
     def __init__(self, quotes: Dict[Instrument, Quote]):
         self._quotes = quotes
         super().__init__()
 
-    def fetchQuote(self, instrument: Instrument) -> Quote:
-        return self._quotes[instrument]
+    def fetchQuotes(
+            self,
+            instruments: Iterable[Instrument],
+    ) -> Iterable[Tuple[Instrument, Quote]]:
+        return ((i, self._quotes[i]) for i in instruments)
 
 
 class TestAnalysis(unittest.TestCase):

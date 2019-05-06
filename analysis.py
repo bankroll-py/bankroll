@@ -1,6 +1,6 @@
 from functools import reduce
 from itertools import groupby
-from model import Activity, Cash, DividendPayment, Trade, Instrument, Option, LiveDataProvider, Quote, Position
+from model import Activity, Cash, DividendPayment, Trade, Instrument, Option, MarketDataProvider, Quote, Position
 from progress.bar import Bar
 from typing import Dict, Iterable, Optional, Tuple
 
@@ -47,7 +47,7 @@ def realizedBasisForSymbol(symbol: str,
 
 def liveValuesForPositions(
         positions: Iterable[Position],
-        dataProvider: LiveDataProvider,
+        dataProvider: MarketDataProvider,
         progressBar: Optional[Bar] = None,
 ) -> Dict[Position, Cash]:
     def priceFromQuote(q: Quote, p: Position) -> Optional[Cash]:
@@ -59,14 +59,20 @@ def liveValuesForPositions(
             return q.bid or q.last or q.ask or q.close
 
     result = {}
-    it = progressBar.iter(positions) if progressBar else positions
 
-    for p in it:
-        price = priceFromQuote(dataProvider.fetchQuote(p.instrument), p)
+    # TODO: Check uniqueness of instruments
+    positionsByInstrument = {p.instrument: p for p in positions}
+
+    quotes = dataProvider.fetchQuotes(positionsByInstrument.keys())
+    it = progressBar.iter(quotes) if progressBar else quotes
+
+    for (instrument, quote) in it:
+        position = positionsByInstrument[instrument]
+        price = priceFromQuote(quote, position)
         if not price:
             continue
 
-        result[p] = price * p.quantity * p.instrument.multiplier
+        result[position] = price * position.quantity * instrument.multiplier
 
     return result
 
