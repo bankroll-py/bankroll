@@ -68,6 +68,9 @@ class Quote:
 
 
 class MarketDataProvider(ABC):
+    # Fetches up-to-date quotes for the provided instruments.
+    # May return the results in any order.
     @abstractmethod
-    def fetchQuote(self, instrument: Instrument) -> Quote:
+    def fetchQuotes(self, instruments: Iterable[Instrument]
+                    ) -> Iterable[Tuple[Instrument, Quote]]:
         pass

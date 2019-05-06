@@ -51,8 +51,10 @@ class StubDataProvider(MarketDataProvider):
         self._quotes = quotes
         super().__init__()
 
-    def fetchQuote(self, instrument: Instrument) -> Quote:
-        return self._quotes[instrument]
+    def fetchQuotes(self,
+                    instruments: Iterable[Instrument],
+                    ) -> Iterable[Tuple[Instrument, Quote]]:
+        return ((i, self._quotes[i]) for i in instruments)
 
 
 class TestAnalysis(unittest.TestCase):

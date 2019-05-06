@@ -59,14 +59,20 @@ def liveValuesForPositions(
             return q.bid or q.last or q.ask or q.close
 
     result = {}
-    it = progressBar.iter(positions) if progressBar else positions
 
-    for p in it:
-        price = priceFromQuote(dataProvider.fetchQuote(p.instrument), p)
+    # TODO: Check uniqueness of instruments
+    positionsByInstrument = {p.instrument: p for p in positions}
+
+    quotes = dataProvider.fetchQuotes(positionsByInstrument.keys())
+    it = progressBar.iter(quotes) if progressBar else quotes
+
+    for (instrument, quote) in it:
+        position = positionsByInstrument[instrument]
+        price = priceFromQuote(quote, position)
         if not price:
             continue
 
-        result[p] = price * p.quantity * p.instrument.multiplier
+        result[position] = price * position.quantity * instrument.multiplier
 
     return result
 
