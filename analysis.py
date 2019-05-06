@@ -1,6 +1,6 @@
 from functools import reduce
 from itertools import groupby
-from model import Activity, Cash, Trade, Instrument, Option, LiveDataProvider, Quote, Position
+from model import Activity, Cash, DividendPayment, Trade, Instrument, Option, LiveDataProvider, Quote, Position
 from progress.bar import Bar
 from typing import Dict, Iterable, Optional, Tuple
 
@@ -14,22 +14,34 @@ def normalizeSymbol(symbol: str) -> str:
     return re.sub(r'[\.\s/]', '', symbol)
 
 
-def tradeAffectsSymbol(trade: Trade, symbol: str) -> bool:
-    return (isinstance(trade.instrument, Option) and normalizeSymbol(
-        trade.instrument.underlying) == normalizeSymbol(symbol)
-            ) or normalizeSymbol(
-                trade.instrument.symbol) == normalizeSymbol(symbol)
+def _activityAffectsSymbol(activity: Activity, symbol: str) -> bool:
+    normalized = normalizeSymbol(symbol)
+
+    if isinstance(activity, DividendPayment):
+        return normalizeSymbol(activity.stock.symbol) == normalized
+    elif isinstance(activity, Trade):
+        return (isinstance(activity.instrument, Option) and normalizeSymbol(
+            activity.instrument.underlying) == normalized) or normalizeSymbol(
+                activity.instrument.symbol) == normalized
+    else:
+        return False
 
 
 # Calculates the "realized" basis for a particular symbol, given a trade history. This refers to the actual amounts paid in and out, including dividend payments, as well as money gained or lost on derivatives related to that symbol (e.g., short puts, covered calls).
+#
+# The principle here is that we want to treat dividends and options premium as "gains," where cost basis gets reduced over time as proceeds are paid out. This is not how the tax accounting works, of course, but it provides a different view into the return/profitability of an investment.
 def realizedBasisForSymbol(symbol: str,
                            activity: Iterable[Activity]) -> Optional[Cash]:
-    def f(basis: Optional[Cash], trade: Trade) -> Optional[Cash]:
-        return basis - trade.proceeds if basis else -trade.proceeds
+    def f(basis: Optional[Cash], activity: Activity) -> Optional[Cash]:
+        if isinstance(activity, DividendPayment):
+            return basis - activity.proceeds if basis else -activity.proceeds
+        elif isinstance(activity, Trade):
+            return basis - activity.proceeds if basis else -activity.proceeds
+        else:
+            raise ValueError(f'Unexpected type of activity: {activity}')
 
     return reduce(f,
-                  (t for t in activity
-                   if isinstance(t, Trade) and tradeAffectsSymbol(t, symbol)),
+                  (t for t in activity if _activityAffectsSymbol(t, symbol)),
                   None)
 
 

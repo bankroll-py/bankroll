@@ -4,7 +4,7 @@ from decimal import Decimal
 from hypothesis import given, reproduce_failure, seed, settings, HealthCheck
 from hypothesis.strategies import builds, composite, dates, datetimes, decimals, from_type, iterables, just, lists, one_of, sampled_from, text, tuples, SearchStrategy
 from itertools import chain
-from model import Cash, Currency, Instrument, Stock, Option, OptionType, Quote, Trade, TradeFlags, LiveDataProvider, Position
+from model import Cash, Currency, Instrument, Stock, Option, OptionType, Quote, Trade, TradeFlags, LiveDataProvider, Position, Activity, DividendPayment
 from typing import Any, Dict, Iterable, List, Tuple, no_type_check
 
 import helpers
@@ -78,6 +78,53 @@ class TestAnalysis(unittest.TestCase):
 
         basis = realizedBasisForSymbol('SPY', trades)
         self.assertEqual(basis, helpers.cashUSD(Decimal('900')))
+
+    def test_realizedBasisWithCashDividend(self) -> None:
+        activity: List[Activity] = [
+            # If you start with $1000 in shares,
+            Trade(date=datetime.now(),
+                  instrument=Stock('SPY', Currency.USD),
+                  quantity=Decimal('5'),
+                  amount=helpers.cashUSD(Decimal('-999')),
+                  fees=helpers.cashUSD(Decimal('1')),
+                  flags=TradeFlags.OPEN),
+            # and get a $100 dividend,
+            DividendPayment(date=datetime.now(),
+                            stock=Stock('SPY', Currency.USD),
+                            proceeds=helpers.cashUSD(Decimal('100')))
+        ]
+
+        basis = realizedBasisForSymbol('SPY', activity)
+
+        # … your $1000 investment should now show as if you had a $900 basis
+        self.assertEqual(basis, helpers.cashUSD(Decimal('900')))
+
+    def test_realizedBasisWithReinvestedDividend(self) -> None:
+        activity: List[Activity] = [
+            # If you start with $1000 in shares,
+            Trade(date=datetime.now(),
+                  instrument=Stock('SPY', Currency.USD),
+                  quantity=Decimal('5'),
+                  amount=helpers.cashUSD(Decimal('-999')),
+                  fees=helpers.cashUSD(Decimal('1')),
+                  flags=TradeFlags.OPEN),
+            # and get a $100 dividend,
+            DividendPayment(date=datetime.now(),
+                            stock=Stock('SPY', Currency.USD),
+                            proceeds=helpers.cashUSD(Decimal('100'))),
+            # then reinvest it for an equivalent amount of shares,
+            Trade(date=datetime.now(),
+                  instrument=Stock('SPY', Currency.USD),
+                  quantity=Decimal('1'),
+                  amount=helpers.cashUSD(Decimal('-100')),
+                  fees=helpers.cashUSD(Decimal(0)),
+                  flags=TradeFlags.OPEN | TradeFlags.DRIP),
+        ]
+
+        basis = realizedBasisForSymbol('SPY', activity)
+
+        # … your $1100 investment should now show as if you had a $1000 basis
+        self.assertEqual(basis, helpers.cashUSD(Decimal('1000')))
 
     separatedSymbols = ['BRK.B', 'BRKB', 'BRK B', 'BRK/B']
 
