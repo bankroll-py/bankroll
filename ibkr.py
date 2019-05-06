@@ -1,6 +1,7 @@
 from datetime import datetime
 from decimal import Context, Decimal, DivisionByZero, Overflow, InvalidOperation, localcontext
 from enum import IntEnum
+from itertools import count
 from model import Currency, Cash, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, TradeFlags, Trade, LiveDataProvider, Quote
 from parsetools import lenientParse
 from pathlib import Path
@@ -340,9 +341,9 @@ def flexErrorIsFatal(exception: IB.FlexError) -> bool:
 
 
 @no_type_check
-@backoff.on_exception(backoff.expo,
+@backoff.on_exception(backoff.constant,
                       IB.FlexError,
-                      base=3,
+                      interval=count(start=3, step=3),
                       max_tries=5,
                       giveup=flexErrorIsFatal,
                       on_backoff=backoffFlexReport)
