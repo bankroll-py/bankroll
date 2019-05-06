@@ -3,7 +3,7 @@ from collections import namedtuple
 from csvsectionslicer import parseSectionsForCSV, CSVSectionCriterion, CSVSectionResult
 from datetime import datetime
 from decimal import Decimal
-from model import Activity, Bond, Cash, Currency, Instrument, Position, Stock, Trade, TradeFlags
+from model import Activity, Bond, Cash, Currency, Instrument, Position, Stock, DividendPayment, Trade, TradeFlags
 from parsetools import lenientParse
 from pathlib import Path
 from typing import Dict, List, NamedTuple, Optional, Set, Tuple
@@ -112,6 +112,10 @@ class VanguardTransaction(NamedTuple):
     accountType: str
 
 
+def _parseVanguardTransactionDate(datestr: str) -> datetime:
+    return datetime.strptime(datestr, '%m/%d/%Y')
+
+
 def forceParseVanguardTransaction(t: VanguardTransaction,
                                   flags: TradeFlags) -> Optional[Trade]:
     instrument: Instrument
@@ -128,7 +132,7 @@ def forceParseVanguardTransaction(t: VanguardTransaction,
     else:
         shares = Decimal(t.shares)
 
-    return Trade(date=datetime.strptime(t.tradeDate, '%m/%d/%Y'),
+    return Trade(date=_parseVanguardTransactionDate(t.tradeDate),
                  instrument=instrument,
                  quantity=shares,
                  amount=Cash(currency=Currency(Currency.USD), quantity=amount),
@@ -137,7 +141,15 @@ def forceParseVanguardTransaction(t: VanguardTransaction,
                  flags=flags)
 
 
-def parseVanguardTransaction(t: VanguardTransaction) -> Optional[Trade]:
+def parseVanguardTransaction(t: VanguardTransaction) -> Optional[Activity]:
+    if t.transactionType == 'Dividend':
+        return DividendPayment(date=_parseVanguardTransactionDate(t.tradeDate),
+                               stock=Stock(
+                                   t.symbol if t.symbol else t.investmentName,
+                                   currency=Currency.USD),
+                               proceeds=Cash(currency=Currency.USD,
+                                             quantity=Decimal(t.netAmount)))
+
     validTransactionTypes = set([
         'Buy', 'Sell', 'Reinvestment', 'Corp Action (Redemption)',
         'Transfer (outgoing)'

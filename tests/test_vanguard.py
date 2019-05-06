@@ -1,7 +1,7 @@
 from datetime import date
 from decimal import Decimal
 from itertools import groupby
-from model import Activity, Bond, Cash, Currency, Instrument, Position, Stock, Trade, TradeFlags
+from model import Activity, Bond, Cash, Currency, Instrument, Position, Stock, DividendPayment, Trade, TradeFlags
 from pathlib import Path
 
 import helpers
@@ -101,7 +101,7 @@ class TestVanguardTransactions(unittest.TestCase):
 
     def test_redeemTBill(self) -> None:
         ts = self.activityByDate[date(2017, 9, 23)]
-        self.assertEqual(len(ts), 1)
+        self.assertEqual(len(ts), 2)
         self.assertEqual(
             ts[0],
             Trade(
@@ -118,11 +118,17 @@ class TestVanguardTransactions(unittest.TestCase):
 
     def test_reinvestShares(self) -> None:
         ts = self.activityByDate[date(2017, 2, 4)]
-        self.assertEqual(len(ts), 2)
+        self.assertEqual(len(ts), 4)
 
         self.assertEqual(
             ts[0],
-            Trade(date=ts[0].date,
+            DividendPayment(date=ts[0].date,
+                            stock=Stock('VWO', Currency.USD),
+                            proceeds=helpers.cashUSD(Decimal('29.35'))))
+
+        self.assertEqual(
+            ts[1],
+            Trade(date=ts[1].date,
                   instrument=Stock('VWO', Currency.USD),
                   quantity=Decimal('0.123'),
                   amount=Cash(currency=Currency.USD,
@@ -131,8 +137,8 @@ class TestVanguardTransactions(unittest.TestCase):
                   flags=TradeFlags.OPEN | TradeFlags.DRIP))
 
         self.assertEqual(
-            ts[1],
-            Trade(date=ts[1].date,
+            ts[3],
+            Trade(date=ts[3].date,
                   instrument=Stock('VOO', Currency.USD),
                   quantity=Decimal('0.321'),
                   amount=Cash(currency=Currency.USD,
