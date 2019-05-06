@@ -103,8 +103,27 @@ With the token and the query ID from your account, historical trades can be down
 ```
 python3 bankroll.py \
   --flextoken [token] \
-  --flexquery [query ID] \
-  trades
+  --flexquery-trades [query ID] \
+  activity
+```
+
+### Querying dividend history
+
+_This workflow [will be simplified](https://github.com/jspahrsummers/bankroll/issues/36) in the future._
+
+To incorporate the history of dividend payments in your portfolio, follow the same steps for the [Trade Confirmation Flex Query](#querying-trade-history), but create an Activity Flex Query instead.
+
+The only section which needs to be enabled is _Change in Dividend Accruals_:
+
+<img width="444" alt="Activity query options" src="https://user-images.githubusercontent.com/432536/57235238-5809ab00-701a-11e9-84c0-6abcf3f2cb93.png">
+
+Pass your existing token, and the new query's ID, on the command line:
+
+```
+python3 bankroll.py \
+  --flextoken [token] \
+  --flexquery-activity [query ID] \
+  activity
 ```
 
 ## Charles Schwab
