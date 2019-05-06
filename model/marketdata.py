@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from itertools import permutations
-from typing import Any, Iterable, Optional, TypeVar
+from typing import Any, Iterable, Optional, Tuple, TypeVar
 
 from .cash import Cash
 from .instrument import Instrument
@@ -67,7 +67,7 @@ class Quote:
         return f'Quote(bid={self.bid!r}, ask={self.ask!r}, last={self.last!r}, close={self.close!r})'
 
 
-class LiveDataProvider(ABC):
+class MarketDataProvider(ABC):
     @abstractmethod
     def fetchQuote(self, instrument: Instrument) -> Quote:
         pass

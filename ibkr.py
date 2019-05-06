@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Context, Decimal, DivisionByZero, Overflow, InvalidOperation, localcontext
 from enum import IntEnum
 from itertools import count
-from model import Currency, Cash, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, TradeFlags, Trade, LiveDataProvider, Quote, Activity, DividendPayment
+from model import Currency, Cash, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, TradeFlags, Trade, MarketDataProvider, Quote, Activity, DividendPayment
 from parsetools import lenientParse
 from pathlib import Path
 from progress.spinner import Spinner
@@ -523,7 +523,7 @@ class MarketDataType(IntEnum):
     DELAYED_FROZEN = 4
 
 
-class IBDataProvider(LiveDataProvider):
+class IBDataProvider(MarketDataProvider):
     def __init__(self, client: IB.IB):
         self._client = client
         super().__init__()

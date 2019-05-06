@@ -1,7 +1,7 @@
 from argparse import ArgumentParser, Namespace
 from functools import reduce
 from ib_insync import IB
-from model import Activity, Instrument, Stock, Position, Trade, Cash, LiveDataProvider
+from model import Activity, Instrument, Stock, Position, Trade, Cash, MarketDataProvider
 from pathlib import Path
 from progress.bar import Bar
 from typing import Dict, Iterable, List, Optional
@@ -95,7 +95,7 @@ vanguardGroup.add_argument(
 
 positions: List[Position] = []
 activity: List[Activity] = []
-dataProvider: Optional[LiveDataProvider] = None
+dataProvider: Optional[MarketDataProvider] = None
 
 
 def printPositions(args: Namespace) -> None:
