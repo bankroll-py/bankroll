@@ -317,7 +317,8 @@ class TestIBKRParsing(unittest.TestCase):
             self.assertEqual(contract.right, tradeConfirm.putCall)
 
         if isinstance(instrument, Option) or isinstance(instrument, Future):
-            self.assertEqual(contract.multiplier, tradeConfirm.multiplier)
+            self.assertEqual(Decimal(contract.multiplier),
+                             Decimal(tradeConfirm.multiplier))
             self.assertEqual(contract.lastTradeDateOrContractMonth,
                              tradeConfirm.expiry)
 
