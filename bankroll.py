@@ -42,14 +42,23 @@ ibGroup.add_argument(
     'Token ID from IB\'s Flex Web Service: https://www.interactivebrokers.com/en/software/am/am/reports/flex_web_service_version_3.htm'
 )
 ibGroup.add_argument(
-    '--flexquery',
+    '--flexquery-trades',
     help=
-    'Query ID from IB\'s Flex Web Service: https://www.interactivebrokers.com/en/software/am/am/reports/flex_web_service_version_3.htm',
+    'Query ID for Trades report from IB\'s Flex Web Service: https://www.interactivebrokers.com/en/software/am/am/reports/flex_web_service_version_3.htm',
     type=int)
 ibGroup.add_argument(
     '--ibtrades',
     help=
     'Path to exported XML of trade confirmations from IB\'s Flex Web Service',
+    type=Path)
+ibGroup.add_argument(
+    '--flexquery-activity',
+    help=
+    'Query ID for Activity report from IB\'s Flex Web Service: https://www.interactivebrokers.com/en/software/am/am/reports/flex_web_service_version_3.htm',
+    type=int)
+ibGroup.add_argument(
+    '--ibactivity',
+    help='Path to exported XML of activity from IB\'s Flex Web Service',
     type=Path)
 
 fidelityGroup = parser.add_argument_group(
@@ -189,18 +198,22 @@ if __name__ == '__main__':
 
         positions += ibkr.downloadPositions(ib, lenient=args.lenient)
 
-    if args.flextoken or args.flexquery:
-        if not args.flextoken or not args.flexquery:
-            raise Exception(
-                'Both a Flex token and a Flex query ID are required to download trade reports'
-            )
-
-        activity += ibkr.downloadTrades(token=args.flextoken,
-                                        queryID=args.flexquery,
-                                        lenient=args.lenient)
+    if args.flextoken:
+        if args.flexquery_trades:
+            activity += ibkr.downloadTrades(token=args.flextoken,
+                                            queryID=args.flexquery_trades,
+                                            lenient=args.lenient)
+        if args.flexquery_activity:
+            activity += ibkr.downloadNonTradeActivity(
+                token=args.flextoken,
+                queryID=args.flexquery_activity,
+                lenient=args.lenient)
 
     if args.ibtrades:
         activity += ibkr.parseTrades(args.ibtrades, lenient=args.lenient)
+    if args.ibactivity:
+        activity += ibkr.parseNonTradeActivity(args.ibactivity,
+                                               lenient=args.lenient)
 
     positions = list(analysis.deduplicatePositions(positions))
     commands[args.command](args)
