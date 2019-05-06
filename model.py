@@ -514,6 +514,28 @@ class Position:
         return f'{self.instrument:21} {self.quantity.normalize():>14,f} @ {self.averagePrice}'
 
 
+class Activity(ABC):
+    @abstractmethod
+    def __init__(self, date: datetime):
+        self._date = date
+        super().__init__()
+
+    @property
+    def date(self) -> datetime:
+        return self._date
+
+    @abstractmethod
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, Activity):
+            return False
+
+        return bool(self.date == other.date)
+
+    @abstractmethod
+    def __hash__(self) -> int:
+        return hash(self.date)
+
+
 class TradeFlags(Flag):
     NONE = 0
     OPEN = auto()
@@ -525,7 +547,7 @@ class TradeFlags(Flag):
     ASSIGNED_OR_EXERCISED = auto()  # Sign of quantity will indicate which
 
 
-class Trade:
+class Trade(Activity):
     @classmethod
     def quantizeQuantity(cls, quantity: Decimal) -> Decimal:
         return Position.quantizeQuantity(quantity)
@@ -546,17 +568,12 @@ class Trade:
         ]:
             raise ValueError(f'Invalid combination of flags: {flags}')
 
-        self._date = date
         self._instrument = instrument
         self._quantity = self.quantizeQuantity(quantity)
         self._amount = amount
         self._fees = fees
         self._flags = flags
-        super().__init__()
-
-    @property
-    def date(self) -> datetime:
-        return self._date
+        super().__init__(date)
 
     @property
     def instrument(self) -> Instrument:
@@ -590,18 +607,17 @@ class Trade:
         return self.amount - self.fees
 
     def __eq__(self, other: Any) -> bool:
-        if not isinstance(other, Trade):
+        if not isinstance(other, Trade) or not super().__eq__(other):
             return False
 
-        return bool(self.date == other.date
-                    and self.instrument == other.instrument
+        return bool(self.instrument == other.instrument
                     and self.quantity == other.quantity
                     and self.amount == other.amount and self.fees == other.fees
                     and self.flags == other.flags)
 
     def __hash__(self) -> int:
-        return hash((self.date, self.instrument, self.quantity, self.amount,
-                     self.fees, self.flags))
+        return super().__hash__() ^ hash((self.instrument, self.quantity,
+                                          self.amount, self.fees, self.flags))
 
     def __repr__(self) -> str:
         return f'Trade(date={self.date!r}, instrument={self.instrument!r}, quantity={self.quantity!r}, amount={self.amount!r}, fees={self.fees!r}, flags={self.flags!r})'
