@@ -362,6 +362,7 @@ def tradesFromReport(report: IB.FlexReport, lenient: bool) -> List[Trade]:
 def parseTrades(path: Path, lenient: bool = False) -> List[Trade]:
     return tradesFromReport(IB.FlexReport(path=path), lenient=lenient)
 
+
 def _parseChangeInDividendAccrual(entry: IBChangeInDividendAccrual
                                   ) -> Optional[Activity]:
     codes = entry.code.split(';')
@@ -427,8 +428,8 @@ def flexErrorIsFatal(exception: IB.FlexError) -> bool:
                       max_tries=5,
                       giveup=flexErrorIsFatal,
                       on_backoff=backoffFlexReport)
-def downloadFlexReport(token: str, queryID: int) -> IB.FlexReport:
-    with Spinner('Downloading trade report ') as spinner:
+def downloadFlexReport(name: str, token: str, queryID: int) -> IB.FlexReport:
+    with Spinner(f'Downloading {name} report ') as spinner:
         handler = SpinnerOnLogHandler(spinner)
         logger = logging.getLogger('ib_insync.flexreport')
         logger.addHandler(handler)
@@ -442,7 +443,9 @@ def downloadFlexReport(token: str, queryID: int) -> IB.FlexReport:
 
 def downloadTrades(token: str, queryID: int,
                    lenient: bool = False) -> List[Trade]:
-    return tradesFromReport(downloadFlexReport(token=token, queryID=queryID),
+    return tradesFromReport(downloadFlexReport(name='Trades',
+                                               token=token,
+                                               queryID=queryID),
                             lenient=lenient)
 
 
@@ -450,7 +453,8 @@ def downloadTrades(token: str, queryID: int,
 # See https://github.com/jspahrsummers/bankroll/issues/36.
 def downloadNonTradeActivity(token: str, queryID: int,
                              lenient: bool = False) -> List[Activity]:
-    return _activityFromReport(downloadFlexReport(token=token,
+    return _activityFromReport(downloadFlexReport(name='Activity',
+                                                  token=token,
                                                   queryID=queryID),
                                lenient=lenient)
 
