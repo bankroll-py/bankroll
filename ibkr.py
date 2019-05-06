@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Context, Decimal, DivisionByZero, Overflow, InvalidOperation, localcontext
 from enum import IntEnum
 from itertools import count
-from model import Currency, Cash, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, TradeFlags, Trade, LiveDataProvider, Quote
+from model import Currency, Cash, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, TradeFlags, Trade, LiveDataProvider, Quote, Activity, DividendPayment
 from parsetools import lenientParse
 from pathlib import Path
 from progress.spinner import Spinner
@@ -43,7 +43,7 @@ def parseOption(symbol: str,
     return cls(underlying=match['underlying'].rstrip(),
                currency=currency,
                optionType=optionType,
-               expiration=datetime.strptime(match['date'], '%y%m%d').date(),
+               expiration=_parseIBDate(match['date']).date(),
                strike=parseFiniteDecimal(match['strike']) / 1000)
 
 
@@ -75,9 +75,8 @@ def parseFutureOptionContract(contract: IB.Contract,
                         currency=currency,
                         underlying=contract.symbol,
                         optionType=optionType,
-                        expiration=datetime.strptime(
-                            contract.lastTradeDateOrContractMonth,
-                            '%Y%m%d').date(),
+                        expiration=_parseIBDate(
+                            contract.lastTradeDateOrContractMonth).date(),
                         strike=parseFiniteDecimal(contract.strike),
                         multiplier=parseFiniteDecimal(contract.multiplier))
 
@@ -109,8 +108,8 @@ def extractPosition(p: IB.Position) -> Position:
                 symbol=symbol,
                 currency=currency,
                 multiplier=parseFiniteDecimal(p.contract.multiplier),
-                expiration=datetime.strptime(
-                    p.contract.lastTradeDateOrContractMonth, '%Y%m%d').date())
+                expiration=_parseIBDate(
+                    p.contract.lastTradeDateOrContractMonth).date())
         elif tag == 'FOP':
             instrument = parseFutureOptionContract(p.contract,
                                                    currency=currency)
@@ -204,6 +203,50 @@ class IBTradeConfirm(NamedTuple):
     accruedInt: str
 
 
+class IBChangeInDividendAccrual(NamedTuple):
+    accountId: str
+    acctAlias: str
+    model: str
+    currency: str
+    fxRateToBase: str
+    assetCategory: str
+    symbol: str
+    description: str
+    conid: str
+    securityID: str
+    securityIDType: str
+    cusip: str
+    isin: str
+    listingExchange: str
+    underlyingConid: str
+    underlyingSymbol: str
+    underlyingSecurityID: str
+    underlyingListingExchange: str
+    issuer: str
+    multiplier: str
+    strike: str
+    expiry: str
+    putCall: str
+    principalAdjustFactor: str
+    reportDate: str
+    date: str
+    exDate: str
+    payDate: str
+    quantity: str
+    tax: str
+    fee: str
+    grossRate: str
+    grossAmount: str
+    netAmount: str
+    code: str
+    fromAcct: str
+    toAcct: str
+
+
+def _parseIBDate(datestr: str) -> datetime:
+    return datetime.strptime(datestr, '%Y%m%d')
+
+
 def parseFutureOptionTrade(trade: IBTradeConfirm) -> Instrument:
     if trade.putCall == 'C':
         optionType = OptionType.CALL
@@ -216,8 +259,7 @@ def parseFutureOptionTrade(trade: IBTradeConfirm) -> Instrument:
                         currency=Currency[trade.currency],
                         underlying=trade.underlyingSymbol,
                         optionType=optionType,
-                        expiration=datetime.strptime(trade.expiry,
-                                                     '%Y%m%d').date(),
+                        expiration=_parseIBDate(trade.expiry).date(),
                         strike=parseFiniteDecimal(trade.strike),
                         multiplier=parseFiniteDecimal(trade.multiplier))
 
@@ -247,11 +289,11 @@ def parseTradeConfirm(trade: IBTradeConfirm) -> Trade:
                                      multiplier=parseFiniteDecimal(
                                          trade.multiplier))
         elif tag == 'FUT':
-            instrument = Future(
-                symbol=symbol,
-                currency=currency,
-                multiplier=parseFiniteDecimal(trade.multiplier),
-                expiration=datetime.strptime(trade.expiry, '%Y%m%d').date())
+            instrument = Future(symbol=symbol,
+                                currency=currency,
+                                multiplier=parseFiniteDecimal(
+                                    trade.multiplier),
+                                expiration=_parseIBDate(trade.expiry).date())
         elif tag == 'CASH':
             instrument = parseForex(symbol=symbol, currency=currency)
         elif tag == 'FOP':
@@ -293,7 +335,7 @@ def parseTradeConfirm(trade: IBTradeConfirm) -> Trade:
             else:
                 flags |= TradeFlags.CLOSE
 
-        return Trade(date=datetime.strptime(trade.tradeDate, '%Y%m%d'),
+        return Trade(date=_parseIBDate(trade.tradeDate),
                      instrument=instrument,
                      quantity=parseFiniteDecimal(trade.quantity),
                      amount=Cash(currency=Currency(trade.currency),
@@ -319,6 +361,44 @@ def tradesFromReport(report: IB.FlexReport, lenient: bool) -> List[Trade]:
 
 def parseTrades(path: Path, lenient: bool = False) -> List[Trade]:
     return tradesFromReport(IB.FlexReport(path=path), lenient=lenient)
+
+def _parseChangeInDividendAccrual(entry: IBChangeInDividendAccrual
+                                  ) -> Optional[Activity]:
+    codes = entry.code.split(';')
+    if 'Re' not in codes:
+        return None
+
+    if entry.assetCategory != 'STK':
+        raise ValueError(
+            f'Expected to see dividend accrual for a stock, not {entry.assetCategory}: {entry}'
+        )
+
+    # IB "reverses" dividend postings when they're paid out, so they all appear as debits.
+    proceeds = Cash(currency=Currency(entry.currency),
+                    quantity=-Decimal(entry.netAmount))
+
+    return DividendPayment(date=_parseIBDate(entry.payDate),
+                           stock=Stock(entry.symbol,
+                                       currency=Currency(entry.currency)),
+                           proceeds=proceeds)
+
+
+def _activityFromReport(report: IB.FlexReport,
+                        lenient: bool) -> List[Activity]:
+    return list(
+        filter(
+            None,
+            lenientParse((IBChangeInDividendAccrual(**x.__dict__)
+                          for x in report.extract('ChangeInDividendAccrual',
+                                                  parseNumbers=False)),
+                         transform=_parseChangeInDividendAccrual,
+                         lenient=lenient)))
+
+
+# TODO: This should eventually be unified with trade parsing.
+# See https://github.com/jspahrsummers/bankroll/issues/36.
+def parseNonTradeActivity(path: Path, lenient: bool = False) -> List[Activity]:
+    return _activityFromReport(IB.FlexReport(path=path), lenient=lenient)
 
 
 class SpinnerOnLogHandler(logging.Handler):
@@ -364,6 +444,15 @@ def downloadTrades(token: str, queryID: int,
                    lenient: bool = False) -> List[Trade]:
     return tradesFromReport(downloadFlexReport(token=token, queryID=queryID),
                             lenient=lenient)
+
+
+# TODO: This should eventually be unified with trade parsing.
+# See https://github.com/jspahrsummers/bankroll/issues/36.
+def downloadNonTradeActivity(token: str, queryID: int,
+                             lenient: bool = False) -> List[Activity]:
+    return _activityFromReport(downloadFlexReport(token=token,
+                                                  queryID=queryID),
+                               lenient=lenient)
 
 
 def stockContract(stock: Stock) -> IB.Contract:
