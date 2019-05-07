@@ -1,14 +1,14 @@
+from bankroll import Cash, Currency, Position, Instrument, Stock, Bond, Option, OptionType, Forex, Future, FutureOption, Trade, TradeFlags, DividendPayment
+from bankroll.brokers import ibkr
 from datetime import date
 from decimal import Decimal
 from hypothesis import given, reproduce_failure, settings, Verbosity
 from hypothesis.strategies import builds, dates, decimals, from_regex, from_type, lists, one_of, sampled_from, text
 from itertools import groupby
-from model import Cash, Currency, Position, Instrument, Stock, Bond, Option, OptionType, Forex, Future, FutureOption, Trade, TradeFlags, DividendPayment
 from pathlib import Path
 
 import helpers
 import ib_insync as IB
-from brokers import ibkr
 import logging
 import unittest
 

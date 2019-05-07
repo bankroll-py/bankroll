@@ -1,6 +1,6 @@
 from functools import reduce
 from itertools import groupby
-from model import Activity, Cash, DividendPayment, Trade, Instrument, Option, MarketDataProvider, Quote, Position
+from .model import Activity, Cash, DividendPayment, Trade, Instrument, Option, MarketDataProvider, Quote, Position
 from progress.bar import Bar
 from typing import Dict, Iterable, Optional, Tuple
 

@@ -1,13 +1,12 @@
 from argparse import ArgumentParser, Namespace
-from brokers import *
 from functools import reduce
 from ib_insync import IB
-from model import Activity, Instrument, Stock, Position, Trade, Cash, MarketDataProvider
+from bankroll import Activity, Instrument, Stock, Position, Trade, Cash, MarketDataProvider, analysis
+from bankroll.brokers import *
 from pathlib import Path
 from progress.bar import Bar
 from typing import Dict, Iterable, List, Optional
 
-import analysis
 import logging
 
 parser = ArgumentParser()

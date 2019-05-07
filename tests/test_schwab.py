@@ -1,11 +1,11 @@
+from bankroll import Cash, Currency, Stock, Bond, Option, OptionType, Position, DividendPayment, Trade, TradeFlags
+from bankroll.brokers import schwab
 from datetime import date
 from decimal import Decimal
 from itertools import groupby
-from model import Cash, Currency, Stock, Bond, Option, OptionType, Position, DividendPayment, Trade, TradeFlags
 from pathlib import Path
 
 import helpers
-from brokers import schwab
 import unittest
 
 

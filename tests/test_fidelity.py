@@ -1,10 +1,10 @@
+from bankroll import Cash, Currency, Stock, Bond, Option, OptionType, Position, DividendPayment, Trade, TradeFlags
+from bankroll.brokers import fidelity
 from datetime import date
 from decimal import Decimal
 from itertools import groupby
-from model import Cash, Currency, Stock, Bond, Option, OptionType, Position, DividendPayment, Trade, TradeFlags
 from pathlib import Path
 
-from brokers import fidelity
 import helpers
 import unittest
 

@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
-from model import Activity, Cash, Currency, Instrument, Stock, Bond, Option, OptionType, Position, DividendPayment, Trade, TradeFlags
-from parsetools import lenientParse
+from bankroll.model import Activity, Cash, Currency, Instrument, Stock, Bond, Option, OptionType, Position, DividendPayment, Trade, TradeFlags
+from bankroll.parsetools import lenientParse
 from pathlib import Path
 from typing import Dict, List, NamedTuple, Optional, Sequence
 
