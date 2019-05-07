@@ -1,6 +1,6 @@
 from datetime import date
 from decimal import Decimal
-from hypothesis import given, reproduce_failure
+from hypothesis import given, reproduce_failure, settings, Verbosity
 from hypothesis.strategies import builds, dates, decimals, from_regex, from_type, lists, one_of, sampled_from, text
 from itertools import groupby
 from model import Cash, Currency, Position, Instrument, Stock, Bond, Option, OptionType, Forex, Future, FutureOption, Trade, TradeFlags, DividendPayment
@@ -239,7 +239,9 @@ class TestIBKRParsing(unittest.TestCase):
         validAssetCategories,
         sampled_from(
             ['IND', 'CFD', 'FUND', 'CMDTY', 'IOPT', 'BAG', 'NEWS', 'WAR']))
-    validDates = dates().map(lambda d: d.strftime('%Y%m%d'))
+
+    # For some reason, %Y wasn't zero-padding the year to 4 digits on CI, so provide our own century
+    validDates = dates().map(lambda d: d.strftime('20%y%m%d'))
     validQuantities = helpers.positionQuantities().map(str)
     validCodes = lists(sampled_from(['O', 'C', 'A', 'Ep', 'Ex', 'R', 'P',
                                      'D']),
