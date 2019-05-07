@@ -50,6 +50,10 @@ jobs:
           command: script/test
       
       - run:
+          name: try installing
+          command: pip install . && bankroll --help
+      
+      - run:
           name: check formatting
           when: always
           command: script/reformat --diff
