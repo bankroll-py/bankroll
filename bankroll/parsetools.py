@@ -2,13 +2,13 @@ from sys import stderr
 from typing import Callable, Iterable, List, Optional, TypeVar
 from warnings import warn
 
-T = TypeVar('T')
-U = TypeVar('U')
+_T = TypeVar('_T')
+_U = TypeVar('_U')
 
 
-def lenientParse(xs: Iterable[T], transform: Callable[[T], U],
-                 lenient: bool) -> Iterable[U]:
-    def f(input: T) -> Optional[U]:
+def lenientParse(xs: Iterable[_T], transform: Callable[[_T], _U],
+                 lenient: bool) -> Iterable[_U]:
+    def f(input: _T) -> Optional[_U]:
         try:
             return transform(input)
         except ValueError as err:

@@ -9,19 +9,19 @@ import re
 
 # Different brokers represent "identical" symbols differently, and they can all be valid.
 # This function normalizes them so they can be compared across time and space.
-def normalizeSymbol(symbol: str) -> str:
+def _normalizeSymbol(symbol: str) -> str:
     # These issues mostly show up with separators for multi-class shares (like BRK A and B)
     return re.sub(r'[\.\s/]', '', symbol)
 
 
 def _activityAffectsSymbol(activity: Activity, symbol: str) -> bool:
-    normalized = normalizeSymbol(symbol)
+    normalized = _normalizeSymbol(symbol)
 
     if isinstance(activity, DividendPayment):
-        return normalizeSymbol(activity.stock.symbol) == normalized
+        return _normalizeSymbol(activity.stock.symbol) == normalized
     elif isinstance(activity, Trade):
-        return (isinstance(activity.instrument, Option) and normalizeSymbol(
-            activity.instrument.underlying) == normalized) or normalizeSymbol(
+        return (isinstance(activity.instrument, Option) and _normalizeSymbol(
+            activity.instrument.underlying) == normalized) or _normalizeSymbol(
                 activity.instrument.symbol) == normalized
     else:
         return False
