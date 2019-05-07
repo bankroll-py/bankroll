@@ -8,7 +8,7 @@ from pathlib import Path
 
 import helpers
 import ib_insync as IB
-import ibkr
+from brokers import ibkr
 import logging
 import unittest
 

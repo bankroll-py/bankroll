@@ -6,7 +6,7 @@ from pathlib import Path
 
 import helpers
 import unittest
-import vanguard
+from brokers import vanguard
 
 
 class TestVanguardPositions(unittest.TestCase):

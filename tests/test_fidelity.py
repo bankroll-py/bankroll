@@ -4,7 +4,7 @@ from itertools import groupby
 from model import Cash, Currency, Stock, Bond, Option, OptionType, Position, DividendPayment, Trade, TradeFlags
 from pathlib import Path
 
-import fidelity
+from brokers import fidelity
 import helpers
 import unittest
 

@@ -1,4 +1,5 @@
 from argparse import ArgumentParser, Namespace
+from brokers import *
 from functools import reduce
 from ib_insync import IB
 from model import Activity, Instrument, Stock, Position, Trade, Cash, MarketDataProvider
@@ -7,11 +8,7 @@ from progress.bar import Bar
 from typing import Dict, Iterable, List, Optional
 
 import analysis
-import ibkr
-import fidelity
 import logging
-import schwab
-import vanguard
 
 parser = ArgumentParser()
 

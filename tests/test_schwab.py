@@ -5,7 +5,7 @@ from model import Cash, Currency, Stock, Bond, Option, OptionType, Position, Div
 from pathlib import Path
 
 import helpers
-import schwab
+from brokers import schwab
 import unittest
 
 
