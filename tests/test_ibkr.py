@@ -231,7 +231,7 @@ class TestIBKRActivity(unittest.TestCase):
 
 
 def printGeneratedDates(d: date) -> str:
-    s = d.strftime('%Y%m%d')
+    s = d.strftime('20%y%m%d')
     print(f'Date {date} converted into string {s}')
     return s
 
