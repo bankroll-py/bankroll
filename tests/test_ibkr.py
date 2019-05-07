@@ -1,6 +1,6 @@
 from datetime import date
 from decimal import Decimal
-from hypothesis import given, reproduce_failure
+from hypothesis import given, reproduce_failure, settings, Verbosity
 from hypothesis.strategies import builds, dates, decimals, from_regex, from_type, lists, one_of, sampled_from, text
 from itertools import groupby
 from model import Cash, Currency, Position, Instrument, Stock, Bond, Option, OptionType, Forex, Future, FutureOption, Trade, TradeFlags, DividendPayment
@@ -230,6 +230,12 @@ class TestIBKRActivity(unittest.TestCase):
         self.assertNotIn(date(2019, 1, 25), self.activityByDate)
 
 
+def printGeneratedDates(d: date) -> str:
+    s = d.strftime('%Y%m%d')
+    print(f'Date {date} converted into string {s}')
+    return s
+
+
 class TestIBKRParsing(unittest.TestCase):
     validSymbols = text(min_size=1)
     validCurrencies = from_type(Currency).map(lambda c: c.name)
@@ -239,7 +245,8 @@ class TestIBKRParsing(unittest.TestCase):
         validAssetCategories,
         sampled_from(
             ['IND', 'CFD', 'FUND', 'CMDTY', 'IOPT', 'BAG', 'NEWS', 'WAR']))
-    validDates = dates().map(lambda d: d.strftime('%Y%m%d'))
+
+    validDates = dates().map(printGeneratedDates)
     validQuantities = helpers.positionQuantities().map(str)
     validCodes = lists(sampled_from(['O', 'C', 'A', 'Ep', 'Ex', 'R', 'P',
                                      'D']),
