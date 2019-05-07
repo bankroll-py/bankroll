@@ -230,12 +230,6 @@ class TestIBKRActivity(unittest.TestCase):
         self.assertNotIn(date(2019, 1, 25), self.activityByDate)
 
 
-def printGeneratedDates(d: date) -> str:
-    s = d.strftime('20%y%m%d')
-    print(f'Date {date} converted into string {s}')
-    return s
-
-
 class TestIBKRParsing(unittest.TestCase):
     validSymbols = text(min_size=1)
     validCurrencies = from_type(Currency).map(lambda c: c.name)
@@ -246,7 +240,8 @@ class TestIBKRParsing(unittest.TestCase):
         sampled_from(
             ['IND', 'CFD', 'FUND', 'CMDTY', 'IOPT', 'BAG', 'NEWS', 'WAR']))
 
-    validDates = dates().map(printGeneratedDates)
+    # For some reason, %Y wasn't zero-padding the year to 4 digits on CI, so provide our own century
+    validDates = dates().map(lambda d: d.strftime('20%y%m%d'))
     validQuantities = helpers.positionQuantities().map(str)
     validCodes = lists(sampled_from(['O', 'C', 'A', 'Ep', 'Ex', 'R', 'P',
                                      'D']),
@@ -395,12 +390,8 @@ class TestIBKRParsing(unittest.TestCase):
         if isinstance(instrument, Option) or isinstance(instrument, Future):
             self.assertEqual(Decimal(contract.multiplier),
                              Decimal(position.contract.multiplier))
-            self.assertEqual(
-                contract.lastTradeDateOrContractMonth,
-                position.contract.lastTradeDateOrContractMonth,
-                msg=
-                f'Instrument {instrument!r} contract: {contract!r}\nposition {position!r} contract: {position.contract!r}'
-            )
+            self.assertEqual(contract.lastTradeDateOrContractMonth,
+                             position.contract.lastTradeDateOrContractMonth)
 
     @given(allPositions)
     @reproduce_failure('4.14.6', b'AXicY2BAAayT9jEwIguwQGlGuDAALTwBXQ==')
