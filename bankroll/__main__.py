@@ -9,7 +9,7 @@ from typing import Dict, Iterable, List, Optional
 
 import logging
 
-parser = ArgumentParser()
+parser = ArgumentParser(prog='bankroll')
 
 parser.add_argument(
     '--lenient',
@@ -154,7 +154,11 @@ positionsParser.add_argument(
 activityParser = subparsers.add_parser(
     'activity', help='Operations upon imported portfolio activity')
 
-if __name__ == '__main__':
+
+def main() -> None:
+    global positions
+    global activity
+
     args = parser.parse_args()
     if args.verbose:
         logging.basicConfig(level=logging.INFO)
@@ -213,3 +217,7 @@ if __name__ == '__main__':
 
     positions = list(analysis.deduplicatePositions(positions))
     commands[args.command](args)
+
+
+if __name__ == '__main__':
+    main()
