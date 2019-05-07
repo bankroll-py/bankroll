@@ -392,7 +392,7 @@ class TestIBKRParsing(unittest.TestCase):
                 contract.lastTradeDateOrContractMonth,
                 position.contract.lastTradeDateOrContractMonth,
                 msg=
-                f'Contract: {contract!r}\nposition contract: {position.contract!r}'
+                f'Instrument {instrument!r} contract: {contract!r}\nposition {position!r} contract: {position.contract!r}'
             )
 
     @given(allPositions)
