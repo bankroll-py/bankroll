@@ -32,7 +32,7 @@ After being set up, `bankroll` can be used from the command line to bring togeth
 For example, to show all positions held in both Interactive Brokers and Charles Schwab:
 
 ```
-python3 bankroll.py \
+python -m bankroll \
   --twsport 7496 \
   --schwabpositions ~/Positions-2019-01-01.CSV \
   --schwabtransactions ~/Transactions_20190101.CSV \
@@ -42,7 +42,7 @@ python3 bankroll.py \
 Run with `-h` to see all options:
 
 ```
-python3 bankroll.py -h
+python -m bankroll -h
 ```
 
 ## Interactive Brokers
@@ -56,7 +56,7 @@ Unfortunately, [one of IB's trading applications](https://interactivebrokers.git
 Once Trader Workstation or IB Gateway is running, and [API connections are enabled](https://interactivebrokers.github.io/tws-api/initial_setup.html#enable_api), provide the local port number to `bankroll` like so:
 
 ```
-python3 bankroll.py \
+python -m bankroll \
   --twsport 7496 \
   [command]
 ```
@@ -101,7 +101,7 @@ Under _Sections_, click _Trade Confirmations_ and enable everything in the dialo
 With the token and the query ID from your account, historical trades can be downloaded:
 
 ```
-python3 bankroll.py \
+python -m bankroll \
   --flextoken [token] \
   --flexquery-trades [query ID] \
   activity
@@ -120,7 +120,7 @@ The only section which needs to be enabled is _Change in Dividend Accruals_:
 Pass your existing token, and the new query's ID, on the command line:
 
 ```
-python3 bankroll.py \
+python -m bankroll \
   --flextoken [token] \
   --flexquery-activity [query ID] \
   activity
@@ -141,7 +141,7 @@ Click the "Export" link in the top-right:
 Then provide the paths of either or both these downloaded files to `bankroll`:
 
 ```
-python3 bankroll.py \
+python -m bankroll \
   --schwabpositions ~/path/to/Positions.CSV \
   --schwabtransactions ~/path/to/Transactions.CSV \
   [command]
