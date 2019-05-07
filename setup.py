@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name='bankroll',
@@ -9,5 +9,5 @@ setup(
     'Ingest portfolio and other data from multiple brokerages, and analyze it',
     license='MIT',
     url='https://github.com/jspahrsummers/bankroll',
-    packages=['bankroll'],
+    packages=find_packages(),
     entry_points={'console_scripts': ['bankroll = bankroll.__main__:main']})
