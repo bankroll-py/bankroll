@@ -13,16 +13,26 @@ Ingest portfolio and other data from multiple brokerages, and analyze it.
 
 # Getting started
 
-The included bootstrap script will set up a Python virtual environment and install the necessary dependencies, including the [Interactive Brokers API](http://interactivebrokers.github.io):
+The [Interactive Brokers API](http://interactivebrokers.github.io) must be installed prior to using `bankroll`. For `bankroll` to be available as a system-wide command, it is recommended to install the Interactive Brokers API globally using their `setup.py` script.
+
+_If you do not want to do this, please follow our [development setup instructions](CONTRIBUTING.md#setting-up-your-environment) instead, to create a virtual environment which will contain both projects._
+
+You should then be able to run `bankroll` from within the project root:
 
 ```
-script/bootstrap
+python -m bankroll --help
 ```
 
-After bootstrapping, confirm that the environment works by running the included test suite:
+If desired, you can install `bankroll` as a Python library:
 
 ```
-script/test
+pip install .
+```
+
+This will also make the command-line tool available directly:
+
+```
+bankroll --help
 ```
 
 # Connecting to brokers
@@ -39,10 +49,10 @@ python -m bankroll \
   positions
 ```
 
-Run with `-h` to see all options:
+Run with `--help` to see all options:
 
 ```
-python -m bankroll -h
+python -m bankroll -help
 ```
 
 ## Interactive Brokers

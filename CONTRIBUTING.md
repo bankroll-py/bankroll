@@ -2,6 +2,20 @@
 
 Thanks for wanting to contribute to this project!
 
+## Setting up your environment
+
+The included bootstrap script will set up a Python virtual environment and install the necessary dependencies, including the [Interactive Brokers API](http://interactivebrokers.github.io):
+
+```
+script/bootstrap
+```
+
+After bootstrapping, confirm that the environment works by running the included test suite:
+
+```
+script/test
+```
+
 ## Issues
 
 Bug reports and enhancement requests are more than welcome. However, if you're able to, a [pull request](#pull-requests) is much better!
