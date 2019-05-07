@@ -388,8 +388,12 @@ class TestIBKRParsing(unittest.TestCase):
         if isinstance(instrument, Option) or isinstance(instrument, Future):
             self.assertEqual(Decimal(contract.multiplier),
                              Decimal(position.contract.multiplier))
-            self.assertEqual(contract.lastTradeDateOrContractMonth,
-                             position.contract.lastTradeDateOrContractMonth)
+            self.assertEqual(
+                contract.lastTradeDateOrContractMonth,
+                position.contract.lastTradeDateOrContractMonth,
+                msg=
+                f'Contract: {contract!r}\nposition contract: {position.contract!r}'
+            )
 
     @given(allPositions)
     @reproduce_failure('4.14.6', b'AXicY2BAAayT9jEwIguwQGlGuDAALTwBXQ==')
