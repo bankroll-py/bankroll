@@ -51,7 +51,7 @@ jobs:
       
       - run:
           name: try installing
-          command: pip install . && bankroll --help
+          command: script/test_install
       
       - run:
           name: check formatting
