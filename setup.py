@@ -1,5 +1,8 @@
 from setuptools import setup, find_packages
 
+with open("README.md", "r") as fh:
+    long_description = fh.read()
+
 setup(
     name='bankroll',
     version='0.1.0',
@@ -7,7 +10,14 @@ setup(
     author_email='justin@jspahrsummers.com',
     description=
     'Ingest portfolio and other data from multiple brokerages, and analyze it',
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     license='MIT',
     url='https://github.com/jspahrsummers/bankroll',
     packages=find_packages(),
+    classifiers=[
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
+    ],
     entry_points={'console_scripts': ['bankroll = bankroll.__main__:main']})
