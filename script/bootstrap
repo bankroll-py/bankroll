@@ -3,27 +3,13 @@
 set -o errexit
 set -o pipefail
 
-if ! [ -d "$HOME/IBJts" ]
-then
-    echo " => Downloading TWS API"
-    curl "http://interactivebrokers.github.io/downloads/twsapi_macunix.975.01.zip" > twsapi.zip
-    unzip twsapi.zip -d "$HOME/"
-
-    echo
-fi
-
 echo " => Creating Python virtual environment"
 python3 -m venv venv
 
 # shellcheck disable=SC1091
 . venv/bin/activate
 
-echo
-echo " => Installing TWS API Python client"
-
-pushd "$HOME/IBJts/source/pythonclient"
-python setup.py install
-popd
+script/install_twsapi
 
 echo
 echo " => Installing Python dependencies"

@@ -1,0 +1,20 @@
+#!/bin/bash
+
+set -o errexit
+set -o pipefail
+
+if ! [ -d "$HOME/IBJts" ]
+then
+    echo " => Downloading TWS API"
+    curl "http://interactivebrokers.github.io/downloads/twsapi_macunix.975.01.zip" > twsapi.zip
+    unzip twsapi.zip -d "$HOME/"
+
+    echo
+fi
+
+echo
+echo " => Installing TWS API Python client"
+
+pushd "$HOME/IBJts/source/pythonclient"
+python setup.py install
+popd
