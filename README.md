@@ -3,7 +3,7 @@ Ingest portfolio and other data from multiple brokerages, and analyze it.
 
 **Table of contents:**
 
-1. [Getting started](#getting-started)
+1. [Installation](#installation)
 1. [Connecting to brokers](#connecting-to-brokers)
    1. [Interactive Brokers](#interactive-brokers)
    1. [Charles Schwab](#charles-schwab)
@@ -11,19 +11,9 @@ Ingest portfolio and other data from multiple brokerages, and analyze it.
    1. [Vanguard](#vanguard)
 1. [Extending `bankroll`](#extending-bankroll)
 
-# Getting started
+# Installation
 
-The [Interactive Brokers API](http://interactivebrokers.github.io) must be installed prior to using `bankroll`. For `bankroll` to be available as a system-wide command, it is recommended to install the Interactive Brokers API globally using their `setup.py` script.
-
-_If you do not want to do this, please follow our [development setup instructions](CONTRIBUTING.md#setting-up-your-environment) instead, to create a virtual environment which will contain both projects._
-
-You should then be able to run `bankroll` from within the project root:
-
-```
-python -m bankroll --help
-```
-
-If desired, you can install `bankroll` as a Python library:
+To install `bankroll` as a Python package, simply run `pip` (or `pip3`, as it may be named on your system) from the repository root:
 
 ```
 pip install .
@@ -34,6 +24,14 @@ This will also make the command-line tool available directly:
 ```
 bankroll --help
 ```
+
+The [Interactive Brokers API](http://interactivebrokers.github.io) must also be installed prior to using `bankroll`. This repository includes a helpful script to ease this process:
+
+```
+script/install_twsapi
+```
+
+If you do not want to install `ibapi` globally, you may wish to [set up a Python virtual environment](CONTRIBUTING.md#setting-up-your-environment) instead.
 
 # Connecting to brokers
 
