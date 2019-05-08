@@ -6,5 +6,15 @@ set -o pipefail
 # shellcheck disable=SC1091
 . venv/bin/activate
 
+echo " => Uninstalling development dependencies"
+pip uninstall -r requirements.txt --yes
+
+echo
+echo " => Installing bankroll"
+
 pip install .
+
+echo
+echo " => Testing bankroll"
+
 bankroll --help >/dev/null
