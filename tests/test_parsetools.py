@@ -1,6 +1,6 @@
+from bankroll.parsetools import lenientParse
 from hypothesis import given, reproduce_failure
 from hypothesis.strategies import booleans, decimals, iterables, integers, none, nothing, one_of, text
-from parsetools import lenientParse
 from typing import Any, Iterable, no_type_check
 
 import os

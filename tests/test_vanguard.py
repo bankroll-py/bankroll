@@ -1,12 +1,12 @@
+from bankroll import Activity, Bond, Cash, Currency, Instrument, Position, Stock, DividendPayment, Trade, TradeFlags
+from bankroll.brokers import vanguard
 from datetime import date
 from decimal import Decimal
 from itertools import groupby
-from model import Activity, Bond, Cash, Currency, Instrument, Position, Stock, DividendPayment, Trade, TradeFlags
 from pathlib import Path
 
 import helpers
 import unittest
-import vanguard
 
 
 class TestVanguardPositions(unittest.TestCase):

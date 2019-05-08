@@ -1,10 +1,10 @@
-from analysis import realizedBasisForSymbol
 from collections import namedtuple
-from csvsectionslicer import parseSectionsForCSV, CSVSectionCriterion, CSVSectionResult
 from datetime import datetime
 from decimal import Decimal
-from model import Activity, Bond, Cash, Currency, Instrument, Position, Stock, DividendPayment, Trade, TradeFlags
-from parsetools import lenientParse
+from bankroll.analysis import realizedBasisForSymbol
+from bankroll.model import Activity, Bond, Cash, Currency, Instrument, Position, Stock, DividendPayment, Trade, TradeFlags
+from bankroll.csvsectionslicer import parseSectionsForCSV, CSVSectionCriterion, CSVSectionResult
+from bankroll.parsetools import lenientParse
 from pathlib import Path
 from typing import Dict, List, NamedTuple, Optional, Set, Tuple
 
@@ -17,7 +17,7 @@ class PositionsAndActivity(NamedTuple):
     activity: List[Activity]
 
 
-class VanguardPosition(NamedTuple):
+class _VanguardPosition(NamedTuple):
     investmentName: str
     symbol: str
     shares: str
@@ -25,12 +25,12 @@ class VanguardPosition(NamedTuple):
     totalValue: str
 
 
-class VanguardPositionAndActivity(NamedTuple):
-    position: VanguardPosition
+class _VanguardPositionAndActivity(NamedTuple):
+    position: _VanguardPosition
     activity: List[Activity]
 
 
-def guessInstrumentForInvestmentName(name: str) -> Instrument:
+def _guessInstrumentForInvestmentName(name: str) -> Instrument:
     instrument: Instrument
     if re.match(r'^.+\s\%\s.+$', name):
         # TODO: Determine valid CUSIP for bonds
@@ -41,18 +41,18 @@ def guessInstrumentForInvestmentName(name: str) -> Instrument:
     return instrument
 
 
-def parseVanguardPositionAndActivity(vpb: VanguardPositionAndActivity
-                                     ) -> Position:
-    return parseVanguardPosition(vpb.position, vpb.activity)
+def _parseVanguardPositionAndActivity(vpb: _VanguardPositionAndActivity
+                                      ) -> Position:
+    return _parseVanguardPosition(vpb.position, vpb.activity)
 
 
-def parseVanguardPosition(p: VanguardPosition,
-                          activity: List[Activity]) -> Position:
+def _parseVanguardPosition(p: _VanguardPosition,
+                           activity: List[Activity]) -> Position:
     instrument: Instrument
     if len(p.symbol) > 0:
         instrument = Stock(p.symbol, currency=Currency.USD)
     else:
-        instrument = guessInstrumentForInvestmentName(p.investmentName)
+        instrument = _guessInstrumentForInvestmentName(p.investmentName)
 
     qty = Decimal(p.shares)
 
@@ -65,9 +65,9 @@ def parseVanguardPosition(p: VanguardPosition,
                     costBasis=realizedBasis)
 
 
-def __parsePositions(path: Path,
-                     activity: List[Activity],
-                     lenient: bool = False) -> List[Position]:
+def _parsePositions(path: Path,
+                    activity: List[Activity],
+                    lenient: bool = False) -> List[Position]:
     with open(path, newline='') as csvfile:
         criterion = CSVSectionCriterion(
             startSectionRowMatch=["Account Number"],
@@ -78,25 +78,25 @@ def __parsePositions(path: Path,
         if len(sections) == 0:
             return []
 
-        vanPositions = (VanguardPosition._make(r) for r in sections[0].rows)
+        vanPositions = (_VanguardPosition._make(r) for r in sections[0].rows)
         vanPosAndBases = list(
-            map(lambda pos: VanguardPositionAndActivity(pos, activity),
+            map(lambda pos: _VanguardPositionAndActivity(pos, activity),
                 vanPositions))
 
         return list(
             lenientParse(vanPosAndBases,
-                         transform=parseVanguardPositionAndActivity,
+                         transform=_parseVanguardPositionAndActivity,
                          lenient=lenient))
 
 
 def parsePositionsAndActivity(path: Path,
                               lenient: bool = False) -> PositionsAndActivity:
-    activity = __parseTransactions(path, lenient=lenient)
-    positions = __parsePositions(path, activity=activity, lenient=lenient)
+    activity = _parseTransactions(path, lenient=lenient)
+    positions = _parsePositions(path, activity=activity, lenient=lenient)
     return PositionsAndActivity(positions, activity)
 
 
-class VanguardTransaction(NamedTuple):
+class _VanguardTransaction(NamedTuple):
     tradeDate: str
     settlementDate: str
     transactionType: str
@@ -116,13 +116,13 @@ def _parseVanguardTransactionDate(datestr: str) -> datetime:
     return datetime.strptime(datestr, '%m/%d/%Y')
 
 
-def forceParseVanguardTransaction(t: VanguardTransaction,
-                                  flags: TradeFlags) -> Optional[Trade]:
+def _forceParseVanguardTransaction(t: _VanguardTransaction,
+                                   flags: TradeFlags) -> Optional[Trade]:
     instrument: Instrument
     if len(t.symbol) > 0:
         instrument = Stock(t.symbol, currency=Currency.USD)
     else:
-        instrument = guessInstrumentForInvestmentName(t.investmentName)
+        instrument = _guessInstrumentForInvestmentName(t.investmentName)
 
     totalFees = Decimal(t.commissionFees)
     amount = Decimal(t.principalAmount)
@@ -141,7 +141,7 @@ def forceParseVanguardTransaction(t: VanguardTransaction,
                  flags=flags)
 
 
-def parseVanguardTransaction(t: VanguardTransaction) -> Optional[Activity]:
+def _parseVanguardTransaction(t: _VanguardTransaction) -> Optional[Activity]:
     if t.transactionType == 'Dividend':
         return DividendPayment(date=_parseVanguardTransactionDate(t.tradeDate),
                                stock=Stock(
@@ -166,12 +166,12 @@ def parseVanguardTransaction(t: VanguardTransaction) -> Optional[Activity]:
         'Transfer (outgoing)': TradeFlags.CLOSE,
     }
 
-    return forceParseVanguardTransaction(
+    return _forceParseVanguardTransaction(
         t, flags=flagsByTransactionType[t.transactionType])
 
 
 # Transactions will be ordered from newest to oldest
-def __parseTransactions(path: Path, lenient: bool = False) -> List[Activity]:
+def _parseTransactions(path: Path, lenient: bool = False) -> List[Activity]:
     with open(path, newline='') as csvfile:
         transactionsCriterion = CSVSectionCriterion(
             startSectionRowMatch=["Account Number", "Trade Date"],
@@ -187,6 +187,6 @@ def __parseTransactions(path: Path, lenient: bool = False) -> List[Activity]:
             filter(
                 None,
                 lenientParse(
-                    (VanguardTransaction._make(r) for r in sections[0].rows),
-                    transform=parseVanguardTransaction,
+                    (_VanguardTransaction._make(r) for r in sections[0].rows),
+                    transform=_parseVanguardTransaction,
                     lenient=lenient)))

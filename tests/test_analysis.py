@@ -1,10 +1,10 @@
-from analysis import normalizeSymbol, realizedBasisForSymbol, liveValuesForPositions, deduplicatePositions
+from bankroll import Cash, Currency, Instrument, Stock, Option, OptionType, Quote, Trade, TradeFlags, MarketDataProvider, Position, Activity, DividendPayment
+from bankroll.analysis import _normalizeSymbol, realizedBasisForSymbol, liveValuesForPositions, deduplicatePositions
 from datetime import datetime, date
 from decimal import Decimal
 from hypothesis import given, reproduce_failure, seed, settings, HealthCheck
 from hypothesis.strategies import builds, composite, dates, datetimes, decimals, from_type, iterables, just, lists, one_of, sampled_from, text, tuples, SearchStrategy
 from itertools import chain
-from model import Cash, Currency, Instrument, Stock, Option, OptionType, Quote, Trade, TradeFlags, MarketDataProvider, Position, Activity, DividendPayment
 from typing import Any, Dict, Iterable, List, Tuple, no_type_check
 
 import helpers
@@ -133,7 +133,7 @@ class TestAnalysis(unittest.TestCase):
 
     @given(sampled_from(separatedSymbols))
     def test_normalizeSymbol(self, symbol: str) -> None:
-        self.assertEqual(normalizeSymbol(symbol), 'BRKB')
+        self.assertEqual(_normalizeSymbol(symbol), 'BRKB')
 
     @given(lists(sampled_from(separatedSymbols), min_size=3, max_size=3))
     def test_realizedBasisWithSeparatedSymbol(self,

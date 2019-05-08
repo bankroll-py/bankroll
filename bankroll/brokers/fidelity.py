@@ -1,9 +1,9 @@
-from csvsectionslicer import parseSectionsForCSV, CSVSectionCriterion, CSVSectionResult
 from datetime import date, datetime
 from decimal import Decimal
 from enum import IntEnum, unique
-from model import Activity, Cash, Currency, Instrument, Stock, Bond, Option, OptionType, Position, DividendPayment, Trade, TradeFlags
-from parsetools import lenientParse
+from bankroll.csvsectionslicer import parseSectionsForCSV, CSVSectionCriterion, CSVSectionResult
+from bankroll.model import Activity, Cash, Currency, Instrument, Stock, Bond, Option, OptionType, Position, DividendPayment, Trade, TradeFlags
+from bankroll.parsetools import lenientParse
 from pathlib import Path
 from sys import stderr
 from typing import Callable, Dict, List, NamedTuple, Optional, Set
@@ -13,7 +13,7 @@ import csv
 import re
 
 
-class FidelityPosition(NamedTuple):
+class _FidelityPosition(NamedTuple):
     symbol: str
     description: str
     quantity: str
@@ -23,11 +23,11 @@ class FidelityPosition(NamedTuple):
     costBasis: str
 
 
-InstrumentFactory = Callable[[FidelityPosition], Instrument]
+_InstrumentFactory = Callable[[_FidelityPosition], Instrument]
 
 
-def parseFidelityPosition(p: FidelityPosition,
-                          instrumentFactory: InstrumentFactory) -> Position:
+def _parseFidelityPosition(p: _FidelityPosition,
+                           instrumentFactory: _InstrumentFactory) -> Position:
     qty = Decimal(p.quantity)
     return Position(instrument=instrumentFactory(p),
                     quantity=qty,
@@ -36,7 +36,7 @@ def parseFidelityPosition(p: FidelityPosition,
 
 
 @unique
-class FidelityMonth(IntEnum):
+class _FidelityMonth(IntEnum):
     JAN = 1,
     FEB = 2,
     MAR = 3,
@@ -51,7 +51,7 @@ class FidelityMonth(IntEnum):
     DEC = 12
 
 
-def parseOptionsPosition(description: str) -> Option:
+def _parseOptionsPosition(description: str) -> Option:
     match = re.match(
         r'^(?P<putCall>CALL|PUT) \((?P<underlying>[A-Z]+)\) .+ (?P<month>[A-Z]{3}) (?P<day>\d{2}) (?P<year>\d{2}) \$(?P<strike>[0-9\.]+) \(100 SHS\)$',
         description)
@@ -64,7 +64,7 @@ def parseOptionsPosition(description: str) -> Option:
     else:
         optionType = OptionType.CALL
 
-    month = FidelityMonth[match['month']]
+    month = _FidelityMonth[match['month']]
     year = datetime.strptime(match['year'], '%y').year
 
     return Option(underlying=match['underlying'],
@@ -87,10 +87,10 @@ def parsePositions(path: Path, lenient: bool = False) -> List[Position]:
             endSectionRowMatch=["", ""],
             rowFilter=lambda r: r[0:7])
 
-        instrumentBySection: Dict[CSVSectionCriterion, InstrumentFactory] = {
+        instrumentBySection: Dict[CSVSectionCriterion, _InstrumentFactory] = {
             stocksCriterion: lambda p: Stock(p.symbol, currency=Currency.USD),
             bondsCriterion: lambda p: Bond(p.symbol, currency=Currency.USD),
-            optionsCriterion: lambda p: parseOptionsPosition(p.description),
+            optionsCriterion: lambda p: _parseOptionsPosition(p.description),
         }
 
         sections = parseSectionsForCSV(
@@ -100,14 +100,15 @@ def parsePositions(path: Path, lenient: bool = False) -> List[Position]:
 
         for sec in sections:
             for r in sec.rows:
-                pos = parseFidelityPosition(FidelityPosition._make(r),
-                                            instrumentBySection[sec.criterion])
+                pos = _parseFidelityPosition(
+                    _FidelityPosition._make(r),
+                    instrumentBySection[sec.criterion])
                 positions.append(pos)
 
         return positions
 
 
-class FidelityTransaction(NamedTuple):
+class _FidelityTransaction(NamedTuple):
     date: str
     account: str
     action: str
@@ -127,7 +128,7 @@ class FidelityTransaction(NamedTuple):
     settlementDate: str
 
 
-def parseOptionTransaction(symbol: str, currency: Currency) -> Option:
+def _parseOptionTransaction(symbol: str, currency: Currency) -> Option:
     match = re.match(
         r'^-(?P<underlying>[A-Z]+)(?P<date>\d{6})(?P<putCall>C|P)(?P<strike>[0-9\.]+)$',
         symbol)
@@ -146,9 +147,9 @@ def parseOptionTransaction(symbol: str, currency: Currency) -> Option:
                   strike=Decimal(match['strike']))
 
 
-def guessInstrumentFromSymbol(symbol: str, currency: Currency) -> Instrument:
+def _guessInstrumentFromSymbol(symbol: str, currency: Currency) -> Instrument:
     if re.search(r'[0-9]+(C|P)[0-9]+$', symbol):
-        return parseOptionTransaction(symbol, currency)
+        return _parseOptionTransaction(symbol, currency)
     elif Bond.validBondSymbol(symbol):
         return Bond(symbol, currency=currency)
     else:
@@ -159,8 +160,8 @@ def _parseFidelityTransactionDate(datestr: str) -> datetime:
     return datetime.strptime(datestr, '%m/%d/%Y')
 
 
-def forceParseFidelityTransaction(t: FidelityTransaction,
-                                  flags: TradeFlags) -> Trade:
+def _forceParseFidelityTransaction(t: _FidelityTransaction,
+                                   flags: TradeFlags) -> Trade:
     quantity = Decimal(t.quantity)
 
     totalFees = Decimal(0)
@@ -176,14 +177,14 @@ def forceParseFidelityTransaction(t: FidelityTransaction,
 
     currency = Currency(t.currency)
     return Trade(date=_parseFidelityTransactionDate(t.date),
-                 instrument=guessInstrumentFromSymbol(t.symbol, currency),
+                 instrument=_guessInstrumentFromSymbol(t.symbol, currency),
                  quantity=quantity,
                  amount=Cash(currency=currency, quantity=amount),
                  fees=Cash(currency=currency, quantity=totalFees),
                  flags=flags)
 
 
-def parseFidelityTransaction(t: FidelityTransaction) -> Optional[Activity]:
+def _parseFidelityTransaction(t: _FidelityTransaction) -> Optional[Activity]:
     if t.action == 'DIVIDEND RECEIVED':
         return DividendPayment(date=_parseFidelityTransactionDate(t.date),
                                stock=Stock(t.symbol,
@@ -203,7 +204,7 @@ def parseFidelityTransaction(t: FidelityTransaction) -> Optional[Activity]:
     if not flags:
         return None
 
-    return forceParseFidelityTransaction(t, flags=flags)
+    return _forceParseFidelityTransaction(t, flags=flags)
 
 
 # Transactions will be ordered from newest to oldest
@@ -223,6 +224,6 @@ def parseTransactions(path: Path, lenient: bool = False) -> List[Activity]:
             filter(
                 None,
                 lenientParse(
-                    (FidelityTransaction._make(r) for r in sections[0].rows),
-                    transform=parseFidelityTransaction,
+                    (_FidelityTransaction._make(r) for r in sections[0].rows),
+                    transform=_parseFidelityTransaction,
                     lenient=lenient)))

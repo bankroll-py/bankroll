@@ -1,19 +1,15 @@
 from argparse import ArgumentParser, Namespace
 from functools import reduce
 from ib_insync import IB
-from model import Activity, Instrument, Stock, Position, Trade, Cash, MarketDataProvider
+from bankroll import Activity, Instrument, Stock, Position, Trade, Cash, MarketDataProvider, analysis
+from bankroll.brokers import *
 from pathlib import Path
 from progress.bar import Bar
 from typing import Dict, Iterable, List, Optional
 
-import analysis
-import ibkr
-import fidelity
 import logging
-import schwab
-import vanguard
 
-parser = ArgumentParser()
+parser = ArgumentParser(prog='bankroll')
 
 parser.add_argument(
     '--lenient',
@@ -158,7 +154,12 @@ positionsParser.add_argument(
 activityParser = subparsers.add_parser(
     'activity', help='Operations upon imported portfolio activity')
 
-if __name__ == '__main__':
+
+def main() -> None:
+    global positions
+    global activity
+    global dataProvider
+
     args = parser.parse_args()
     if args.verbose:
         logging.basicConfig(level=logging.INFO)
@@ -217,3 +218,7 @@ if __name__ == '__main__':
 
     positions = list(analysis.deduplicatePositions(positions))
     commands[args.command](args)
+
+
+if __name__ == '__main__':
+    main()
