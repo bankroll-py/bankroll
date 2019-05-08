@@ -1,4 +1,3 @@
-pip==19.1
 hypothesis==4.14.6
 ib-insync==0.9.46
 ibapi==9.75.1
