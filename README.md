@@ -52,7 +52,7 @@ python -m bankroll \
 Run with `--help` to see all options:
 
 ```
-python -m bankroll -help
+python -m bankroll --help
 ```
 
 ## Interactive Brokers
