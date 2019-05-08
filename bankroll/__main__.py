@@ -158,6 +158,7 @@ activityParser = subparsers.add_parser(
 def main() -> None:
     global positions
     global activity
+    global dataProvider
 
     args = parser.parse_args()
     if args.verbose:
