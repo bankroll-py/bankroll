@@ -12,7 +12,7 @@ then
     echo
     echo "If you agree to the terms, press Enter to continue."
     echo "If you do not agree, please press Ctrl-C to abort."
-    read
+    read -r
 fi
 
 if ! [ -d "$HOME/IBJts" ]
