@@ -3,6 +3,18 @@
 set -o errexit
 set -o pipefail
 
+if [[ "$1" != "--skip-license" ]]
+then
+    echo " => twsapi license check"
+    echo
+    echo "Please read the license agreement for the Interactive Brokers API:"
+    echo "https://interactivebrokers.github.io"
+    echo
+    echo "If you agree to the terms, press Enter to continue."
+    echo "If you do not agree, please press Ctrl-C to abort."
+    read
+fi
+
 if ! [ -d "$HOME/IBJts" ]
 then
     echo " => Downloading TWS API"

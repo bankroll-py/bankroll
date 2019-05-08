@@ -9,7 +9,7 @@ python3 -m venv venv
 # shellcheck disable=SC1091
 . venv/bin/activate
 
-script/install_twsapi
+script/install_twsapi "$@"
 
 echo
 echo " => Installing Python dependencies"
