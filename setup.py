@@ -20,4 +20,10 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
+    # ibapi is also a required package, but has no automated installation
+    install_requires=[
+        'ib-insync>=0.9',
+        'progress>=1.5',
+        'backoff>=1.8',
+    ],
     entry_points={'console_scripts': ['bankroll = bankroll.__main__:main']})
