@@ -5,7 +5,7 @@ set -o pipefail
 
 if [[ "$1" != "--skip-license" ]]
 then
-    echo " => twsapi license check"
+    echo " => IB API license check"
     echo
     echo "Please read the license agreement for the Interactive Brokers API:"
     echo "https://interactivebrokers.github.io"
@@ -18,8 +18,8 @@ fi
 if ! [ -d "$HOME/IBJts" ]
 then
     echo " => Downloading TWS API"
-    curl "http://interactivebrokers.github.io/downloads/twsapi_macunix.975.01.zip" > twsapi.zip
-    unzip twsapi.zip -d "$HOME/"
+    curl "http://interactivebrokers.github.io/downloads/twsapi_macunix.975.01.zip" > ibapi.zip
+    unzip ibapi.zip -d "$HOME/"
 
     echo
 fi
