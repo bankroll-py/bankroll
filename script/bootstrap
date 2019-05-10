@@ -9,8 +9,6 @@ python3 -m venv venv
 # shellcheck disable=SC1091
 . venv/bin/activate
 
-script/install_ibapi "$@"
-
 echo
 echo " => Installing Python dependencies"
 

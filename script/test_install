@@ -9,14 +9,12 @@ set -o pipefail
 echo " => Uninstalling development dependencies"
 pip uninstall -r requirements.txt --yes
 
-script/install_ibapi "$@"
-
 echo
 echo " => Installing bankroll"
 
 pip install .
 
 echo
-echo " => Testing bankroll"
+echo " => Testing bankroll --help"
 
-bankroll --help >/dev/null
+bankroll --help
