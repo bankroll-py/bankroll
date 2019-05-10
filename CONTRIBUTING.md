@@ -4,7 +4,7 @@ Thanks for wanting to contribute to this project!
 
 ## Setting up your environment
 
-The included bootstrap script will set up a Python virtual environment and install the necessary dependencies, including the [Interactive Brokers API](http://interactivebrokers.github.io):
+The included bootstrap script will set up a Python virtual environment and install the necessary dependencies:
 
 ```
 script/bootstrap

@@ -25,14 +25,6 @@ This will also make the command-line tool available directly:
 bankroll --help
 ```
 
-The [Interactive Brokers API](http://interactivebrokers.github.io) must also be installed prior to using `bankroll`. This repository includes a helpful script to ease this process:
-
-```
-script/install_twsapi
-```
-
-If you do not want to install `ibapi` globally, you may wish to [set up a Python virtual environment](CONTRIBUTING.md#setting-up-your-environment) instead.
-
 # Connecting to brokers
 
 After being set up, `bankroll` can be used from the command line to bring together data from multiple brokerages.

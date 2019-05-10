@@ -28,7 +28,6 @@ setup(
         "Topic :: Office/Business :: Financial :: Investment",
         "Typing :: Typed",
     ],
-    # ibapi is also a required package, but has no automated installation
     install_requires=[
         'ib-insync>=0.9',
         'progress>=1.5',
