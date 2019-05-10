@@ -15,6 +15,7 @@ setup(
     license='MIT',
     url='https://github.com/jspahrsummers/bankroll',
     packages=find_packages(),
+    package_data={'bankroll': ['bankroll.default.ini']},
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Environment :: Console",

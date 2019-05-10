@@ -2,11 +2,20 @@ from configparser import ConfigParser
 from enum import Enum, unique
 from typing import List, Optional, no_type_check
 
+import pkg_resources
+
 import os
+
+_DEFAULT_CONFIG_NAME = 'bankroll.default.ini'
 
 
 def load(extraSearchPaths: List[str] = []) -> ConfigParser:
     config = ConfigParser()
+
+    defaultConfig = pkg_resources.resource_string('bankroll',
+                                                  _DEFAULT_CONFIG_NAME)
+    config.read_string(defaultConfig.decode(), _DEFAULT_CONFIG_NAME)
+
     config.read(
         extraSearchPaths +
         ['bankroll.ini', os.path.expanduser('~/.bankroll.ini')])
