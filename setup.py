@@ -16,9 +16,17 @@ setup(
     url='https://github.com/jspahrsummers/bankroll',
     packages=find_packages(),
     classifiers=[
-        "Programming Language :: Python :: 3",
+        "Development Status :: 3 - Alpha",
+        "Environment :: Console",
+        "Framework :: Jupyter",
+        "Intended Audience :: Developers",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
+        "Programming Language :: Python :: 3 :: Only",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3",
+        "Topic :: Office/Business :: Financial :: Investment",
+        "Typing :: Typed",
     ],
     # ibapi is also a required package, but has no automated installation
     install_requires=[
