@@ -7,6 +7,7 @@ from pathlib import Path
 from progress.bar import Bar
 from typing import Dict, Iterable, List, Optional
 
+import bankroll.config as config
 import logging
 
 parser = ArgumentParser(prog='bankroll')
@@ -24,6 +25,11 @@ parser.add_argument('-v',
                     dest='verbose',
                     default=False,
                     action='store_true')
+parser.add_argument(
+    '--config',
+    help=
+    'Path to an INI file specifying configuration options. Can be specified multiple times.',
+    action='append')
 
 ibGroup = parser.add_argument_group(
     'IB', 'Options for importing data from Interactive Brokers.')
@@ -164,6 +170,8 @@ def main() -> None:
     if args.verbose:
         logging.basicConfig(level=logging.INFO)
 
+    cfg = config.load(args.config if args.config else [])
+
     if not args.command:
         parser.print_usage()
         quit(1)
@@ -199,16 +207,20 @@ def main() -> None:
 
         positions += ibkr.downloadPositions(ib, lenient=args.lenient)
 
-    if args.flextoken:
-        if args.flexquery_trades:
-            activity += ibkr.downloadTrades(token=args.flextoken,
-                                            queryID=args.flexquery_trades,
+    flexToken = args.flextoken or config.ibkrFlexToken(cfg)
+    if flexToken:
+        tradesQuery = args.flexquery_trades or config.ibkrTradesFlexQuery(cfg)
+        if tradesQuery:
+            activity += ibkr.downloadTrades(token=flexToken,
+                                            queryID=tradesQuery,
                                             lenient=args.lenient)
-        if args.flexquery_activity:
-            activity += ibkr.downloadNonTradeActivity(
-                token=args.flextoken,
-                queryID=args.flexquery_activity,
-                lenient=args.lenient)
+
+        activityQuery = args.flexquery_activity or config.ibkrActivityFlexQuery(
+            cfg)
+        if activityQuery:
+            activity += ibkr.downloadNonTradeActivity(token=flexToken,
+                                                      queryID=activityQuery,
+                                                      lenient=args.lenient)
 
     if args.ibtrades:
         activity += ibkr.parseTrades(args.ibtrades, lenient=args.lenient)
