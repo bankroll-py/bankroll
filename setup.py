@@ -34,4 +34,6 @@ setup(
         'progress>=1.5',
         'backoff>=1.8',
     ],
+    keywords=
+    'trading investing finance portfolio ib ibkr tws schwab fidelity vanguard',
     entry_points={'console_scripts': ['bankroll = bankroll.__main__:main']})
