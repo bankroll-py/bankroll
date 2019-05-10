@@ -37,13 +37,13 @@ def ibkrFlexToken(config: ConfigParser) -> Optional[str]:
 
 @no_type_check
 def ibkrTradesFlexQuery(config: ConfigParser) -> Optional[int]:
-    return config.get(_ConfigSection.IBKR.value,
-                      'trades flex query',
-                      fallback=None)
+    return config.getint(_ConfigSection.IBKR.value,
+                         'trades flex query',
+                         fallback=None)
 
 
 @no_type_check
 def ibkrActivityFlexQuery(config: ConfigParser) -> Optional[int]:
-    return config.get(_ConfigSection.IBKR.value,
-                      'activity flex query',
-                      fallback=None)
+    return config.getint(_ConfigSection.IBKR.value,
+                         'activity flex query',
+                         fallback=None)
