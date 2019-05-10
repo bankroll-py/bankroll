@@ -29,7 +29,7 @@ setup(
         "Typing :: Typed",
     ],
     install_requires=[
-        'ib-insync>=0.9',
+        'ib-insync>=0.9.47',
         'progress>=1.5',
         'backoff>=1.8',
     ],
