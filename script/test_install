@@ -9,8 +9,6 @@ set -o pipefail
 echo " => Uninstalling development dependencies"
 pip uninstall -r requirements.txt --yes
 
-script/install_ibapi "$@"
-
 echo
 echo " => Installing bankroll"
 
