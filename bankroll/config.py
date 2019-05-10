@@ -31,6 +31,11 @@ class _ConfigSection(Enum):
 
 
 @no_type_check
+def ibkrTWSPort(config: ConfigParser) -> Optional[int]:
+    return config.getint(_ConfigSection.IBKR.value, 'tws port', fallback=None)
+
+
+@no_type_check
 def ibkrFlexToken(config: ConfigParser) -> Optional[str]:
     return config.get(_ConfigSection.IBKR.value, 'flex token', fallback=None)
 

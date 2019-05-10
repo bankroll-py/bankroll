@@ -198,9 +198,10 @@ def main() -> None:
         positions += positionsAndActivity.positions
         activity += positionsAndActivity.activity
 
-    if args.twsport:
+    twsPort = args.twsport or config.ibkrTWSPort(cfg)
+    if twsPort:
         ib = IB()
-        ib.connect('127.0.0.1', port=args.twsport)
+        ib.connect('127.0.0.1', port=twsPort)
 
         if not dataProvider:
             dataProvider = ibkr.IBDataProvider(ib)
