@@ -19,9 +19,9 @@ class TestDataAggregator(unittest.TestCase):
             ibkr.Settings.TRADES:
             'tests/ibkr_trades.xml',
             schwab.Settings.POSITIONS:
-            'tests/schwab_positions.csv',
+            'tests/schwab_positions.CSV',
             schwab.Settings.TRANSACTIONS:
-            'tests/schwab_transactions.csv',
+            'tests/schwab_transactions.CSV',
             vanguard.Settings.STATEMENT:
             'tests/vanguard_positions_and_transactions.csv',
         }
