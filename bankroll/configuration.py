@@ -39,7 +39,7 @@ class Configuration:
         elements: Iterable[_S] = list(settings)
 
         optionalValues = {
-            key: overrides[key]
+            key: overrides.get(key)
             or self._config.get(settings.sectionName(), key.value, fallback='')
             for key in elements
         }
