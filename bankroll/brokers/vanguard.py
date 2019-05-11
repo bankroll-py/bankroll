@@ -1,15 +1,33 @@
-from collections import namedtuple
-from datetime import datetime
-from decimal import Decimal
 from bankroll.analysis import realizedBasisForSymbol
 from bankroll.model import Activity, Bond, Cash, Currency, Instrument, Position, Stock, DividendPayment, Trade, TradeFlags
 from bankroll.csvsectionslicer import parseSectionsForCSV, CSVSectionCriterion, CSVSectionResult
 from bankroll.parsetools import lenientParse
+from collections import namedtuple
+from datetime import datetime
+from decimal import Decimal
+from enum import unique
 from pathlib import Path
 from typing import Dict, List, NamedTuple, Optional, Set, Tuple
 
+import bankroll.configuration as configuration
 import csv
 import re
+
+
+@unique
+class Settings(configuration.Settings):
+    STATEMENT = 'Statement'
+
+    @property
+    def help(self) -> str:
+        if self == self.STATEMENT:
+            return "A local path to an exported statement CSV of Vanguard positions and trades."
+        else:
+            return ""
+
+    @classmethod
+    def sectionName(cls) -> str:
+        return 'Vanguard'
 
 
 class PositionsAndActivity(NamedTuple):

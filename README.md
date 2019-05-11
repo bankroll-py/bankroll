@@ -9,6 +9,7 @@ Ingest portfolio and other data from multiple brokerages, and analyze it.
    1. [Charles Schwab](#charles-schwab)
    1. [Fidelity](#fidelity)
    1. [Vanguard](#vanguard)
+1. [Saving configuration](#saving-configuration)
 1. [Extending `bankroll`](#extending-bankroll)
 
 # Installation
@@ -33,9 +34,9 @@ For example, to show all positions held in both Interactive Brokers and Charles 
 
 ```
 python -m bankroll \
-  --twsport 7496 \
-  --schwabpositions ~/Positions-2019-01-01.CSV \
-  --schwabtransactions ~/Transactions_20190101.CSV \
+  --ibkr-tws-port 7496 \
+  --schwab-positions ~/Positions-2019-01-01.CSV \
+  --schwab-transactions ~/Transactions_20190101.CSV \
   positions
 ```
 
@@ -57,7 +58,7 @@ Once Trader Workstation or IB Gateway is running, and [API connections are enabl
 
 ```
 python -m bankroll \
-  --twsport 7496 \
+  --ibkr-tws-port 7496 \
   [command]
 ```
 
@@ -102,8 +103,8 @@ With the token and the query ID from your account, historical trades can be down
 
 ```
 python -m bankroll \
-  --flextoken [token] \
-  --flexquery-trades [query ID] \
+  --ibkr-flex-token [token] \
+  --ibkr-trades [query ID] \
   activity
 ```
 
@@ -121,8 +122,8 @@ Pass your existing token, and the new query's ID, on the command line:
 
 ```
 python -m bankroll \
-  --flextoken [token] \
-  --flexquery-activity [query ID] \
+  --ibkr-flex-token [token] \
+  --ibkr-activity [query ID] \
   activity
 ```
 
@@ -142,8 +143,8 @@ Then provide the paths of either or both these downloaded files to `bankroll`:
 
 ```
 python -m bankroll \
-  --schwabpositions ~/path/to/Positions.CSV \
-  --schwabtransactions ~/path/to/Transactions.CSV \
+  --schwab-positions ~/path/to/Positions.CSV \
+  --schwab-transactions ~/path/to/Transactions.CSV \
   [command]
 ```
 
@@ -154,6 +155,14 @@ python -m bankroll \
 ## Vanguard
 
 [Vanguard](https://investor.vanguard.com) is a **work in progress**, and may not be as fully-featured as the other brokerages listed here. [Contributions welcome](CONTRIBUTING.md)!
+
+# Saving configuration
+
+To preserve settings across runs, all of the command-line arguments demonstrated above can also be saved into an [INI file](https://docs.python.org/3/library/configparser.html#supported-ini-file-structure). The configuration file is especially useful to store default values, because when a setting is specified in a configuration file _as well as_ on the command line, the command-line argument will take precedence.
+
+To create a configuration, copy [`bankroll.default.ini`](bankroll/bankroll.default.ini) to `~/.bankroll.ini`, or leave it in your working directory as `bankroll.ini`, then edit the file to apply your desired settings.
+
+If you would like to store the configuration somewhere else, you can also provide custom paths via the `--config` argument on the command line.
 
 # Extending `bankroll`
 

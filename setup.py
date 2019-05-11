@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name='bankroll',
-    version='0.1.2',
+    version='0.2.0',
     author='Justin Spahr-Summers',
     author_email='justin@jspahrsummers.com',
     description=
@@ -15,6 +15,7 @@ setup(
     license='MIT',
     url='https://github.com/jspahrsummers/bankroll',
     packages=find_packages(),
+    package_data={'bankroll': ['bankroll.default.ini']},
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Environment :: Console",

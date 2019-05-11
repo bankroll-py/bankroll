@@ -345,14 +345,16 @@ class TestIBKRParsing(unittest.TestCase):
         self.assertEqual(contract.currency, tradeConfirm.currency)
 
         if isinstance(instrument, Option):
-            self.assertAlmostEqual(contract.strike,
-                                   float(tradeConfirm.strike),
-                                   places=1)
+            self.assertEqual(
+                Option.quantizeStrike(Decimal(contract.strike)),
+                Option.quantizeStrike(Decimal(tradeConfirm.strike)))
             self.assertEqual(contract.right, tradeConfirm.putCall)
 
         if isinstance(instrument, Option) or isinstance(instrument, Future):
-            self.assertEqual(Decimal(contract.multiplier),
-                             Decimal(tradeConfirm.multiplier))
+            self.assertEqual(
+                Instrument.quantizeMultiplier(Decimal(contract.multiplier)),
+                Instrument.quantizeMultiplier(Decimal(
+                    tradeConfirm.multiplier)))
             self.assertEqual(contract.lastTradeDateOrContractMonth,
                              tradeConfirm.expiry)
 
@@ -383,14 +385,16 @@ class TestIBKRParsing(unittest.TestCase):
         self.assertEqual(contract.currency, position.contract.currency)
 
         if isinstance(instrument, Option):
-            self.assertAlmostEqual(float(contract.strike),
-                                   float(position.contract.strike),
-                                   places=1)
+            self.assertEqual(
+                Option.quantizeStrike(Decimal(contract.strike)),
+                Option.quantizeStrike(Decimal(position.contract.strike)))
             self.assertEqual(contract.right, position.contract.right)
 
         if isinstance(instrument, Option) or isinstance(instrument, Future):
-            self.assertEqual(Decimal(contract.multiplier),
-                             Decimal(position.contract.multiplier))
+            self.assertEqual(
+                Instrument.quantizeMultiplier(Decimal(contract.multiplier)),
+                Instrument.quantizeMultiplier(
+                    Decimal(position.contract.multiplier)))
             self.assertEqual(contract.lastTradeDateOrContractMonth,
                              position.contract.lastTradeDateOrContractMonth)
 

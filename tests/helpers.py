@@ -2,6 +2,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from hypothesis.strategies import builds, dates, datetimes, decimals, from_regex, from_type, just, lists, integers, none, one_of, register_type_strategy, sampled_from, text, SearchStrategy
 from bankroll import Activity, Cash, Currency, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, DividendPayment, Trade, TradeFlags, Quote
+from bankroll.configuration import Settings
 from typing import List, Optional, TypeVar
 
 T = TypeVar('T')
@@ -243,6 +244,9 @@ register_type_strategy(
                   quantity=cashAmounts(min_value=Decimal('0'))))))
 
 register_type_strategy(Quote, uniformCurrencyQuotes())
+
+register_type_strategy(
+    Settings, one_of([from_type(s) for s in Settings.__subclasses__()]))
 
 
 def cashUSD(amount: Decimal) -> Cash:

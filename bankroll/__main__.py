@@ -1,15 +1,27 @@
 from argparse import ArgumentParser, Namespace
-from functools import reduce
-from ib_insync import IB
-from bankroll import Activity, Instrument, Stock, Position, Trade, Cash, MarketDataProvider, analysis
+from itertools import chain
+from bankroll import Activity, Instrument, Stock, Position, Trade, Cash, MarketDataProvider, DataAggregator, analysis
 from bankroll.brokers import *
-from pathlib import Path
+from bankroll.configuration import Configuration, Settings, addSettingsToArgumentGroup
 from progress.bar import Bar
 from typing import Dict, Iterable, List, Optional
 
 import logging
 
-parser = ArgumentParser(prog='bankroll')
+parser = ArgumentParser(
+    prog='bankroll',
+    add_help=False,
+    description=
+    'Ingests portfolio and other data from multiple brokerages, and analyzes it.',
+    epilog=
+    'For more information, or to report issues, please visit: https://github.com/jspahrsummers/bankroll'
+)
+
+# Add our own help option for consistent formatting.
+parser.add_argument('-h',
+                    '--help',
+                    help='Show this help message and exit.',
+                    action='help')
 
 parser.add_argument(
     '--lenient',
@@ -17,96 +29,60 @@ parser.add_argument(
     'Attempt to ignore invalid data instead of erroring out. May not be supported for all data sources.',
     default=False,
     action='store_true')
-parser.add_argument('--no-lenient', dest='lenient', action='store_false')
+parser.add_argument('--no-lenient',
+                    dest='lenient',
+                    help='Opposite of --lenient.',
+                    action='store_false')
 parser.add_argument('-v',
                     '--verbose',
-                    help='More logging.',
+                    help='Turns on more logging, for debugging purposes.',
                     dest='verbose',
                     default=False,
                     action='store_true')
+parser.add_argument(
+    '--config',
+    help=
+    "Path to an INI file specifying configuration options, taking precedence over the default search paths. Can be specified multiple times, with the latest file's settings taking precedence over those previous.",
+    action='append')
 
 ibGroup = parser.add_argument_group(
     'IB', 'Options for importing data from Interactive Brokers.')
-ibGroup.add_argument(
-    '--twsport',
-    help=
-    'Local port to connect to Trader Workstation, to import live portfolio data',
-    type=int)
-ibGroup.add_argument(
-    '--flextoken',
-    help=
-    'Token ID from IB\'s Flex Web Service: https://www.interactivebrokers.com/en/software/am/am/reports/flex_web_service_version_3.htm'
-)
-ibGroup.add_argument(
-    '--flexquery-trades',
-    help=
-    'Query ID for Trades report from IB\'s Flex Web Service: https://www.interactivebrokers.com/en/software/am/am/reports/flex_web_service_version_3.htm',
-    type=int)
-ibGroup.add_argument(
-    '--ibtrades',
-    help=
-    'Path to exported XML of trade confirmations from IB\'s Flex Web Service',
-    type=Path)
-ibGroup.add_argument(
-    '--flexquery-activity',
-    help=
-    'Query ID for Activity report from IB\'s Flex Web Service: https://www.interactivebrokers.com/en/software/am/am/reports/flex_web_service_version_3.htm',
-    type=int)
-ibGroup.add_argument(
-    '--ibactivity',
-    help='Path to exported XML of activity from IB\'s Flex Web Service',
-    type=Path)
+readIBSettings = addSettingsToArgumentGroup(ibkr.Settings, ibGroup)
 
 fidelityGroup = parser.add_argument_group(
     'Fidelity',
     'Options for importing data from local files in Fidelity\'s CSV export format.'
 )
-fidelityGroup.add_argument('--fidelitypositions',
-                           help='Path to exported CSV of Fidelity positions',
-                           type=Path)
-fidelityGroup.add_argument(
-    '--fidelitytransactions',
-    help='Path to exported CSV of Fidelity transactions',
-    type=Path)
+readFidelitySettings = addSettingsToArgumentGroup(fidelity.Settings,
+                                                  fidelityGroup)
 
 schwabGroup = parser.add_argument_group(
     'Schwab',
     'Options for importing data from local files in Charles Schwab\'s CSV export format.'
 )
-schwabGroup.add_argument('--schwabpositions',
-                         help='Path to exported CSV of Schwab positions',
-                         type=Path)
-schwabGroup.add_argument('--schwabtransactions',
-                         help='Path to exported CSV of Schwab transactions',
-                         type=Path)
+readSchwabSettings = addSettingsToArgumentGroup(schwab.Settings, schwabGroup)
 
 vanguardGroup = parser.add_argument_group(
     'Vanguard',
     'Options for importing data from local files in Vanguard\'s CSV export format.'
 )
-vanguardGroup.add_argument(
-    '--vanguardstatement',
-    help='Path to exported CSV of Vanguard positions and trades',
-    type=Path)
-
-positions: List[Position] = []
-activity: List[Activity] = []
-dataProvider: Optional[MarketDataProvider] = None
+readVanguardSettings = addSettingsToArgumentGroup(vanguard.Settings,
+                                                  vanguardGroup)
 
 
-def printPositions(args: Namespace) -> None:
+def printPositions(data: DataAggregator, args: Namespace) -> None:
     values: Dict[Position, Cash] = {}
     if args.live_value:
-        if dataProvider:
+        if data.dataProvider:
             values = analysis.liveValuesForPositions(
-                positions,
-                dataProvider=dataProvider,
+                data.positions,
+                dataProvider=data.dataProvider,
                 progressBar=Bar('Loading market data for positions'))
         else:
             logging.error(
                 'Live data connection required to fetch market values')
 
-    for p in sorted(positions, key=lambda p: p.instrument):
+    for p in sorted(data.positions, key=lambda p: p.instrument):
         print(p)
 
         if p in values:
@@ -121,12 +97,12 @@ def printPositions(args: Namespace) -> None:
 
         if args.realized_basis:
             realizedBasis = analysis.realizedBasisForSymbol(
-                p.instrument.symbol, activity=activity)
+                p.instrument.symbol, activity=data.activity)
             print(f'\tRealized basis: {realizedBasis}')
 
 
-def printActivity(args: Namespace) -> None:
-    for t in sorted(activity, key=lambda t: t.date, reverse=True):
+def printActivity(data: DataAggregator, args: Namespace) -> None:
+    for t in sorted(data.activity, key=lambda t: t.date, reverse=True):
         print(t)
 
 
@@ -156,68 +132,27 @@ activityParser = subparsers.add_parser(
 
 
 def main() -> None:
-    global positions
-    global activity
-    global dataProvider
-
     args = parser.parse_args()
     if args.verbose:
         logging.basicConfig(level=logging.INFO)
+
+    config = Configuration(
+        chain(Configuration.defaultSearchPaths,
+              args.config if args.config else []))
 
     if not args.command:
         parser.print_usage()
         quit(1)
 
-    if args.fidelitypositions:
-        positions += fidelity.parsePositions(args.fidelitypositions,
-                                             lenient=args.lenient)
+    mergedSettings: Dict[Settings, str] = dict(
+        chain(
+            readFidelitySettings(config, args).items(),
+            readSchwabSettings(config, args).items(),
+            readVanguardSettings(config, args).items(),
+            readIBSettings(config, args).items()))
 
-    if args.fidelitytransactions:
-        activity += fidelity.parseTransactions(args.fidelitytransactions,
-                                               lenient=args.lenient)
-
-    if args.schwabpositions:
-        positions += schwab.parsePositions(args.schwabpositions,
-                                           lenient=args.lenient)
-
-    if args.schwabtransactions:
-        activity += schwab.parseTransactions(args.schwabtransactions,
-                                             lenient=args.lenient)
-
-    if args.vanguardstatement:
-        positionsAndActivity = vanguard.parsePositionsAndActivity(
-            args.vanguardstatement, lenient=args.lenient)
-        positions += positionsAndActivity.positions
-        activity += positionsAndActivity.activity
-
-    if args.twsport:
-        ib = IB()
-        ib.connect('127.0.0.1', port=args.twsport)
-
-        if not dataProvider:
-            dataProvider = ibkr.IBDataProvider(ib)
-
-        positions += ibkr.downloadPositions(ib, lenient=args.lenient)
-
-    if args.flextoken:
-        if args.flexquery_trades:
-            activity += ibkr.downloadTrades(token=args.flextoken,
-                                            queryID=args.flexquery_trades,
-                                            lenient=args.lenient)
-        if args.flexquery_activity:
-            activity += ibkr.downloadNonTradeActivity(
-                token=args.flextoken,
-                queryID=args.flexquery_activity,
-                lenient=args.lenient)
-
-    if args.ibtrades:
-        activity += ibkr.parseTrades(args.ibtrades, lenient=args.lenient)
-    if args.ibactivity:
-        activity += ibkr.parseNonTradeActivity(args.ibactivity,
-                                               lenient=args.lenient)
-
-    positions = list(analysis.deduplicatePositions(positions))
-    commands[args.command](args)
+    data = DataAggregator(mergedSettings).loadData(lenient=args.lenient)
+    commands[args.command](data, args)
 
 
 if __name__ == '__main__':
