@@ -30,9 +30,8 @@ class Configuration:
                                  self._defaultConfigName)
 
         self._config.read(
-            chain(extraSearchPaths,
-                  ['bankroll.ini',
-                   os.path.expanduser('~/.bankroll.ini')]))
+            chain([os.path.expanduser('~/.bankroll.ini'), 'bankroll.ini'],
+                  extraSearchPaths))
 
     def section(self, settings: Type[_S],
                 overrides: Mapping[_S, str] = {}) -> Dict[_S, str]:
