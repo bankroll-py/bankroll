@@ -1,6 +1,6 @@
 from datetime import datetime
 from decimal import Context, Decimal, DivisionByZero, Overflow, InvalidOperation, localcontext
-from enum import IntEnum
+from enum import Enum, IntEnum, unique
 from itertools import count
 from bankroll.model import Currency, Cash, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, TradeFlags, Trade, MarketDataProvider, Quote, Activity, DividendPayment
 from bankroll.parsetools import lenientParse
@@ -9,10 +9,23 @@ from progress.spinner import Spinner
 from typing import Any, Awaitable, Callable, Dict, Iterable, List, NamedTuple, Optional, Tuple, Type, no_type_check
 
 import backoff
+import bankroll.configuration as configuration
 import ib_insync as IB
 import logging
 import math
 import re
+
+
+@unique
+class Settings(configuration.Settings):
+    TWS_PORT = 'TWS port'
+    FLEX_TOKEN = 'Flex token'
+    TRADES_FLEX_QUERY = 'Trades Flex query'
+    ACTIVITY_FLEX_QUERY = 'Activity Flex query'
+
+    @classmethod
+    def sectionName(cls) -> str:
+        return 'IBKR'
 
 
 def _parseFiniteDecimal(input: str) -> Decimal:
