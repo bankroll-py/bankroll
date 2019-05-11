@@ -1,7 +1,8 @@
+from argparse import Namespace
 from configparser import ConfigParser
 from enum import Enum, unique
 from io import StringIO
-from typing import Dict, Generic, Iterable, Mapping, Optional, Type, TypeVar
+from typing import Any, Callable, Dict, Iterable, Mapping, Optional, Type, TypeVar
 
 import os
 import pkg_resources
@@ -59,3 +60,34 @@ class Configuration:
         output.close()
 
         return result
+
+
+# Populates an argparse argument group with settings keys, suitably reformatted.
+# `group` should be one of the return values from ArgParser.add_argument_group().
+#
+# Returns a callable which will extract settings corresponding to this new argument group.
+def addSettingsToArgumentGroup(
+        settings: Type[_S],
+        group: Any) -> Callable[[Configuration, Namespace], Dict[_S, str]]:
+    section = settings.sectionName().lower()
+
+    elements: Iterable[_S] = list(settings)
+    argsBySetting: Dict[_S, str] = {
+        setting: section + '-' + setting.lower().replace(' ', '-')
+        for setting in elements
+    }
+
+    for cliKey in argsBySetting.values():
+        group.add_argument(f'--{cliKey}')
+
+    def readSettings(config: Configuration, ns: Namespace) -> Dict[_S, str]:
+        argValues: Dict[str, str] = vars(ns)
+
+        return config.section(settings,
+                              overrides={
+                                  setting:
+                                  argValues.get(cliKey.replace('-', '_'))
+                                  for setting, cliKey in argsBySetting.items()
+                              })
+
+    return readSettings

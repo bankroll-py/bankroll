@@ -4,7 +4,7 @@ from ib_insync import IB
 from itertools import chain
 from bankroll import Activity, Instrument, Stock, Position, Trade, Cash, MarketDataProvider, analysis
 from bankroll.brokers import *
-from bankroll.configuration import Configuration, Settings
+from bankroll.configuration import Configuration, Settings, addSettingsToArgumentGroup
 from pathlib import Path
 from progress.bar import Bar
 from typing import Any, Callable, Dict, Iterable, List, Optional, Type, TypeVar
@@ -32,60 +32,29 @@ parser.add_argument(
     'Path to an INI file specifying configuration options. Can be specified multiple times.',
     action='append')
 
-_S = TypeVar('_S', bound=Settings)
-
-
-# `group` should be one of the return values from ArgParser.add_argument_group()
-#
-# Returns a callable which will extract settings corresponding to this new argument group.
-def addSettingsToGroup(
-        settings: Type[_S],
-        group: Any) -> Callable[[Configuration, Namespace], Dict[_S, str]]:
-    section = settings.sectionName().lower()
-
-    elements: Iterable[_S] = list(settings)
-    argsBySetting: Dict[_S, str] = {
-        setting: section + '-' + setting.lower().replace(' ', '-')
-        for setting in elements
-    }
-
-    for cliKey in argsBySetting.values():
-        group.add_argument(f'--{cliKey}')
-
-    def readSettings(config: Configuration, ns: Namespace) -> Dict[_S, str]:
-        argValues: Dict[str, str] = vars(ns)
-
-        return config.section(settings,
-                              overrides={
-                                  setting:
-                                  argValues.get(cliKey.replace('-', '_'))
-                                  for setting, cliKey in argsBySetting.items()
-                              })
-
-    return readSettings
-
-
 ibGroup = parser.add_argument_group(
     'IB', 'Options for importing data from Interactive Brokers.')
-readIBSettings = addSettingsToGroup(ibkr.Settings, ibGroup)
+readIBSettings = addSettingsToArgumentGroup(ibkr.Settings, ibGroup)
 
 fidelityGroup = parser.add_argument_group(
     'Fidelity',
     'Options for importing data from local files in Fidelity\'s CSV export format.'
 )
-readFidelitySettings = addSettingsToGroup(fidelity.Settings, fidelityGroup)
+readFidelitySettings = addSettingsToArgumentGroup(fidelity.Settings,
+                                                  fidelityGroup)
 
 schwabGroup = parser.add_argument_group(
     'Schwab',
     'Options for importing data from local files in Charles Schwab\'s CSV export format.'
 )
-readSchwabSettings = addSettingsToGroup(schwab.Settings, schwabGroup)
+readSchwabSettings = addSettingsToArgumentGroup(schwab.Settings, schwabGroup)
 
 vanguardGroup = parser.add_argument_group(
     'Vanguard',
     'Options for importing data from local files in Vanguard\'s CSV export format.'
 )
-readVanguardSettings = addSettingsToGroup(vanguard.Settings, vanguardGroup)
+readVanguardSettings = addSettingsToArgumentGroup(vanguard.Settings,
+                                                  vanguardGroup)
 
 positions: List[Position] = []
 activity: List[Activity] = []
