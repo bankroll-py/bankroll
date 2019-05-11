@@ -172,46 +172,14 @@ def main() -> None:
         activity += positionsAndActivity.activity
 
     ibSettings = readIBSettings(config, args)
+    (ibPositions, ibActivity,
+     ib) = ibkr.loadPositionsAndActivity(ibSettings, lenient=args.lenient)
 
-    twsPort = ibSettings.get(ibkr.Settings.TWS_PORT)
-    if twsPort:
-        ib = IB()
-        ib.connect('127.0.0.1', port=int(twsPort))
+    positions += ibPositions
+    activity += ibActivity
 
-        if not dataProvider:
-            dataProvider = ibkr.IBDataProvider(ib)
-
-        positions += ibkr.downloadPositions(ib, lenient=args.lenient)
-
-    flexToken = ibSettings.get(ibkr.Settings.FLEX_TOKEN)
-
-    ibTrades = ibSettings.get(ibkr.Settings.TRADES)
-    if ibTrades:
-        path = Path(ibTrades)
-        if path.is_file():
-            activity += ibkr.parseTrades(path, lenient=args.lenient)
-        elif flexToken:
-            activity += ibkr.downloadTrades(token=flexToken,
-                                            queryID=int(ibTrades),
-                                            lenient=args.lenient)
-        else:
-            raise ValueError(
-                f'Trades "{ibTrades}"" must exist as local path, or a Flex token must be provided to run as a query'
-            )
-
-    ibActivity = ibSettings.get(ibkr.Settings.ACTIVITY)
-    if ibActivity:
-        path = Path(ibActivity)
-        if path.is_file():
-            activity += ibkr.parseNonTradeActivity(path, lenient=args.lenient)
-        elif flexToken:
-            activity += ibkr.downloadNonTradeActivity(token=flexToken,
-                                                      queryID=int(ibActivity),
-                                                      lenient=args.lenient)
-        else:
-            raise ValueError(
-                f'Activity "{ibActivity}"" must exist as local path, or a Flex token must be provided to run as a query'
-            )
+    if ib and not dataProvider:
+        dataProvider = ibkr.IBDataProvider(ib)
 
     positions = list(analysis.deduplicatePositions(positions))
     commands[args.command](args)

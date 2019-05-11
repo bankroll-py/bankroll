@@ -6,7 +6,8 @@ from bankroll.model import Currency, Cash, Instrument, Stock, Bond, Option, Opti
 from bankroll.parsetools import lenientParse
 from pathlib import Path
 from progress.spinner import Spinner
-from typing import Any, Awaitable, Callable, Dict, Iterable, List, NamedTuple, Optional, Tuple, Type, no_type_check
+from random import randint
+from typing import Any, Awaitable, Callable, Dict, Iterable, List, Mapping, NamedTuple, Optional, Tuple, Type, no_type_check
 
 import backoff
 import bankroll.configuration as configuration
@@ -26,6 +27,57 @@ class Settings(configuration.Settings):
     @classmethod
     def sectionName(cls) -> str:
         return 'IBKR'
+
+
+def loadPositionsAndActivity(
+        settings: Mapping[Settings, str], lenient: bool
+) -> Tuple[List[Position], List[Activity], Optional[IB.IB]]:
+    positions: List[Position] = []
+    activity: List[Activity] = []
+    client: Optional[IB.IB] = None
+
+    twsPort = settings.get(Settings.TWS_PORT)
+    if twsPort:
+        client = IB.IB()
+
+        # Random client ID to minimize chances of conflict
+        client.connect('127.0.0.1',
+                       port=int(twsPort),
+                       clientId=randint(1, 1000000))
+
+        positions += downloadPositions(client, lenient=lenient)
+
+    flexToken = settings.get(Settings.FLEX_TOKEN)
+
+    trades = settings.get(Settings.TRADES)
+    if trades:
+        path = Path(trades)
+        if path.is_file():
+            activity += parseTrades(path, lenient=lenient)
+        elif flexToken:
+            activity += downloadTrades(token=flexToken,
+                                       queryID=int(trades),
+                                       lenient=lenient)
+        else:
+            raise ValueError(
+                f'Trades "{trades}"" must exist as local path, or a Flex token must be provided to run as a query'
+            )
+
+    activitySetting = settings.get(Settings.ACTIVITY)
+    if activitySetting:
+        path = Path(activitySetting)
+        if path.is_file():
+            activity += parseNonTradeActivity(path, lenient=lenient)
+        elif flexToken:
+            activity += downloadNonTradeActivity(token=flexToken,
+                                                 queryID=int(activitySetting),
+                                                 lenient=lenient)
+        else:
+            raise ValueError(
+                f'Activity "{activity}"" must exist as local path, or a Flex token must be provided to run as a query'
+            )
+
+    return (positions, activity, client)
 
 
 def _parseFiniteDecimal(input: str) -> Decimal:
