@@ -1,5 +1,6 @@
 from configparser import ConfigParser
 from enum import Enum, unique
+from io import StringIO
 from itertools import chain
 from typing import Dict, Generic, Iterable, Mapping, Type, TypeVar
 
@@ -44,3 +45,12 @@ class Configuration:
         }
 
         return {key: value for key, value in optionalValues.items() if value}
+
+    def __str__(self) -> str:
+        output = StringIO()
+        self._config.write(output)
+
+        result = output.getvalue()
+        output.close()
+
+        return result
