@@ -7,6 +7,8 @@ import os
 import pkg_resources
 
 
+# Config sections should be implemented by subclassing this type,
+# and defining enum members where the values are the INI keys.
 @unique
 class Settings(str, Enum):
     @classmethod
