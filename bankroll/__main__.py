@@ -1,13 +1,14 @@
 from argparse import ArgumentParser, Namespace
 from functools import reduce
 from ib_insync import IB
+from itertools import chain
 from bankroll import Activity, Instrument, Stock, Position, Trade, Cash, MarketDataProvider, analysis
 from bankroll.brokers import *
+from bankroll.configuration import Configuration
 from pathlib import Path
 from progress.bar import Bar
 from typing import Dict, Iterable, List, Optional
 
-import bankroll.config as config
 import logging
 
 parser = ArgumentParser(prog='bankroll')
@@ -36,8 +37,8 @@ ibGroup = parser.add_argument_group(
 ibGroup.add_argument(
     '--twsport',
     help=
-    'Local port to connect to Trader Workstation, to import live portfolio data',
-    type=int)
+    'Local port to connect to Trader Workstation, to import live portfolio data'
+)
 ibGroup.add_argument(
     '--flextoken',
     help=
@@ -46,8 +47,8 @@ ibGroup.add_argument(
 ibGroup.add_argument(
     '--flexquery-trades',
     help=
-    'Query ID for Trades report from IB\'s Flex Web Service: https://www.interactivebrokers.com/en/software/am/am/reports/flex_web_service_version_3.htm',
-    type=int)
+    'Query ID for Trades report from IB\'s Flex Web Service: https://www.interactivebrokers.com/en/software/am/am/reports/flex_web_service_version_3.htm'
+)
 ibGroup.add_argument(
     '--ibtrades',
     help=
@@ -56,8 +57,8 @@ ibGroup.add_argument(
 ibGroup.add_argument(
     '--flexquery-activity',
     help=
-    'Query ID for Activity report from IB\'s Flex Web Service: https://www.interactivebrokers.com/en/software/am/am/reports/flex_web_service_version_3.htm',
-    type=int)
+    'Query ID for Activity report from IB\'s Flex Web Service: https://www.interactivebrokers.com/en/software/am/am/reports/flex_web_service_version_3.htm'
+)
 ibGroup.add_argument(
     '--ibactivity',
     help='Path to exported XML of activity from IB\'s Flex Web Service',
@@ -170,7 +171,9 @@ def main() -> None:
     if args.verbose:
         logging.basicConfig(level=logging.INFO)
 
-    cfg = config.load(args.config if args.config else [])
+    config = Configuration(
+        chain(Configuration.defaultSearchPaths,
+              args.config if args.config else []))
 
     if not args.command:
         parser.print_usage()
@@ -198,30 +201,42 @@ def main() -> None:
         positions += positionsAndActivity.positions
         activity += positionsAndActivity.activity
 
-    twsPort = args.twsport or config.ibkrTWSPort(cfg)
+    ibSettings = config.section(ibkr.Settings,
+                                overrides={
+                                    ibkr.Settings.TWS_PORT:
+                                    args.twsport,
+                                    ibkr.Settings.FLEX_TOKEN:
+                                    args.flextoken,
+                                    ibkr.Settings.TRADES_FLEX_QUERY:
+                                    args.flexquery_trades,
+                                    ibkr.Settings.ACTIVITY_FLEX_QUERY:
+                                    args.flexquery_activity,
+                                })
+
+    twsPort = ibSettings.get(ibkr.Settings.TWS_PORT)
     if twsPort:
         ib = IB()
-        ib.connect('127.0.0.1', port=twsPort)
+        ib.connect('127.0.0.1', port=int(twsPort))
 
         if not dataProvider:
             dataProvider = ibkr.IBDataProvider(ib)
 
         positions += ibkr.downloadPositions(ib, lenient=args.lenient)
 
-    flexToken = args.flextoken or config.ibkrFlexToken(cfg)
+    flexToken = ibSettings.get(ibkr.Settings.FLEX_TOKEN)
     if flexToken:
-        tradesQuery = args.flexquery_trades or config.ibkrTradesFlexQuery(cfg)
+        tradesQuery = ibSettings.get(ibkr.Settings.TRADES_FLEX_QUERY)
         if tradesQuery:
             activity += ibkr.downloadTrades(token=flexToken,
-                                            queryID=tradesQuery,
+                                            queryID=int(tradesQuery),
                                             lenient=args.lenient)
 
-        activityQuery = args.flexquery_activity or config.ibkrActivityFlexQuery(
-            cfg)
+        activityQuery = ibSettings.get(ibkr.Settings.ACTIVITY_FLEX_QUERY)
         if activityQuery:
-            activity += ibkr.downloadNonTradeActivity(token=flexToken,
-                                                      queryID=activityQuery,
-                                                      lenient=args.lenient)
+            activity += ibkr.downloadNonTradeActivity(
+                token=flexToken,
+                queryID=int(activityQuery),
+                lenient=args.lenient)
 
     if args.ibtrades:
         activity += ibkr.parseTrades(args.ibtrades, lenient=args.lenient)
