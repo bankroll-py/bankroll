@@ -8,7 +8,20 @@ from typing import Dict, Iterable, List, Optional
 
 import logging
 
-parser = ArgumentParser(prog='bankroll')
+parser = ArgumentParser(
+    prog='bankroll',
+    add_help=False,
+    description=
+    'Ingests portfolio and other data from multiple brokerages, and analyzes it.',
+    epilog=
+    'For more information, or to report issues, please visit: https://github.com/jspahrsummers/bankroll'
+)
+
+# Add our own help option for consistent formatting.
+parser.add_argument('-h',
+                    '--help',
+                    help='Show this help message and exit.',
+                    action='help')
 
 parser.add_argument(
     '--lenient',
@@ -16,10 +29,13 @@ parser.add_argument(
     'Attempt to ignore invalid data instead of erroring out. May not be supported for all data sources.',
     default=False,
     action='store_true')
-parser.add_argument('--no-lenient', dest='lenient', action='store_false')
+parser.add_argument('--no-lenient',
+                    dest='lenient',
+                    help='Opposite of --lenient.',
+                    action='store_false')
 parser.add_argument('-v',
                     '--verbose',
-                    help='More logging.',
+                    help='Turns on more logging, for debugging purposes.',
                     dest='verbose',
                     default=False,
                     action='store_true')
