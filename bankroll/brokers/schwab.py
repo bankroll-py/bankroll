@@ -1,12 +1,24 @@
-from datetime import date, datetime
-from decimal import Decimal
 from bankroll.model import Activity, Cash, Currency, Instrument, Stock, Bond, Option, OptionType, Position, DividendPayment, Trade, TradeFlags
 from bankroll.parsetools import lenientParse
+from datetime import date, datetime
+from decimal import Decimal
+from enum import unique
 from pathlib import Path
 from typing import Dict, List, NamedTuple, Optional, Sequence
 
+import bankroll.configuration as configuration
 import csv
 import re
+
+
+@unique
+class Settings(configuration.Settings):
+    POSITIONS = 'Positions'
+    TRANSACTIONS = 'Transactions'
+
+    @classmethod
+    def sectionName(cls) -> str:
+        return 'Schwab'
 
 
 def _schwabDecimal(s: str) -> Decimal:

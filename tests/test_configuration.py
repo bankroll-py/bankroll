@@ -1,5 +1,5 @@
 from bankroll.configuration import Configuration, Settings
-from bankroll.brokers import ibkr
+from bankroll.brokers import *
 from enum import unique
 from hypothesis import given
 from hypothesis.strategies import sampled_from, text
@@ -33,6 +33,11 @@ class TestConfiguration(unittest.TestCase):
         self.assertIsNone(settings.get(ibkr.Settings.FLEX_TOKEN))
         self.assertIsNone(settings.get(ibkr.Settings.TRADES_FLEX_QUERY))
         self.assertIsNone(settings.get(ibkr.Settings.ACTIVITY_FLEX_QUERY))
+        self.assertIsNone(settings.get(schwab.Settings.POSITIONS))
+        self.assertIsNone(settings.get(schwab.Settings.TRANSACTIONS))
+        self.assertIsNone(settings.get(fidelity.Settings.POSITIONS))
+        self.assertIsNone(settings.get(fidelity.Settings.TRANSACTIONS))
+        self.assertIsNone(settings.get(vanguard.Settings.STATEMENT))
 
     @given(sampled_from(TestSettings), text(min_size=1))
     def testOverrides(self, key: TestSettings, value: str) -> None:
