@@ -30,7 +30,7 @@ class TestConfiguration(unittest.TestCase):
     # See bankroll.default.ini
     def testDefaultSettings(self) -> None:
         ibSettings = self.config.section(ibkr.Settings)
-        self.assertEqual(ibSettings.get(ibkr.Settings.TWS_PORT), '4001')
+        self.assertIsNone(ibSettings.get(ibkr.Settings.TWS_PORT))
         self.assertIsNone(ibSettings.get(ibkr.Settings.FLEX_TOKEN))
         self.assertIsNone(ibSettings.get(ibkr.Settings.TRADES))
         self.assertIsNone(ibSettings.get(ibkr.Settings.ACTIVITY))
