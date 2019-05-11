@@ -135,7 +135,7 @@ def main() -> None:
             readVanguardSettings(config, args).items(),
             readIBSettings(config, args).items()))
 
-    data = DataAggregator(mergedSettings).load(lenient=args.lenient)
+    data = DataAggregator(mergedSettings).loadData(lenient=args.lenient)
     commands[args.command](data, args)
 
 

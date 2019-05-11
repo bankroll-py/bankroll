@@ -1,15 +1,26 @@
 from bankroll.analysis import deduplicatePositions
 from bankroll.brokers import *
 from bankroll.model import Activity, Position, MarketDataProvider
-from bankroll.configuration import Settings
+from bankroll.configuration import Configuration, Settings
+from itertools import chain
 from pathlib import Path
-from typing import List, Mapping, Optional, Sequence
+from typing import Dict, List, Mapping, Optional, Sequence
 
 
 class DataAggregator:
     _positions: List[Position]
     _activity: List[Activity]
     _dataProvider: Optional[MarketDataProvider]
+
+    @classmethod
+    def allSettings(cls, config: Configuration = Configuration()
+                    ) -> Dict[Settings, str]:
+        return dict(
+            chain(
+                config.section(ibkr.Settings).items(),
+                config.section(fidelity.Settings).items(),
+                config.section(schwab.Settings).items(),
+                config.section(vanguard.Settings).items()))
 
     def __init__(self, settings: Mapping[Settings, str]):
         self._settings = dict(settings)
@@ -18,7 +29,7 @@ class DataAggregator:
         self._dataProvider = None
         super().__init__()
 
-    def load(self, lenient: bool) -> 'DataAggregator':
+    def loadData(self, lenient: bool) -> 'DataAggregator':
         fidelityPositions = self._settings.get(fidelity.Settings.POSITIONS)
         if fidelityPositions:
             self._positions += fidelity.parsePositions(Path(fidelityPositions),
