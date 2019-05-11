@@ -143,7 +143,7 @@ class Cash:
 
             return self.quantity < other.quantity
         else:
-            return self.quantity < other
+            return bool(self.quantity < other)
 
     def __le__(self, other: Any) -> bool:
         if isinstance(other, Cash):
@@ -153,7 +153,7 @@ class Cash:
 
             return self.quantity <= other.quantity
         else:
-            return self.quantity <= other
+            return bool(self.quantity <= other)
 
     def __gt__(self, other: Any) -> bool:
         if isinstance(other, Cash):
@@ -163,7 +163,7 @@ class Cash:
 
             return self.quantity > other.quantity
         else:
-            return self.quantity > other
+            return bool(self.quantity > other)
 
     def __ge__(self, other: Any) -> bool:
         if isinstance(other, Cash):
@@ -173,7 +173,7 @@ class Cash:
 
             return self.quantity >= other.quantity
         else:
-            return self.quantity >= other
+            return bool(self.quantity >= other)
 
     def __hash__(self) -> int:
         return hash((self.currency, self.quantity))
