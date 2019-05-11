@@ -16,6 +16,15 @@ class Settings(configuration.Settings):
     POSITIONS = 'Positions'
     TRANSACTIONS = 'Transactions'
 
+    @property
+    def help(self) -> str:
+        if self == self.POSITIONS:
+            return "A local path to an exported CSV of Schwab positions."
+        elif self == self.TRANSACTIONS:
+            return "A local path to an exported CSV of Schwab transactions."
+        else:
+            return ""
+
     @classmethod
     def sectionName(cls) -> str:
         return 'Schwab'

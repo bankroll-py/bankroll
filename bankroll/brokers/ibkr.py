@@ -24,6 +24,19 @@ class Settings(configuration.Settings):
     TRADES = 'Trades'
     ACTIVITY = 'Activity'
 
+    @property
+    def help(self) -> str:
+        if self == self.TWS_PORT:
+            return "The port upon which Interactive Brokers' Trader Workstation (or IB Gateway) is accepting connections. If present, bankroll will attempt to connect to the application in order to retrieve positions and live data."
+        elif self == self.FLEX_TOKEN:
+            return "A token ID from IB's Flex Web Service, to fetch historical account activity. See README.md for more information."
+        elif self == self.TRADES:
+            return "A query ID for a Trade Confirmations report from IB's Flex Web Service, or a local path to exported XML from one such Trade Confirmations report."
+        elif self == self.ACTIVITY:
+            return "A query ID for a Activity report from IB's Flex Web Service, or a local path to exported XML from one such Activity report."
+        else:
+            return ""
+
     @classmethod
     def sectionName(cls) -> str:
         return 'IBKR'

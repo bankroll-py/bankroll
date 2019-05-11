@@ -18,6 +18,13 @@ import re
 class Settings(configuration.Settings):
     STATEMENT = 'Statement'
 
+    @property
+    def help(self) -> str:
+        if self == self.STATEMENT:
+            return "A local path to an exported statement CSV of Vanguard positions and trades."
+        else:
+            return ""
+
     @classmethod
     def sectionName(cls) -> str:
         return 'Vanguard'

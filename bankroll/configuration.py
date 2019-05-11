@@ -12,6 +12,10 @@ import pkg_resources
 # and defining enum members where the values are the INI keys.
 @unique
 class Settings(Enum):
+    @property
+    def help(self) -> str:
+        return ''
+
     @classmethod
     def sectionName(cls) -> str:
         pass
@@ -78,8 +82,8 @@ def addSettingsToArgumentGroup(
         for setting in elements
     }
 
-    for cliKey in argsBySetting.values():
-        group.add_argument(f'--{cliKey}')
+    for setting, cliKey in argsBySetting.items():
+        group.add_argument(f'--{cliKey}', help=setting.help)
 
     def readSettings(config: Configuration, ns: Namespace) -> Dict[_S, str]:
         argValues: Dict[str, str] = vars(ns)

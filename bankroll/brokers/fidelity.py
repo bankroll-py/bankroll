@@ -19,6 +19,15 @@ class Settings(configuration.Settings):
     POSITIONS = 'Positions'
     TRANSACTIONS = 'Transactions'
 
+    @property
+    def help(self) -> str:
+        if self == self.POSITIONS:
+            return "A local path to an exported CSV of Fidelity positions."
+        elif self == self.TRANSACTIONS:
+            return "A local path to an exported CSV of Fidelity transactions."
+        else:
+            return ""
+
     @classmethod
     def sectionName(cls) -> str:
         return 'Fidelity'
