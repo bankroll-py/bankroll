@@ -102,10 +102,26 @@ class Cash:
             return Cash(currency=self.currency, quantity=self.quantity - other)
 
     def __mul__(self, other: _T) -> 'Cash':
-        return Cash(currency=self.currency, quantity=self.quantity * other)
+        if isinstance(other, Cash):
+            if self.currency != other.currency:
+                raise ValueError(
+                    f'Currency of {self} must match {other} for arithmetic')
+
+            return Cash(currency=self.currency,
+                        quantity=self.quantity * other.quantity)
+        else:
+            return Cash(currency=self.currency, quantity=self.quantity * other)
 
     def __truediv__(self, other: _T) -> 'Cash':
-        return Cash(currency=self.currency, quantity=self.quantity / other)
+        if isinstance(other, Cash):
+            if self.currency != other.currency:
+                raise ValueError(
+                    f'Currency of {self} must match {other} for arithmetic')
+
+            return Cash(currency=self.currency,
+                        quantity=self.quantity / other.quantity)
+        else:
+            return Cash(currency=self.currency, quantity=self.quantity / other)
 
     def __neg__(self) -> 'Cash':
         return Cash(currency=self.currency, quantity=-self.quantity)
