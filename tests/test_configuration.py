@@ -1,4 +1,5 @@
-from bankroll.configuration import Configuration, Settings
+from argparse import ArgumentParser
+from bankroll.configuration import Configuration, Settings, addSettingsToArgumentGroup
 from bankroll.brokers import *
 from enum import unique
 from hypothesis import given
@@ -65,3 +66,26 @@ class TestConfiguration(unittest.TestCase):
                 continue
 
             self.assertEqual(settings[otherKey], defaultSettings[otherKey])
+
+    def testAddSettingsToArgumentGroup(self) -> None:
+        parser = ArgumentParser()
+        readSettings = addSettingsToArgumentGroup(TestSettings, parser)
+
+        values = self.config.section(TestSettings)
+
+        self.assertEqual(readSettings(self.config, parser.parse_args([])),
+                         values)
+
+        values[TestSettings.INT_KEY] = '5'
+        self.assertEqual(
+            readSettings(self.config,
+                         parser.parse_args(['--test-some-integer', '5'])),
+            values)
+
+        values[TestSettings.STR_KEY] = 'fuzzbuzz'
+        self.assertEqual(
+            readSettings(
+                self.config,
+                parser.parse_args([
+                    '--test-some-integer', '5', '--test-string-key', 'fuzzbuzz'
+                ])), values)
