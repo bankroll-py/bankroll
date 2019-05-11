@@ -9,6 +9,7 @@ Ingest portfolio and other data from multiple brokerages, and analyze it.
    1. [Charles Schwab](#charles-schwab)
    1. [Fidelity](#fidelity)
    1. [Vanguard](#vanguard)
+1. [Saving configuration](#saving-configuration)
 1. [Extending `bankroll`](#extending-bankroll)
 
 # Installation
@@ -154,6 +155,14 @@ python -m bankroll \
 ## Vanguard
 
 [Vanguard](https://investor.vanguard.com) is a **work in progress**, and may not be as fully-featured as the other brokerages listed here. [Contributions welcome](CONTRIBUTING.md)!
+
+# Saving configuration
+
+To preserve settings across runs, all of the command-line arguments demonstrated above can also be saved into an [INI file](https://docs.python.org/3/library/configparser.html#supported-ini-file-structure). The configuration file is especially useful to store default values, because when a setting is specified in a configuration file _as well as_ on the command line, the command-line argument will take precedence.
+
+To create a configuration, copy [`bankroll.default.ini`](bankroll/bankroll.default.ini) to `~/.bankroll.ini`, or leave it in your working directory as `bankroll.ini`, then edit the file to apply your desired settings.
+
+If you would like to store the configuration somewhere else, you can also provide custom paths via the `--config` argument on the command line.
 
 # Extending `bankroll`
 
