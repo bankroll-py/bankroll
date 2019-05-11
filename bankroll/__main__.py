@@ -1,13 +1,10 @@
 from argparse import ArgumentParser, Namespace
-from functools import reduce
-from ib_insync import IB
 from itertools import chain
-from bankroll import Activity, Instrument, Stock, Position, Trade, Cash, MarketDataProvider, analysis
+from bankroll import Activity, Instrument, Stock, Position, Trade, Cash, MarketDataProvider, DataAggregator, analysis
 from bankroll.brokers import *
 from bankroll.configuration import Configuration, Settings, addSettingsToArgumentGroup
-from pathlib import Path
 from progress.bar import Bar
-from typing import Any, Callable, Dict, Iterable, List, Optional, Type, TypeVar
+from typing import Dict, Iterable, List, Optional
 
 import logging
 
@@ -56,24 +53,20 @@ vanguardGroup = parser.add_argument_group(
 readVanguardSettings = addSettingsToArgumentGroup(vanguard.Settings,
                                                   vanguardGroup)
 
-positions: List[Position] = []
-activity: List[Activity] = []
-dataProvider: Optional[MarketDataProvider] = None
 
-
-def printPositions(args: Namespace) -> None:
+def printPositions(data: DataAggregator, args: Namespace) -> None:
     values: Dict[Position, Cash] = {}
     if args.live_value:
-        if dataProvider:
+        if data.dataProvider:
             values = analysis.liveValuesForPositions(
-                positions,
-                dataProvider=dataProvider,
+                data.positions,
+                dataProvider=data.dataProvider,
                 progressBar=Bar('Loading market data for positions'))
         else:
             logging.error(
                 'Live data connection required to fetch market values')
 
-    for p in sorted(positions, key=lambda p: p.instrument):
+    for p in sorted(data.positions, key=lambda p: p.instrument):
         print(p)
 
         if p in values:
@@ -88,12 +81,12 @@ def printPositions(args: Namespace) -> None:
 
         if args.realized_basis:
             realizedBasis = analysis.realizedBasisForSymbol(
-                p.instrument.symbol, activity=activity)
+                p.instrument.symbol, activity=data.activity)
             print(f'\tRealized basis: {realizedBasis}')
 
 
-def printActivity(args: Namespace) -> None:
-    for t in sorted(activity, key=lambda t: t.date, reverse=True):
+def printActivity(data: DataAggregator, args: Namespace) -> None:
+    for t in sorted(data.activity, key=lambda t: t.date, reverse=True):
         print(t)
 
 
@@ -123,10 +116,6 @@ activityParser = subparsers.add_parser(
 
 
 def main() -> None:
-    global positions
-    global activity
-    global dataProvider
-
     args = parser.parse_args()
     if args.verbose:
         logging.basicConfig(level=logging.INFO)
@@ -139,50 +128,15 @@ def main() -> None:
         parser.print_usage()
         quit(1)
 
-    fidelitySettings = readFidelitySettings(config, args)
+    mergedSettings: Dict[Settings, str] = dict(
+        chain(
+            readFidelitySettings(config, args).items(),
+            readSchwabSettings(config, args).items(),
+            readVanguardSettings(config, args).items(),
+            readIBSettings(config, args).items()))
 
-    fidelityPositions = fidelitySettings.get(fidelity.Settings.POSITIONS)
-    if fidelityPositions:
-        positions += fidelity.parsePositions(Path(fidelityPositions),
-                                             lenient=args.lenient)
-
-    fidelityTransactions = fidelitySettings.get(fidelity.Settings.TRANSACTIONS)
-    if fidelityTransactions:
-        activity += fidelity.parseTransactions(Path(fidelityTransactions),
-                                               lenient=args.lenient)
-
-    schwabSettings = readSchwabSettings(config, args)
-
-    schwabPositions = schwabSettings.get(schwab.Settings.POSITIONS)
-    if schwabPositions:
-        positions += schwab.parsePositions(Path(schwabPositions),
-                                           lenient=args.lenient)
-
-    schwabTransactions = schwabSettings.get(schwab.Settings.TRANSACTIONS)
-    if schwabTransactions:
-        activity += schwab.parseTransactions(Path(schwabTransactions),
-                                             lenient=args.lenient)
-
-    vanguardSettings = readVanguardSettings(config, args)
-    vanguardStatement = vanguardSettings.get(vanguard.Settings.STATEMENT)
-    if vanguardStatement:
-        positionsAndActivity = vanguard.parsePositionsAndActivity(
-            Path(vanguardStatement), lenient=args.lenient)
-        positions += positionsAndActivity.positions
-        activity += positionsAndActivity.activity
-
-    ibSettings = readIBSettings(config, args)
-    (ibPositions, ibActivity,
-     ib) = ibkr.loadPositionsAndActivity(ibSettings, lenient=args.lenient)
-
-    positions += ibPositions
-    activity += ibActivity
-
-    if ib and not dataProvider:
-        dataProvider = ibkr.IBDataProvider(ib)
-
-    positions = list(analysis.deduplicatePositions(positions))
-    commands[args.command](args)
+    data = DataAggregator(mergedSettings).load(lenient=args.lenient)
+    commands[args.command](data, args)
 
 
 if __name__ == '__main__':
