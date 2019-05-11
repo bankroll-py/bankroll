@@ -1,7 +1,6 @@
 from configparser import ConfigParser
 from enum import Enum, unique
 from io import StringIO
-from itertools import chain
 from typing import Dict, Generic, Iterable, Mapping, Type, TypeVar
 
 import os
@@ -19,19 +18,20 @@ _S = TypeVar('_S', bound=Settings)
 
 
 class Configuration:
+    defaultSearchPaths = [
+        os.path.expanduser('~/.bankroll.ini'), 'bankroll.ini'
+    ]
+
     _defaultConfigName = 'bankroll.default.ini'
 
-    def __init__(self, extraSearchPaths: Iterable[str] = []):
+    def __init__(self, searchPaths: Iterable[str] = defaultSearchPaths):
         self._config = ConfigParser(empty_lines_in_values=False)
 
         defaultConfig = pkg_resources.resource_string('bankroll',
                                                       self._defaultConfigName)
         self._config.read_string(defaultConfig.decode(),
                                  self._defaultConfigName)
-
-        self._config.read(
-            chain([os.path.expanduser('~/.bankroll.ini'), 'bankroll.ini'],
-                  extraSearchPaths))
+        self._config.read(searchPaths)
 
     def section(self, settings: Type[_S],
                 overrides: Mapping[_S, str] = {}) -> Dict[_S, str]:

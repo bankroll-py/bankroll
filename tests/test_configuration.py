@@ -19,8 +19,7 @@ class TestSettings(Settings):
 
 class TestConfiguration(unittest.TestCase):
     def setUp(self) -> None:
-        self.config = Configuration(
-            extraSearchPaths=['tests/bankroll.test.ini'])
+        self.config = Configuration(['tests/bankroll.test.ini'])
 
     def testSettingsApplied(self) -> None:
         settings = self.config.section(TestSettings)
