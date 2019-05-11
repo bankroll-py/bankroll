@@ -26,6 +26,9 @@ class TestDataAggregator(unittest.TestCase):
             'tests/vanguard_positions_and_transactions.csv',
         }
 
+        # Tests that keys do not clobber each other.
+        self.assertEqual(len(self.settings), 7)
+
         self.data = DataAggregator(self.settings)
 
     def testValuesStartEmpty(self) -> None:
