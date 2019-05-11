@@ -1,7 +1,7 @@
 from configparser import ConfigParser
 from enum import Enum, unique
 from io import StringIO
-from typing import Dict, Generic, Iterable, Mapping, Type, TypeVar
+from typing import Dict, Generic, Iterable, Mapping, Optional, Type, TypeVar
 
 import os
 import pkg_resources
@@ -35,8 +35,9 @@ class Configuration:
                                  self._defaultConfigName)
         self._config.read(searchPaths)
 
-    def section(self, settings: Type[_S],
-                overrides: Mapping[_S, str] = {}) -> Dict[_S, str]:
+    def section(self,
+                settings: Type[_S],
+                overrides: Mapping[_S, Optional[str]] = {}) -> Dict[_S, str]:
         elements: Iterable[_S] = list(settings)
 
         optionalValues = {

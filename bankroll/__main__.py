@@ -4,10 +4,10 @@ from ib_insync import IB
 from itertools import chain
 from bankroll import Activity, Instrument, Stock, Position, Trade, Cash, MarketDataProvider, analysis
 from bankroll.brokers import *
-from bankroll.configuration import Configuration
+from bankroll.configuration import Configuration, Settings
 from pathlib import Path
 from progress.bar import Bar
-from typing import Dict, Iterable, List, Optional
+from typing import Any, Callable, Dict, Iterable, List, Optional, Type, TypeVar
 
 import logging
 
@@ -32,69 +32,60 @@ parser.add_argument(
     'Path to an INI file specifying configuration options. Can be specified multiple times.',
     action='append')
 
+_S = TypeVar('_S', bound=Settings)
+
+
+# `group` should be one of the return values from ArgParser.add_argument_group()
+#
+# Returns a callable which will extract settings corresponding to this new argument group.
+def addSettingsToGroup(
+        settings: Type[_S],
+        group: Any) -> Callable[[Configuration, Namespace], Dict[_S, str]]:
+    section = settings.sectionName().lower()
+
+    elements: Iterable[_S] = list(settings)
+    argsBySetting: Dict[_S, str] = {
+        setting: section + '-' + setting.lower().replace(' ', '-')
+        for setting in elements
+    }
+
+    for cliKey in argsBySetting.values():
+        group.add_argument(f'--{cliKey}')
+
+    def readSettings(config: Configuration, ns: Namespace) -> Dict[_S, str]:
+        argValues: Dict[str, str] = vars(ns)
+
+        return config.section(settings,
+                              overrides={
+                                  setting:
+                                  argValues.get(cliKey.replace('-', '_'))
+                                  for setting, cliKey in argsBySetting.items()
+                              })
+
+    return readSettings
+
+
 ibGroup = parser.add_argument_group(
     'IB', 'Options for importing data from Interactive Brokers.')
-ibGroup.add_argument(
-    '--twsport',
-    help=
-    'Local port to connect to Trader Workstation, to import live portfolio data'
-)
-ibGroup.add_argument(
-    '--flextoken',
-    help=
-    'Token ID from IB\'s Flex Web Service: https://www.interactivebrokers.com/en/software/am/am/reports/flex_web_service_version_3.htm'
-)
-ibGroup.add_argument(
-    '--flexquery-trades',
-    help=
-    'Query ID for Trades report from IB\'s Flex Web Service: https://www.interactivebrokers.com/en/software/am/am/reports/flex_web_service_version_3.htm'
-)
-ibGroup.add_argument(
-    '--ibtrades',
-    help=
-    'Path to exported XML of trade confirmations from IB\'s Flex Web Service',
-    type=Path)
-ibGroup.add_argument(
-    '--flexquery-activity',
-    help=
-    'Query ID for Activity report from IB\'s Flex Web Service: https://www.interactivebrokers.com/en/software/am/am/reports/flex_web_service_version_3.htm'
-)
-ibGroup.add_argument(
-    '--ibactivity',
-    help='Path to exported XML of activity from IB\'s Flex Web Service',
-    type=Path)
+readIBSettings = addSettingsToGroup(ibkr.Settings, ibGroup)
 
 fidelityGroup = parser.add_argument_group(
     'Fidelity',
     'Options for importing data from local files in Fidelity\'s CSV export format.'
 )
-fidelityGroup.add_argument('--fidelitypositions',
-                           help='Path to exported CSV of Fidelity positions',
-                           type=Path)
-fidelityGroup.add_argument(
-    '--fidelitytransactions',
-    help='Path to exported CSV of Fidelity transactions',
-    type=Path)
+readFidelitySettings = addSettingsToGroup(fidelity.Settings, fidelityGroup)
 
 schwabGroup = parser.add_argument_group(
     'Schwab',
     'Options for importing data from local files in Charles Schwab\'s CSV export format.'
 )
-schwabGroup.add_argument('--schwabpositions',
-                         help='Path to exported CSV of Schwab positions',
-                         type=Path)
-schwabGroup.add_argument('--schwabtransactions',
-                         help='Path to exported CSV of Schwab transactions',
-                         type=Path)
+readSchwabSettings = addSettingsToGroup(schwab.Settings, schwabGroup)
 
 vanguardGroup = parser.add_argument_group(
     'Vanguard',
     'Options for importing data from local files in Vanguard\'s CSV export format.'
 )
-vanguardGroup.add_argument(
-    '--vanguardstatement',
-    help='Path to exported CSV of Vanguard positions and trades',
-    type=Path)
+readVanguardSettings = addSettingsToGroup(vanguard.Settings, vanguardGroup)
 
 positions: List[Position] = []
 activity: List[Activity] = []
@@ -179,39 +170,39 @@ def main() -> None:
         parser.print_usage()
         quit(1)
 
-    if args.fidelitypositions:
-        positions += fidelity.parsePositions(args.fidelitypositions,
+    fidelitySettings = readFidelitySettings(config, args)
+
+    fidelityPositions = fidelitySettings.get(fidelity.Settings.POSITIONS)
+    if fidelityPositions:
+        positions += fidelity.parsePositions(Path(fidelityPositions),
                                              lenient=args.lenient)
 
-    if args.fidelitytransactions:
-        activity += fidelity.parseTransactions(args.fidelitytransactions,
+    fidelityTransactions = fidelitySettings.get(fidelity.Settings.TRANSACTIONS)
+    if fidelityTransactions:
+        activity += fidelity.parseTransactions(Path(fidelityTransactions),
                                                lenient=args.lenient)
 
-    if args.schwabpositions:
-        positions += schwab.parsePositions(args.schwabpositions,
+    schwabSettings = readSchwabSettings(config, args)
+
+    schwabPositions = schwabSettings.get(schwab.Settings.POSITIONS)
+    if schwabPositions:
+        positions += schwab.parsePositions(Path(schwabPositions),
                                            lenient=args.lenient)
 
-    if args.schwabtransactions:
-        activity += schwab.parseTransactions(args.schwabtransactions,
+    schwabTransactions = schwabSettings.get(schwab.Settings.TRANSACTIONS)
+    if schwabTransactions:
+        activity += schwab.parseTransactions(Path(schwabTransactions),
                                              lenient=args.lenient)
 
-    if args.vanguardstatement:
+    vanguardSettings = readVanguardSettings(config, args)
+    vanguardStatement = vanguardSettings.get(vanguard.Settings.STATEMENT)
+    if vanguardStatement:
         positionsAndActivity = vanguard.parsePositionsAndActivity(
-            args.vanguardstatement, lenient=args.lenient)
+            Path(vanguardStatement), lenient=args.lenient)
         positions += positionsAndActivity.positions
         activity += positionsAndActivity.activity
 
-    ibSettings = config.section(ibkr.Settings,
-                                overrides={
-                                    ibkr.Settings.TWS_PORT:
-                                    args.twsport,
-                                    ibkr.Settings.FLEX_TOKEN:
-                                    args.flextoken,
-                                    ibkr.Settings.TRADES:
-                                    args.flexquery_trades,
-                                    ibkr.Settings.ACTIVITY:
-                                    args.flexquery_activity,
-                                })
+    ibSettings = readIBSettings(config, args)
 
     twsPort = ibSettings.get(ibkr.Settings.TWS_PORT)
     if twsPort:
@@ -252,12 +243,6 @@ def main() -> None:
             raise ValueError(
                 f'Activity "{ibActivity}"" must exist as local path, or a Flex token must be provided to run as a query'
             )
-
-    if args.ibtrades:
-        activity += ibkr.parseTrades(args.ibtrades, lenient=args.lenient)
-    if args.ibactivity:
-        activity += ibkr.parseNonTradeActivity(args.ibactivity,
-                                               lenient=args.lenient)
 
     positions = list(analysis.deduplicatePositions(positions))
     commands[args.command](args)
