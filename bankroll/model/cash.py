@@ -107,8 +107,7 @@ class Cash:
                 raise ValueError(
                     f'Currency of {self} must match {other} for arithmetic')
 
-            return Cash(currency=self.currency,
-                        quantity=self.quantity * other.quantity)
+            return self.quantity * other.quantity
         else:
             return Cash(currency=self.currency, quantity=self.quantity * other)
 
@@ -118,8 +117,7 @@ class Cash:
                 raise ValueError(
                     f'Currency of {self} must match {other} for arithmetic')
 
-            return Cash(currency=self.currency,
-                        quantity=self.quantity / other.quantity)
+            return self.quantity / other.quantity
         else:
             return Cash(currency=self.currency, quantity=self.quantity / other)
 
