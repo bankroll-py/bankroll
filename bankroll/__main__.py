@@ -42,7 +42,7 @@ parser.add_argument('-v',
 parser.add_argument(
     '--config',
     help=
-    'Path to an INI file specifying configuration options. Can be specified multiple times.',
+    "Path to an INI file specifying configuration options, taking precedence over the default search paths. Can be specified multiple times, with the latest file's settings taking precedence over those previous.",
     action='append')
 
 ibGroup = parser.add_argument_group(
