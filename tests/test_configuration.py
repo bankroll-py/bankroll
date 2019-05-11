@@ -6,7 +6,8 @@ import unittest
 
 class TestConfiguration(unittest.TestCase):
     def setUp(self) -> None:
-        self.config = Configuration(extraSearchPaths=['bankroll.test.ini'])
+        self.config = Configuration(
+            extraSearchPaths=['tests/bankroll.test.ini'])
 
     def testIBKRSettings(self) -> None:
         settings = self.config.section(ibkr.Settings)
