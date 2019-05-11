@@ -2,8 +2,9 @@ from bankroll.configuration import Configuration, Settings
 from bankroll.brokers import *
 from enum import unique
 from hypothesis import given
-from hypothesis.strategies import sampled_from, text
+from hypothesis.strategies import from_type, sampled_from, text
 
+import helpers
 import unittest
 
 
@@ -44,6 +45,12 @@ class TestConfiguration(unittest.TestCase):
 
         vanguardSettings = self.config.section(vanguard.Settings)
         self.assertIsNone(vanguardSettings.get(vanguard.Settings.STATEMENT))
+
+    # Verifies that settings keys are present in bankroll.default.ini, even if commented out.
+    @given(from_type(Settings))
+    def testSettingsListedInDefaultINI(self, key: Settings) -> None:
+        contents = Configuration._readDefaultConfig().lower()
+        self.assertIn(key.value.lower(), contents)
 
     @given(sampled_from(TestSettings), text(min_size=1))
     def testOverrides(self, key: TestSettings, value: str) -> None:

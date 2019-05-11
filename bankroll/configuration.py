@@ -26,13 +26,16 @@ class Configuration:
 
     _defaultConfigName = 'bankroll.default.ini'
 
+    @classmethod
+    def _readDefaultConfig(cls) -> str:
+        return pkg_resources.resource_string('bankroll',
+                                             cls._defaultConfigName).decode()
+
     def __init__(self, searchPaths: Iterable[str] = defaultSearchPaths):
         self._config = ConfigParser(empty_lines_in_values=False)
 
-        defaultConfig = pkg_resources.resource_string('bankroll',
-                                                      self._defaultConfigName)
-        self._config.read_string(defaultConfig.decode(),
-                                 self._defaultConfigName)
+        defaultConfig = self._readDefaultConfig()
+        self._config.read_string(defaultConfig, self._defaultConfigName)
         self._config.read(searchPaths)
 
     def section(self,
