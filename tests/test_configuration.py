@@ -28,16 +28,22 @@ class TestConfiguration(unittest.TestCase):
 
     # See bankroll.default.ini
     def testDefaultSettings(self) -> None:
-        settings = self.config.section(ibkr.Settings)
-        self.assertEqual(settings.get(ibkr.Settings.TWS_PORT), '4001')
-        self.assertIsNone(settings.get(ibkr.Settings.FLEX_TOKEN))
-        self.assertIsNone(settings.get(ibkr.Settings.TRADES_FLEX_QUERY))
-        self.assertIsNone(settings.get(ibkr.Settings.ACTIVITY_FLEX_QUERY))
-        self.assertIsNone(settings.get(schwab.Settings.POSITIONS))
-        self.assertIsNone(settings.get(schwab.Settings.TRANSACTIONS))
-        self.assertIsNone(settings.get(fidelity.Settings.POSITIONS))
-        self.assertIsNone(settings.get(fidelity.Settings.TRANSACTIONS))
-        self.assertIsNone(settings.get(vanguard.Settings.STATEMENT))
+        ibSettings = self.config.section(ibkr.Settings)
+        self.assertEqual(ibSettings.get(ibkr.Settings.TWS_PORT), '4001')
+        self.assertIsNone(ibSettings.get(ibkr.Settings.FLEX_TOKEN))
+        self.assertIsNone(ibSettings.get(ibkr.Settings.TRADES))
+        self.assertIsNone(ibSettings.get(ibkr.Settings.ACTIVITY))
+
+        schwabSettings = self.config.section(schwab.Settings)
+        self.assertIsNone(schwabSettings.get(schwab.Settings.POSITIONS))
+        self.assertIsNone(schwabSettings.get(schwab.Settings.TRANSACTIONS))
+
+        fidelitySettings = self.config.section(fidelity.Settings)
+        self.assertIsNone(fidelitySettings.get(fidelity.Settings.POSITIONS))
+        self.assertIsNone(fidelitySettings.get(fidelity.Settings.TRANSACTIONS))
+
+        vanguardSettings = self.config.section(vanguard.Settings)
+        self.assertIsNone(vanguardSettings.get(vanguard.Settings.STATEMENT))
 
     @given(sampled_from(TestSettings), text(min_size=1))
     def testOverrides(self, key: TestSettings, value: str) -> None:
