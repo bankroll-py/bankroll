@@ -33,9 +33,9 @@ For example, to show all positions held in both Interactive Brokers and Charles 
 
 ```
 python -m bankroll \
-  --twsport 7496 \
-  --schwabpositions ~/Positions-2019-01-01.CSV \
-  --schwabtransactions ~/Transactions_20190101.CSV \
+  --ibkr-tws-port 7496 \
+  --schwab-positions ~/Positions-2019-01-01.CSV \
+  --schwab-transactions ~/Transactions_20190101.CSV \
   positions
 ```
 
@@ -57,7 +57,7 @@ Once Trader Workstation or IB Gateway is running, and [API connections are enabl
 
 ```
 python -m bankroll \
-  --twsport 7496 \
+  --ibkr-tws-port 7496 \
   [command]
 ```
 
@@ -102,8 +102,8 @@ With the token and the query ID from your account, historical trades can be down
 
 ```
 python -m bankroll \
-  --flextoken [token] \
-  --flexquery-trades [query ID] \
+  --ibkr-flex-token [token] \
+  --ibkr-trades [query ID] \
   activity
 ```
 
@@ -121,8 +121,8 @@ Pass your existing token, and the new query's ID, on the command line:
 
 ```
 python -m bankroll \
-  --flextoken [token] \
-  --flexquery-activity [query ID] \
+  --ibkr-flex-token [token] \
+  --ibkr-activity [query ID] \
   activity
 ```
 
@@ -142,8 +142,8 @@ Then provide the paths of either or both these downloaded files to `bankroll`:
 
 ```
 python -m bankroll \
-  --schwabpositions ~/path/to/Positions.CSV \
-  --schwabtransactions ~/path/to/Transactions.CSV \
+  --schwab-positions ~/path/to/Positions.CSV \
+  --schwab-transactions ~/path/to/Transactions.CSV \
   [command]
 ```
 
