@@ -245,7 +245,9 @@ register_type_strategy(
 
 register_type_strategy(Quote, uniformCurrencyQuotes())
 
-register_type_strategy(Settings, one_of([from_type(s) for s in Settings.__subclasses__()]))
+register_type_strategy(
+    Settings, one_of([from_type(s) for s in Settings.__subclasses__()]))
+
 
 def cashUSD(amount: Decimal) -> Cash:
     return Cash(currency=Currency.USD, quantity=amount)
