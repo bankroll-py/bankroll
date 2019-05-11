@@ -20,8 +20,8 @@ import re
 class Settings(configuration.Settings):
     TWS_PORT = 'TWS port'
     FLEX_TOKEN = 'Flex token'
-    TRADES_FLEX_QUERY = 'Trades Flex query'
-    ACTIVITY_FLEX_QUERY = 'Activity Flex query'
+    TRADES = 'Trades'
+    ACTIVITY = 'Activity'
 
     @classmethod
     def sectionName(cls) -> str:

@@ -207,9 +207,9 @@ def main() -> None:
                                     args.twsport,
                                     ibkr.Settings.FLEX_TOKEN:
                                     args.flextoken,
-                                    ibkr.Settings.TRADES_FLEX_QUERY:
+                                    ibkr.Settings.TRADES:
                                     args.flexquery_trades,
-                                    ibkr.Settings.ACTIVITY_FLEX_QUERY:
+                                    ibkr.Settings.ACTIVITY:
                                     args.flexquery_activity,
                                 })
 
@@ -224,19 +224,34 @@ def main() -> None:
         positions += ibkr.downloadPositions(ib, lenient=args.lenient)
 
     flexToken = ibSettings.get(ibkr.Settings.FLEX_TOKEN)
-    if flexToken:
-        tradesQuery = ibSettings.get(ibkr.Settings.TRADES_FLEX_QUERY)
-        if tradesQuery:
-            activity += ibkr.downloadTrades(token=flexToken,
-                                            queryID=int(tradesQuery),
-                                            lenient=args.lenient)
 
-        activityQuery = ibSettings.get(ibkr.Settings.ACTIVITY_FLEX_QUERY)
-        if activityQuery:
-            activity += ibkr.downloadNonTradeActivity(
-                token=flexToken,
-                queryID=int(activityQuery),
-                lenient=args.lenient)
+    ibTrades = ibSettings.get(ibkr.Settings.TRADES)
+    if ibTrades:
+        path = Path(ibTrades)
+        if path.is_file():
+            activity += ibkr.parseTrades(path, lenient=args.lenient)
+        elif flexToken:
+            activity += ibkr.downloadTrades(token=flexToken,
+                                            queryID=int(ibTrades),
+                                            lenient=args.lenient)
+        else:
+            raise ValueError(
+                f'Trades "{ibTrades}"" must exist as local path, or a Flex token must be provided to run as a query'
+            )
+
+    ibActivity = ibSettings.get(ibkr.Settings.ACTIVITY)
+    if ibActivity:
+        path = Path(ibActivity)
+        if path.is_file():
+            activity += ibkr.parseNonTradeActivity(path, lenient=args.lenient)
+        elif flexToken:
+            activity += ibkr.downloadNonTradeActivity(token=flexToken,
+                                                      queryID=int(ibActivity),
+                                                      lenient=args.lenient)
+        else:
+            raise ValueError(
+                f'Activity "{ibActivity}"" must exist as local path, or a Flex token must be provided to run as a query'
+            )
 
     if args.ibtrades:
         activity += ibkr.parseTrades(args.ibtrades, lenient=args.lenient)
