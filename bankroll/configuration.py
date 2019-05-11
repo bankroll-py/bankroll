@@ -38,6 +38,7 @@ class Configuration:
         defaultConfig = self._readDefaultConfig()
         self._config.read_string(defaultConfig, self._defaultConfigName)
         self._config.read(searchPaths)
+        super().__init__()
 
     def section(self,
                 settings: Type[_S],
