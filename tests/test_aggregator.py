@@ -35,31 +35,33 @@ class TestDataAggregator(unittest.TestCase):
 
     def testLoadData(self) -> None:
         self.data.loadData(lenient=False)
-        self.assertIn(
-            fidelity.parsePositions(
-                Path(self.settings[fidelity.Settings.POSITIONS])),
-            self.data.positions)
-        self.assertIn(
-            fidelity.parseTransactions(
-                Path(self.settings[fidelity.Settings.TRANSACTIONS])),
-            self.data.positions)
-        self.assertIn(
-            schwab.parsePositions(
-                Path(self.settings[schwab.Settings.POSITIONS])),
-            self.data.positions)
-        self.assertIn(
-            schwab.parseTransactions(
-                Path(self.settings[schwab.Settings.TRANSACTIONS])),
-            self.data.positions)
-        self.assertIn(
-            ibkr.parseTrades(Path(self.settings[ibkr.Settings.TRADES])),
-            self.data.activity)
-        self.assertIn(
-            ibkr.parseNonTradeActivity(
-                Path(self.settings[ibkr.Settings.ACTIVITY])),
-            self.data.activity)
+
+        instruments = set((p.instrument for p in self.data.positions))
+
+        for p in fidelity.parsePositions(
+                Path(self.settings[fidelity.Settings.POSITIONS])):
+            self.assertIn(p.instrument, instruments)
+        for a in fidelity.parseTransactions(
+                Path(self.settings[fidelity.Settings.TRANSACTIONS])):
+            self.assertIn(a, self.data.activity)
+
+        for p in schwab.parsePositions(
+                Path(self.settings[schwab.Settings.POSITIONS])):
+            self.assertIn(p.instrument, instruments)
+        for a in schwab.parseTransactions(
+                Path(self.settings[schwab.Settings.TRANSACTIONS])):
+            self.assertIn(a, self.data.activity)
+
+        for a in ibkr.parseTrades(Path(self.settings[ibkr.Settings.TRADES])):
+            self.assertIn(a, self.data.activity)
+        for a in ibkr.parseNonTradeActivity(
+                Path(self.settings[ibkr.Settings.ACTIVITY])):
+            self.assertIn(a, self.data.activity)
 
         vanguardData = vanguard.parsePositionsAndActivity(
             Path(self.settings[vanguard.Settings.STATEMENT]))
-        self.assertIn(vanguardData.positions, self.data.positions)
-        self.assertIn(vanguardData.activity, self.data.activity)
+
+        for p in vanguardData.positions:
+            self.assertIn(p.instrument, instruments)
+        for a in vanguardData.activity:
+            self.assertIn(a, self.data.activity)
