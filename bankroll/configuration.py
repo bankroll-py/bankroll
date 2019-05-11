@@ -74,7 +74,7 @@ def addSettingsToArgumentGroup(
 
     elements: Iterable[_S] = list(settings)
     argsBySetting: Dict[_S, str] = {
-        setting: section + '-' + setting.lower().replace(' ', '-')
+        setting: section + '-' + setting.value.lower().replace(' ', '-')
         for setting in elements
     }
 
