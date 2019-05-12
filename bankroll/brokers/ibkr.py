@@ -8,6 +8,7 @@ from pathlib import Path
 from progress.spinner import Spinner
 from random import randint
 from typing import Any, Awaitable, Callable, Dict, Iterable, List, Mapping, NamedTuple, Optional, Tuple, Type, no_type_check
+import pandas as pd
 
 import backoff
 import bankroll.configuration as configuration
@@ -606,12 +607,7 @@ class IBDataProvider(MarketDataProvider):
         self._client = client
         super().__init__()
 
-    def fetchQuotes(self,
-                    instruments: Iterable[Instrument],
-                    dataType: _MarketDataType = _MarketDataType.DELAYED_FROZEN
-                    ) -> Iterable[Tuple[Instrument, Quote]]:
-        self._client.reqMarketDataType(dataType.value)
-
+    def qualifyContracts(self, instruments: Iterable[Instrument]) -> Dict[Instrument, IB.Contract]:
         # IB.Contract is not guaranteed to be hashable, so we orient the table this way, albeit less useful.
         # TODO: Check uniqueness of instruments
         contractsByInstrument: Dict[Instrument, IB.Contract] = {
@@ -620,6 +616,28 @@ class IBDataProvider(MarketDataProvider):
         }
 
         self._client.qualifyContracts(*contractsByInstrument.values())
+
+        return contractsByInstrument
+
+    def fetchHistoricalData(self, instrument: Instrument) -> pd.DataFrame:
+        contractsByInstrument = self.qualifyContracts([instrument])
+        data = self._client.reqHistoricalData(contractsByInstrument[instrument],
+                                              endDateTime='',
+                                              durationStr='10 Y',
+                                              barSizeSetting='1 day',
+                                              whatToShow='TRADES',
+                                              useRTH=True,
+                                              formatDate=1)
+        return IB.util.df(data)
+
+
+    def fetchQuotes(self,
+                    instruments: Iterable[Instrument],
+                    dataType: _MarketDataType = _MarketDataType.DELAYED_FROZEN
+                    ) -> Iterable[Tuple[Instrument, Quote]]:
+        self._client.reqMarketDataType(dataType.value)
+
+        contractsByInstrument = self.qualifyContracts(instruments)
 
         # Note: this blocks until all tickers come back. When we want this to be async, we'll need to use reqMktData().
         # See https://github.com/jspahrsummers/bankroll/issues/13.
