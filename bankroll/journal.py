@@ -1,5 +1,5 @@
 from enum import unique
-from peewee import Model, SqliteDatabase
+from peewee import Model, SqliteDatabase, CharField, DateField, DecimalField, TextField
 from typing import Mapping
 
 import bankroll.configuration as configuration
@@ -24,11 +24,23 @@ class Settings(configuration.Settings):
 _database = SqliteDatabase(None)
 
 
-def openDatabase(settings: Mapping[Settings, str]) -> None:
-    _database.init(settings[Settings.DATABASE])
-    _database.connect()
-
-
 class _BaseModel(Model):  # type: ignore
     class Meta:
         database = _database
+
+
+class Entry(_BaseModel):
+    underlying = CharField()
+    openDate = DateField()
+    closeDate = DateField()
+    expectation = TextField()
+    strategy = TextField()
+    maxProfit = DecimalField()
+    maxLoss = DecimalField()
+    realizedProfit = DecimalField()
+
+
+def openDatabase(settings: Mapping[Settings, str]) -> None:
+    _database.init(settings[Settings.DATABASE])
+    _database.connect()
+    _database.create_tables([Entry])

@@ -128,6 +128,8 @@ activityParser = subparsers.add_parser(
     'activity', help='Operations upon imported portfolio activity')
 
 journalParser = subparsers.add_parser('journal', help='Trade journaling')
+journalParser.add_argument('journal_command', choices=['show', 'create'])
+
 readJournalSettings = addSettingsToArgumentGroup(journal.Settings,
                                                  journalParser)
 
@@ -139,6 +141,15 @@ def manipulateJournal(config: Configuration, data: DataAggregator,
         raise ValueError('Database must be specified to use trade journal')
 
     journal.openDatabase(settings)
+
+    command = args.journal_command
+    if command == 'show':
+        for entry in journal.Entry.select().order_by(
+                journal.Entry.openDate.desc(), journal.Entry.closeDate.desc(),
+                journal.Entry.underlying):
+            print(entry)
+    else:
+        raise ValueError(f'Unexpected command to "journal": {command}')
 
 
 commands = {
