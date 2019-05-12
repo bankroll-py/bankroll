@@ -4,6 +4,7 @@ from typing import Any, Iterable, Optional, Tuple, TypeVar
 
 from .cash import Cash
 from .instrument import Instrument
+import pandas as pd
 
 _Item = TypeVar('_Item')
 
@@ -73,4 +74,7 @@ class MarketDataProvider(ABC):
     @abstractmethod
     def fetchQuotes(self, instruments: Iterable[Instrument]
                     ) -> Iterable[Tuple[Instrument, Quote]]:
+        pass
+
+    def fetchHistoricalData(self, instrument: Instrument) -> pd.DataFrame:
         pass
