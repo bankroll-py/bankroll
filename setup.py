@@ -34,6 +34,7 @@ setup(
         'progress>=1.5',
         'backoff>=1.8',
         'peewee>=3.9',
+        'fuzzyfinder>=2.1',
     ],
     keywords=
     'trading investing finance portfolio ib ibkr tws schwab fidelity vanguard',
