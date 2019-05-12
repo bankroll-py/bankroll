@@ -1,6 +1,6 @@
 from argparse import ArgumentParser, Namespace
 from itertools import chain
-from bankroll import Activity, Instrument, Stock, Position, Trade, Cash, MarketDataProvider, DataAggregator, analysis
+from bankroll import Activity, Instrument, Stock, Position, Trade, Cash, MarketDataProvider, DataAggregator, analysis, journal
 from bankroll.brokers import *
 from bankroll.configuration import Configuration, Settings, addSettingsToArgumentGroup
 from progress.bar import Bar
@@ -70,7 +70,8 @@ readVanguardSettings = addSettingsToArgumentGroup(vanguard.Settings,
                                                   vanguardGroup)
 
 
-def printPositions(data: DataAggregator, args: Namespace) -> None:
+def printPositions(config: Configuration, data: DataAggregator,
+                   args: Namespace) -> None:
     values: Dict[Position, Cash] = {}
     if args.live_value:
         if data.dataProvider:
@@ -101,15 +102,11 @@ def printPositions(data: DataAggregator, args: Namespace) -> None:
             print(f'\tRealized basis: {realizedBasis}')
 
 
-def printActivity(data: DataAggregator, args: Namespace) -> None:
+def printActivity(config: Configuration, data: DataAggregator,
+                  args: Namespace) -> None:
     for t in sorted(data.activity, key=lambda t: t.date, reverse=True):
         print(t)
 
-
-commands = {
-    'positions': printPositions,
-    'activity': printActivity,
-}
 
 subparsers = parser.add_subparsers(dest='command', help='What to inspect')
 
@@ -129,6 +126,26 @@ positionsParser.add_argument(
 
 activityParser = subparsers.add_parser(
     'activity', help='Operations upon imported portfolio activity')
+
+journalParser = subparsers.add_parser('journal', help='Trade journaling')
+readJournalSettings = addSettingsToArgumentGroup(journal.Settings,
+                                                 journalParser)
+
+
+def manipulateJournal(config: Configuration, data: DataAggregator,
+                      args: Namespace) -> None:
+    settings = readJournalSettings(config, args)
+    if journal.Settings.DATABASE not in settings:
+        raise ValueError('Database must be specified to use trade journal')
+
+    journal.openDatabase(settings)
+
+
+commands = {
+    'positions': printPositions,
+    'activity': printActivity,
+    'journal': manipulateJournal,
+}
 
 
 def main() -> None:
@@ -152,7 +169,7 @@ def main() -> None:
             readIBSettings(config, args).items()))
 
     data = DataAggregator(mergedSettings).loadData(lenient=args.lenient)
-    commands[args.command](data, args)
+    commands[args.command](config, data, args)
 
 
 if __name__ == '__main__':
