@@ -144,9 +144,7 @@ def manipulateJournal(config: Configuration, data: DataAggregator,
 
     command = args.journal_command
     if command == 'show':
-        for entry in journal.Entry.select().order_by(
-                journal.Entry.openDate.desc(), journal.Entry.closeDate.desc(),
-                journal.Entry.underlying):
+        for entry in journal.Entry.select():
             print(entry)
     else:
         raise ValueError(f'Unexpected command to "journal": {command}')

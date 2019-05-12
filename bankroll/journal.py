@@ -1,5 +1,6 @@
 from enum import unique
-from peewee import Model, SqliteDatabase, CharField, DateField, DecimalField, TextField
+from peewee import Model, SqliteDatabase, BlobField, CharField, DateField, DecimalField, ForeignKeyField, TextField
+from playhouse.fields import PickleField
 from typing import Mapping
 
 import bankroll.configuration as configuration
@@ -31,16 +32,19 @@ class _BaseModel(Model):  # type: ignore
 
 class Entry(_BaseModel):
     underlying = CharField()
-    openDate = DateField()
-    closeDate = DateField()
-    expectation = TextField()
-    strategy = TextField()
+    text = TextField()
     maxProfit = DecimalField()
     maxLoss = DecimalField()
     realizedProfit = DecimalField()
 
 
+# Represents a serialized bankroll.model.Activity, so we can link trades and journal entries.
+class Activity(_BaseModel):
+    pickled = PickleField(null=False)
+    journalEntry = ForeignKeyField(Entry, backref='activities')
+
+
 def openDatabase(settings: Mapping[Settings, str]) -> None:
     _database.init(settings[Settings.DATABASE])
     _database.connect()
-    _database.create_tables([Entry])
+    _database.create_tables([Entry, Activity])
