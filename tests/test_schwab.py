@@ -1,18 +1,18 @@
+from bankroll import Cash, Currency, Stock, Bond, Option, OptionType, Position, DividendPayment, Trade, TradeFlags
+from bankroll.brokers import schwab
 from datetime import date
 from decimal import Decimal
 from itertools import groupby
-from model import Cash, Currency, Stock, Bond, Option, OptionType, Position, Trade, TradeFlags
 from pathlib import Path
 
 import helpers
-import schwab
 import unittest
 
 
 class TestSchwabPositions(unittest.TestCase):
     def setUp(self) -> None:
-        self.positions = schwab.parsePositions(
-            Path('tests/schwab_positions.CSV'))
+        self.positions = list(
+            schwab.parsePositions(Path('tests/schwab_positions.CSV')))
         self.positions.sort(key=lambda p: p.instrument.symbol)
 
     def test_positionValidity(self) -> None:
@@ -49,196 +49,210 @@ class TestSchwabPositions(unittest.TestCase):
 
 class TestSchwabTransactions(unittest.TestCase):
     def setUp(self) -> None:
-        self.trades = schwab.parseTransactions(
-            Path('tests/schwab_transactions.CSV'))
-        self.trades.sort(key=lambda t: t.date)
+        self.activity = list(
+            schwab.parseTransactions(Path('tests/schwab_transactions.CSV')))
+        self.activity.sort(key=lambda t: t.date)
 
-        self.tradesByDate = {
+        self.activityByDate = {
             d: list(t)
-            for d, t in groupby(self.trades, key=lambda t: t.date.date())
+            for d, t in groupby(self.activity, key=lambda t: t.date.date())
         }
 
-    def test_tradeValidity(self) -> None:
-        self.assertGreater(len(self.trades), 0)
+    def test_activityValidity(self) -> None:
+        self.assertGreater(len(self.activity), 0)
 
     def test_buySecurity(self) -> None:
-        ts = self.tradesByDate[date(2017, 2, 22)]
+        ts = self.activityByDate[date(2017, 2, 22)]
         self.assertEqual(len(ts), 1)
-        self.assertEqual(ts[0].instrument, Stock('VOO', Currency.USD))
-        self.assertEqual(ts[0].quantity, Decimal('23'))
         self.assertEqual(
-            ts[0].amount,
-            Cash(currency=Currency.USD, quantity=Decimal('-4981.11')))
-        self.assertEqual(ts[0].fees,
-                         Cash(currency=Currency.USD, quantity=Decimal('6.95')))
-        self.assertEqual(ts[0].flags, TradeFlags.OPEN)
+            ts[0],
+            Trade(date=ts[0].date,
+                  instrument=Stock('VOO', Currency.USD),
+                  quantity=Decimal('23'),
+                  amount=Cash(currency=Currency.USD,
+                              quantity=Decimal('-4981.11')),
+                  fees=Cash(currency=Currency.USD, quantity=Decimal('6.95')),
+                  flags=TradeFlags.OPEN))
+
+    def test_dividendReinvested(self) -> None:
+        ts = self.activityByDate[date(2017, 3, 28)]
+        self.assertEqual(len(ts), 1)
+        self.assertEqual(
+            ts[0],
+            DividendPayment(date=ts[0].date,
+                            stock=Stock('VOO', Currency.USD),
+                            proceeds=helpers.cashUSD(Decimal('22.95'))))
+
+    def test_cashDividend(self) -> None:
+        ts = self.activityByDate[date(2018, 3, 6)]
+        self.assertEqual(len(ts), 1)
+        self.assertEqual(
+            ts[0],
+            DividendPayment(date=ts[0].date,
+                            stock=Stock('VGLT', Currency.USD),
+                            proceeds=helpers.cashUSD(Decimal('12.85'))))
 
     def test_reinvestShares(self) -> None:
-        ts = self.tradesByDate[date(2017, 3, 29)]
+        ts = self.activityByDate[date(2017, 3, 29)]
         self.assertEqual(len(ts), 1)
-        self.assertEqual(ts[0].instrument, Stock('VOO', Currency.USD))
-        self.assertEqual(ts[0].quantity, Decimal('0.1062'))
         self.assertEqual(
-            ts[0].amount,
-            Cash(currency=Currency.USD, quantity=Decimal('-22.95')))
-        self.assertEqual(ts[0].fees,
-                         Cash(currency=Currency.USD, quantity=Decimal(0)))
-        self.assertEqual(ts[0].flags, TradeFlags.OPEN | TradeFlags.DRIP)
+            ts[0],
+            Trade(date=ts[0].date,
+                  instrument=Stock('VOO', Currency.USD),
+                  quantity=Decimal('0.1062'),
+                  amount=Cash(currency=Currency.USD,
+                              quantity=Decimal('-22.95')),
+                  fees=Cash(currency=Currency.USD, quantity=Decimal(0)),
+                  flags=TradeFlags.OPEN | TradeFlags.DRIP))
 
     def test_shortSaleAndCover(self) -> None:
-        ts = self.tradesByDate[date(2018, 1, 2)]
+        ts = self.activityByDate[date(2018, 1, 2)]
         self.assertEqual(len(ts), 2)
 
-        self.assertEqual(ts[0].instrument, Stock('HD', Currency.USD))
-        self.assertEqual(ts[0].quantity, Decimal('-6'))
         self.assertEqual(
-            ts[0].amount,
-            Cash(currency=Currency.USD, quantity=Decimal('1017.3')))
-        self.assertEqual(ts[0].fees,
-                         Cash(currency=Currency.USD, quantity=Decimal('4.96')))
-        self.assertEqual(ts[0].flags, TradeFlags.OPEN)
+            ts[0],
+            Trade(date=ts[0].date,
+                  instrument=Stock('HD', Currency.USD),
+                  quantity=Decimal('-6'),
+                  amount=Cash(currency=Currency.USD,
+                              quantity=Decimal('1017.3')),
+                  fees=Cash(currency=Currency.USD, quantity=Decimal('4.96')),
+                  flags=TradeFlags.OPEN))
 
-        self.assertEqual(ts[1].instrument, Stock('HD', Currency.USD))
-        self.assertEqual(ts[1].quantity, Decimal('6'))
         self.assertEqual(
-            ts[1].amount,
-            Cash(currency=Currency.USD, quantity=Decimal('-1033.12')))
-        self.assertEqual(ts[1].fees,
-                         Cash(currency=Currency.USD, quantity=Decimal('4.95')))
-        self.assertEqual(ts[1].flags, TradeFlags.CLOSE)
+            ts[1],
+            Trade(date=ts[1].date,
+                  instrument=Stock('HD', Currency.USD),
+                  quantity=Decimal('6'),
+                  amount=Cash(currency=Currency.USD,
+                              quantity=Decimal('-1033.12')),
+                  fees=Cash(currency=Currency.USD, quantity=Decimal('4.95')),
+                  flags=TradeFlags.CLOSE))
 
     def test_buyToOpenOption(self) -> None:
-        ts = self.tradesByDate[date(2018, 11, 5)]
+        ts = self.activityByDate[date(2018, 11, 5)]
         self.assertEqual(len(ts), 1)
         self.assertEqual(
-            ts[0].instrument,
-            Option(underlying='INTC',
-                   currency=Currency.USD,
-                   optionType=OptionType.PUT,
-                   expiration=date(2018, 12, 7),
-                   strike=Decimal('48.50')))
-        self.assertEqual(ts[0].quantity, Decimal('1'))
-        self.assertEqual(ts[0].amount,
-                         Cash(currency=Currency.USD, quantity=Decimal('-248')))
-        self.assertEqual(ts[0].fees,
-                         Cash(currency=Currency.USD, quantity=Decimal('5.60')))
-        self.assertEqual(ts[0].flags, TradeFlags.OPEN)
+            ts[0],
+            Trade(date=ts[0].date,
+                  instrument=Option(underlying='INTC',
+                                    currency=Currency.USD,
+                                    optionType=OptionType.PUT,
+                                    expiration=date(2018, 12, 7),
+                                    strike=Decimal('48.50')),
+                  quantity=Decimal('1'),
+                  amount=Cash(currency=Currency.USD, quantity=Decimal('-248')),
+                  fees=Cash(currency=Currency.USD, quantity=Decimal('5.60')),
+                  flags=TradeFlags.OPEN))
 
     def test_sellToCloseOption(self) -> None:
-        ts = self.tradesByDate[date(2018, 11, 9)]
+        ts = self.activityByDate[date(2018, 11, 9)]
         self.assertEqual(len(ts), 1)
         self.assertEqual(
-            ts[0].instrument,
-            Option(underlying='INTC',
-                   currency=Currency.USD,
-                   optionType=OptionType.PUT,
-                   expiration=date(2018, 12, 7),
-                   strike=Decimal('48.50')))
-        self.assertEqual(ts[0].quantity, Decimal('-1'))
-        self.assertEqual(ts[0].amount,
-                         Cash(currency=Currency.USD, quantity=Decimal('140')))
-        self.assertEqual(ts[0].fees,
-                         Cash(currency=Currency.USD, quantity=Decimal('5.60')))
-        self.assertEqual(ts[0].flags, TradeFlags.CLOSE)
+            ts[0],
+            Trade(date=ts[0].date,
+                  instrument=Option(underlying='INTC',
+                                    currency=Currency.USD,
+                                    optionType=OptionType.PUT,
+                                    expiration=date(2018, 12, 7),
+                                    strike=Decimal('48.50')),
+                  quantity=Decimal('-1'),
+                  amount=Cash(currency=Currency.USD, quantity=Decimal('140')),
+                  fees=Cash(currency=Currency.USD, quantity=Decimal('5.60')),
+                  flags=TradeFlags.CLOSE))
 
     def test_exercisedOption(self) -> None:
-        ts = self.tradesByDate[date(2018, 2, 4)]
+        ts = self.activityByDate[date(2018, 2, 4)]
         self.assertEqual(len(ts), 4)
         self.assertEqual(
-            ts[2].instrument,
-            Option(underlying='QQQ',
-                   currency=Currency.USD,
-                   optionType=OptionType.CALL,
-                   expiration=date(2018, 2, 1),
-                   strike=Decimal('155')))
-        self.assertEqual(ts[2].quantity, Decimal('-1'))
-        self.assertEqual(ts[2].amount,
-                         Cash(currency=Currency.USD, quantity=Decimal(0)))
-        self.assertEqual(ts[2].fees,
-                         Cash(currency=Currency.USD, quantity=Decimal(0)))
-        self.assertEqual(ts[2].flags,
-                         TradeFlags.CLOSE | TradeFlags.ASSIGNED_OR_EXERCISED)
+            ts[2],
+            Trade(date=ts[2].date,
+                  instrument=Option(underlying='QQQ',
+                                    currency=Currency.USD,
+                                    optionType=OptionType.CALL,
+                                    expiration=date(2018, 2, 1),
+                                    strike=Decimal('155')),
+                  quantity=Decimal('-1'),
+                  amount=Cash(currency=Currency.USD, quantity=Decimal(0)),
+                  fees=Cash(currency=Currency.USD, quantity=Decimal(0)),
+                  flags=TradeFlags.CLOSE | TradeFlags.ASSIGNED_OR_EXERCISED))
 
     def test_assignedOption(self) -> None:
-        ts = self.tradesByDate[date(2018, 2, 4)]
+        ts = self.activityByDate[date(2018, 2, 4)]
         self.assertEqual(len(ts), 4)
         self.assertEqual(
-            ts[3].instrument,
-            Option(underlying='QQQ',
-                   currency=Currency.USD,
-                   optionType=OptionType.CALL,
-                   expiration=date(2018, 2, 1),
-                   strike=Decimal('130')))
-        self.assertEqual(ts[3].quantity, Decimal('1'))
-        self.assertEqual(ts[3].amount,
-                         Cash(currency=Currency.USD, quantity=Decimal(0)))
-        self.assertEqual(ts[3].fees,
-                         Cash(currency=Currency.USD, quantity=Decimal(0)))
-        self.assertEqual(ts[3].flags,
-                         TradeFlags.CLOSE | TradeFlags.ASSIGNED_OR_EXERCISED)
+            ts[3],
+            Trade(date=ts[3].date,
+                  instrument=Option(underlying='QQQ',
+                                    currency=Currency.USD,
+                                    optionType=OptionType.CALL,
+                                    expiration=date(2018, 2, 1),
+                                    strike=Decimal('130')),
+                  quantity=Decimal('1'),
+                  amount=Cash(currency=Currency.USD, quantity=Decimal(0)),
+                  fees=Cash(currency=Currency.USD, quantity=Decimal(0)),
+                  flags=TradeFlags.CLOSE | TradeFlags.ASSIGNED_OR_EXERCISED))
 
     def test_expiredShortOption(self) -> None:
-        ts = self.tradesByDate[date(2018, 12, 3)]
+        ts = self.activityByDate[date(2018, 12, 3)]
         self.assertEqual(len(ts), 1)
         self.assertEqual(
-            ts[0].instrument,
-            Option(underlying='CSCO',
-                   currency=Currency.USD,
-                   optionType=OptionType.PUT,
-                   expiration=date(2018, 11, 30),
-                   strike=Decimal('44.50')))
-        self.assertEqual(ts[0].quantity, Decimal('1'))
-        self.assertEqual(ts[0].amount,
-                         Cash(currency=Currency.USD, quantity=Decimal(0)))
-        self.assertEqual(ts[0].fees,
-                         Cash(currency=Currency.USD, quantity=Decimal(0)))
-        self.assertEqual(ts[0].flags, TradeFlags.CLOSE | TradeFlags.EXPIRED)
+            ts[0],
+            Trade(date=ts[0].date,
+                  instrument=Option(underlying='CSCO',
+                                    currency=Currency.USD,
+                                    optionType=OptionType.PUT,
+                                    expiration=date(2018, 11, 30),
+                                    strike=Decimal('44.50')),
+                  quantity=Decimal('1'),
+                  amount=Cash(currency=Currency.USD, quantity=Decimal(0)),
+                  fees=Cash(currency=Currency.USD, quantity=Decimal(0)),
+                  flags=TradeFlags.CLOSE | TradeFlags.EXPIRED))
 
     def test_buyToCloseOption(self) -> None:
-        ts = self.tradesByDate[date(2018, 12, 12)]
+        ts = self.activityByDate[date(2018, 12, 12)]
         self.assertEqual(len(ts), 2)
         self.assertEqual(
-            ts[0].instrument,
-            Option(underlying='MAR',
-                   currency=Currency.USD,
-                   optionType=OptionType.CALL,
-                   expiration=date(2018, 12, 28),
-                   strike=Decimal('116')))
-        self.assertEqual(ts[0].quantity, Decimal('1'))
-        self.assertEqual(ts[0].amount,
-                         Cash(currency=Currency.USD, quantity=Decimal('-70')))
-        self.assertEqual(ts[0].fees,
-                         Cash(currency=Currency.USD, quantity=Decimal('5.60')))
-        self.assertEqual(ts[0].flags, TradeFlags.CLOSE)
+            ts[0],
+            Trade(date=ts[0].date,
+                  instrument=Option(underlying='MAR',
+                                    currency=Currency.USD,
+                                    optionType=OptionType.CALL,
+                                    expiration=date(2018, 12, 28),
+                                    strike=Decimal('116')),
+                  quantity=Decimal('1'),
+                  amount=Cash(currency=Currency.USD, quantity=Decimal('-70')),
+                  fees=Cash(currency=Currency.USD, quantity=Decimal('5.60')),
+                  flags=TradeFlags.CLOSE))
 
     def test_sellToOpenOption(self) -> None:
-        ts = self.tradesByDate[date(2018, 12, 12)]
+        ts = self.activityByDate[date(2018, 12, 12)]
         self.assertEqual(len(ts), 2)
         self.assertEqual(
-            ts[1].instrument,
-            Option(underlying='MAR',
-                   currency=Currency.USD,
-                   optionType=OptionType.CALL,
-                   expiration=date(2018, 12, 28),
-                   strike=Decimal('112')))
-        self.assertEqual(ts[1].quantity, Decimal('-1'))
-        self.assertEqual(ts[1].amount,
-                         Cash(currency=Currency.USD, quantity=Decimal('190')))
-        self.assertEqual(ts[1].fees,
-                         Cash(currency=Currency.USD, quantity=Decimal('5.60')))
-        self.assertEqual(ts[1].flags, TradeFlags.OPEN)
+            ts[1],
+            Trade(date=ts[1].date,
+                  instrument=Option(underlying='MAR',
+                                    currency=Currency.USD,
+                                    optionType=OptionType.CALL,
+                                    expiration=date(2018, 12, 28),
+                                    strike=Decimal('112')),
+                  quantity=Decimal('-1'),
+                  amount=Cash(currency=Currency.USD, quantity=Decimal('190')),
+                  fees=Cash(currency=Currency.USD, quantity=Decimal('5.60')),
+                  flags=TradeFlags.OPEN))
 
     def test_securityTransferSale(self) -> None:
-        ts = self.tradesByDate[date(2018, 1, 4)]
+        ts = self.activityByDate[date(2018, 1, 4)]
         self.assertEqual(len(ts), 1)
-        self.assertEqual(ts[0].instrument, Stock('MSFT', Currency.USD))
-        self.assertEqual(ts[0].quantity, Decimal('-10'))
         self.assertEqual(
-            ts[0].amount,
-            Cash(currency=Currency.USD, quantity=Decimal('920.78')))
-        self.assertEqual(
-            ts[0].fees, Cash(currency=Currency.USD, quantity=Decimal('13.65')))
-        self.assertEqual(ts[0].flags, TradeFlags.CLOSE)
+            ts[0],
+            Trade(date=ts[0].date,
+                  instrument=Stock('MSFT', Currency.USD),
+                  quantity=Decimal('-10'),
+                  amount=Cash(currency=Currency.USD,
+                              quantity=Decimal('920.78')),
+                  fees=Cash(currency=Currency.USD, quantity=Decimal('13.65')),
+                  flags=TradeFlags.CLOSE))
 
 
 if __name__ == '__main__':

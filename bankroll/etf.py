@@ -2,7 +2,7 @@ import math
 import pandas as pd
 import numpy as np
 import pyfolio as pf
-from typing import Optional, List, Dict, Iterable
+from typing import Optional, List, Dict, Iterable, Tuple
 from decimal import Decimal
 from .model import *
 from dataclasses import asdict
@@ -65,13 +65,13 @@ def prices_to_daily_returns(prices: pd.Series) -> pd.Series:
     return (prices / prices.shift(1) - 1)[1:]
 
 
-def positions_to_dataframe(positions: Iterable[model.Position]
+def positions_to_dataframe(positions: Iterable[Position]
                            ) -> pd.DataFrame:
     """
     Returns a dataframe of positions with an additional `value` and `allocation` columns
     calculated from the averagePrice and quantity.
     """
-    is_stock = lambda position: type(position.instrument) == model.Stock
+    is_stock = lambda position: type(position.instrument) == Stock
     stocks = []
     for p in filter(is_stock, positions):
         stock = asdict(p)
@@ -86,11 +86,11 @@ def positions_to_dataframe(positions: Iterable[model.Position]
     return frame
 
 
-def positions_to_returns(provider: model.LiveDataProvider,
-                         positions: Iterable[model.Position],
+def positions_to_returns(provider: MarketDataProvider,
+                         positions: Iterable[Position],
                          timezone: str) -> pd.Series:
     frame = positions_to_dataframe(positions)
-    history = positions_to_history(provider, positions)
+    positions, frame, history = positions_to_history(provider, positions, frame)
     return positions_and_history_to_returns(frame, history, timezone)
 
 
@@ -113,24 +113,39 @@ def positions_to_portfolio(frame: pd.DataFrame,
     """
     weights = {}
     components = {}
-    for i, row in frame.iterrows():
+    for i, row in frame.reset_index().iterrows():
         weights[row['instrument'].symbol] = row['allocation']
         components[row['instrument'].symbol] = historical_data[i]
 
     return stocks_to_portfolio(components, weights)
 
 
-def positions_to_history(provider: model.LiveDataProvider,
-                         positions: Iterable[model.Position]
-                         ) -> List[pd.DataFrame]:
+def positions_to_history(provider: MarketDataProvider,
+                         positions: Iterable[Position],
+                         frame: pd.DataFrame
+                         ) -> Tuple[List[Position], pd.DataFrame, List[pd.DataFrame]]:
     """
     Returns 1 year of daily historical data for a dataframe of positions.
     """
-    is_stock = lambda position: type(position.instrument) == model.Stock
+    is_stock = lambda position: type(position.instrument) == Stock
     bars = []
+    new_positions = []
     for position in filter(is_stock, positions):
-        bars.append(provider.fetchHistoricalData(position.instrument))
-    return bars
+        try:
+            barList = provider.fetchHistoricalData(position.instrument)
+        except ValueError:
+            print("something bad happened")
+            continue
+        except:
+            print("caught an exception")
+            continue
+
+        if barList is not None:
+            new_positions.append(position)
+        bars.append(barList)
+
+    indices = [i for i, x in enumerate(bars) if x is not None]
+    return (new_positions, frame.loc[indices], list(filter(lambda x: x is not None, bars)))
 
 
 def holdings(val: pd.DataFrame, holds: np.ndarray, i: pd.DataFrame, t: int,

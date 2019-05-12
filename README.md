@@ -3,45 +3,47 @@ Ingest portfolio and other data from multiple brokerages, and analyze it.
 
 **Table of contents:**
 
-1. [Getting started](#getting-started)
-1. [Usage](#usage)
+1. [Installation](#installation)
+1. [Connecting to brokers](#connecting-to-brokers)
    1. [Interactive Brokers](#interactive-brokers)
    1. [Charles Schwab](#charles-schwab)
    1. [Fidelity](#fidelity)
    1. [Vanguard](#vanguard)
+1. [Saving configuration](#saving-configuration)
+1. [Extending `bankroll`](#extending-bankroll)
 
-# Getting started
+# Installation
 
-The included bootstrap script will set up a Python virtual environment and install the necessary dependencies, including the [Interactive Brokers API](http://interactivebrokers.github.io):
-
-```
-script/bootstrap
-```
-
-After bootstrapping, confirm that the environment works by running the included test suite:
+To install `bankroll` as a Python package, simply run `pip` (or `pip3`, as it may be named on your system) from the repository root:
 
 ```
-script/test
+pip install .
 ```
 
-# Usage
+This will also make the command-line tool available directly:
+
+```
+bankroll --help
+```
+
+# Connecting to brokers
 
 After being set up, `bankroll` can be used from the command line to bring together data from multiple brokerages.
 
 For example, to show all positions held in both Interactive Brokers and Charles Schwab:
 
 ```
-python3 bankroll.py \
-  --twsport 7496 \
-  --schwabpositions ~/Positions-2019-01-01.CSV \
-  --schwabtransactions ~/Transactions_20190101.CSV \
+python -m bankroll \
+  --ibkr-tws-port 7496 \
+  --schwab-positions ~/Positions-2019-01-01.CSV \
+  --schwab-transactions ~/Transactions_20190101.CSV \
   positions
 ```
 
-Run with `-h` to see all options:
+Run with `--help` to see all options:
 
 ```
-python3 bankroll.py -h
+python -m bankroll --help
 ```
 
 ## Interactive Brokers
@@ -55,8 +57,8 @@ Unfortunately, [one of IB's trading applications](https://interactivebrokers.git
 Once Trader Workstation or IB Gateway is running, and [API connections are enabled](https://interactivebrokers.github.io/tws-api/initial_setup.html#enable_api), provide the local port number to `bankroll` like so:
 
 ```
-python3 bankroll.py \
-  --twsport 7496 \
+python -m bankroll \
+  --ibkr-tws-port 7496 \
   [command]
 ```
 
@@ -100,10 +102,29 @@ Under _Sections_, click _Trade Confirmations_ and enable everything in the dialo
 With the token and the query ID from your account, historical trades can be downloaded:
 
 ```
-python3 bankroll.py \
-  --flextoken [token] \
-  --flexquery [query ID] \
-  trades
+python -m bankroll \
+  --ibkr-flex-token [token] \
+  --ibkr-trades [query ID] \
+  activity
+```
+
+### Querying dividend history
+
+_This workflow [will be simplified](https://github.com/jspahrsummers/bankroll/issues/36) in the future._
+
+To incorporate the history of dividend payments in your portfolio, follow the same steps for the [Trade Confirmation Flex Query](#querying-trade-history), but create an Activity Flex Query instead.
+
+The only section which needs to be enabled is _Change in Dividend Accruals_:
+
+<img width="444" alt="Activity query options" src="https://user-images.githubusercontent.com/432536/57235238-5809ab00-701a-11e9-84c0-6abcf3f2cb93.png">
+
+Pass your existing token, and the new query's ID, on the command line:
+
+```
+python -m bankroll \
+  --ibkr-flex-token [token] \
+  --ibkr-activity [query ID] \
+  activity
 ```
 
 ## Charles Schwab
@@ -121,9 +142,9 @@ Click the "Export" link in the top-right:
 Then provide the paths of either or both these downloaded files to `bankroll`:
 
 ```
-python3 bankroll.py \
-  --schwabpositions ~/path/to/Positions.CSV \
-  --schwabtransactions ~/path/to/Transactions.CSV \
+python -m bankroll \
+  --schwab-positions ~/path/to/Positions.CSV \
+  --schwab-transactions ~/path/to/Transactions.CSV \
   [command]
 ```
 
@@ -134,3 +155,17 @@ python3 bankroll.py \
 ## Vanguard
 
 [Vanguard](https://investor.vanguard.com) is a **work in progress**, and may not be as fully-featured as the other brokerages listed here. [Contributions welcome](CONTRIBUTING.md)!
+
+# Saving configuration
+
+To preserve settings across runs, all of the command-line arguments demonstrated above can also be saved into an [INI file](https://docs.python.org/3/library/configparser.html#supported-ini-file-structure). The configuration file is especially useful to store default values, because when a setting is specified in a configuration file _as well as_ on the command line, the command-line argument will take precedence.
+
+To create a configuration, copy [`bankroll.default.ini`](bankroll/bankroll.default.ini) to `~/.bankroll.ini`, or leave it in your working directory as `bankroll.ini`, then edit the file to apply your desired settings.
+
+If you would like to store the configuration somewhere else, you can also provide custom paths via the `--config` argument on the command line.
+
+# Extending `bankroll`
+
+Although the command-line interface exposes a basic set of functionality, it will never be able to capture the full set of possible use cases. For much greater flexibility, you can write Python code to use `bankroll` directly, and build on top of its APIs for your own purposes.
+
+For some examples, [see the included notebooks](notebooks/).

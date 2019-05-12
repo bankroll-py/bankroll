@@ -1,9 +1,10 @@
-from analysis import normalizeSymbol, realizedBasisForSymbol, liveValuesForPositions
+from bankroll import Cash, Currency, Instrument, Stock, Option, OptionType, Quote, Trade, TradeFlags, MarketDataProvider, Position, Activity, DividendPayment
+from bankroll.analysis import _normalizeSymbol, realizedBasisForSymbol, liveValuesForPositions, deduplicatePositions
 from datetime import datetime, date
 from decimal import Decimal
-from hypothesis import given, reproduce_failure, seed
+from hypothesis import given, reproduce_failure, seed, settings, HealthCheck
 from hypothesis.strategies import builds, composite, dates, datetimes, decimals, from_type, iterables, just, lists, one_of, sampled_from, text, tuples, SearchStrategy
-from model import Cash, Currency, Instrument, Stock, Option, OptionType, Quote, Trade, TradeFlags, LiveDataProvider, Position
+from itertools import chain
 from typing import Any, Dict, Iterable, List, Tuple, no_type_check
 
 import helpers
@@ -45,13 +46,16 @@ def positionAndQuote(
         helpers.uniformCurrencyQuotes(currency=just(i.currency))))
 
 
-class StubDataProvider(LiveDataProvider):
+class StubDataProvider(MarketDataProvider):
     def __init__(self, quotes: Dict[Instrument, Quote]):
         self._quotes = quotes
         super().__init__()
 
-    def fetchQuote(self, instrument: Instrument) -> Quote:
-        return self._quotes[instrument]
+    def fetchQuotes(
+            self,
+            instruments: Iterable[Instrument],
+    ) -> Iterable[Tuple[Instrument, Quote]]:
+        return ((i, self._quotes[i]) for i in instruments)
 
 
 class TestAnalysis(unittest.TestCase):
@@ -75,14 +79,61 @@ class TestAnalysis(unittest.TestCase):
                   flags=TradeFlags.OPEN),
         ]
 
-        basis = realizedBasisForSymbol('SPY', trades=trades)
+        basis = realizedBasisForSymbol('SPY', trades)
         self.assertEqual(basis, helpers.cashUSD(Decimal('900')))
+
+    def test_realizedBasisWithCashDividend(self) -> None:
+        activity: List[Activity] = [
+            # If you start with $1000 in shares,
+            Trade(date=datetime.now(),
+                  instrument=Stock('SPY', Currency.USD),
+                  quantity=Decimal('5'),
+                  amount=helpers.cashUSD(Decimal('-999')),
+                  fees=helpers.cashUSD(Decimal('1')),
+                  flags=TradeFlags.OPEN),
+            # and get a $100 dividend,
+            DividendPayment(date=datetime.now(),
+                            stock=Stock('SPY', Currency.USD),
+                            proceeds=helpers.cashUSD(Decimal('100')))
+        ]
+
+        basis = realizedBasisForSymbol('SPY', activity)
+
+        # … your $1000 investment should now show as if you had a $900 basis
+        self.assertEqual(basis, helpers.cashUSD(Decimal('900')))
+
+    def test_realizedBasisWithReinvestedDividend(self) -> None:
+        activity: List[Activity] = [
+            # If you start with $1000 in shares,
+            Trade(date=datetime.now(),
+                  instrument=Stock('SPY', Currency.USD),
+                  quantity=Decimal('5'),
+                  amount=helpers.cashUSD(Decimal('-999')),
+                  fees=helpers.cashUSD(Decimal('1')),
+                  flags=TradeFlags.OPEN),
+            # and get a $100 dividend,
+            DividendPayment(date=datetime.now(),
+                            stock=Stock('SPY', Currency.USD),
+                            proceeds=helpers.cashUSD(Decimal('100'))),
+            # then reinvest it for an equivalent amount of shares,
+            Trade(date=datetime.now(),
+                  instrument=Stock('SPY', Currency.USD),
+                  quantity=Decimal('1'),
+                  amount=helpers.cashUSD(Decimal('-100')),
+                  fees=helpers.cashUSD(Decimal(0)),
+                  flags=TradeFlags.OPEN | TradeFlags.DRIP),
+        ]
+
+        basis = realizedBasisForSymbol('SPY', activity)
+
+        # … your $1100 investment should now show as if you had a $1000 basis
+        self.assertEqual(basis, helpers.cashUSD(Decimal('1000')))
 
     separatedSymbols = ['BRK.B', 'BRKB', 'BRK B', 'BRK/B']
 
     @given(sampled_from(separatedSymbols))
     def test_normalizeSymbol(self, symbol: str) -> None:
-        self.assertEqual(normalizeSymbol(symbol), 'BRKB')
+        self.assertEqual(_normalizeSymbol(symbol), 'BRKB')
 
     @given(lists(sampled_from(separatedSymbols), min_size=3, max_size=3))
     def test_realizedBasisWithSeparatedSymbol(self,
@@ -106,7 +157,7 @@ class TestAnalysis(unittest.TestCase):
                   flags=TradeFlags.OPEN),
         ]
 
-        basis = realizedBasisForSymbol(symbols[2], trades=trades)
+        basis = realizedBasisForSymbol(symbols[2], trades)
         self.assertEqual(basis, helpers.cashUSD(Decimal('900')))
 
     @no_type_check
@@ -114,6 +165,7 @@ class TestAnalysis(unittest.TestCase):
         iterables(from_type(
             Trade).filter(lambda t: not t.instrument.symbol.startswith('SPY')),
                   max_size=100))
+    @settings(suppress_health_check=[HealthCheck.too_slow])
     def test_realizedBasisMissing(self, trades: Iterable[Trade]) -> None:
         self.assertIsNone(realizedBasisForSymbol('SPY', trades))
 
@@ -173,3 +225,19 @@ class TestAnalysis(unittest.TestCase):
             highest = max(valuesPerPrice, default=None)
             if highest is not None:
                 self.assertLessEqual(value, highest)
+
+    @given(lists(from_type(Position), max_size=5),
+           lists(from_type(Position), max_size=5))
+    def test_deduplicatePositions(self, a: List[Position],
+                                  b: List[Position]) -> None:
+        c = chain(a, b)
+        instruments = (p.instrument for p in c)
+        result = deduplicatePositions(c)
+
+        for i in instruments:
+            posA = next((p.quantity for p in a if p.instrument == i),
+                        Decimal(0))
+            posB = next((p.quantity for p in b if p.instrument == i),
+                        Decimal(0))
+            posC = next((p.quantity for p in result if p.instrument == i))
+            self.assertEqual(posC, Position.quantizeQuantity(posA + posB))

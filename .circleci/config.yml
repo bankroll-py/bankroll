@@ -38,7 +38,7 @@ jobs:
 
       - run:
           name: install dependencies
-          command: script/bootstrap
+          command: script/bootstrap --skip-license
 
       - save_cache:
           paths:
@@ -53,6 +53,10 @@ jobs:
           name: check formatting
           when: always
           command: script/reformat --diff
+      
+      - run:
+          name: try installing
+          command: script/test_install --skip-license
 
 workflows:
   version: 2

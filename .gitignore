@@ -71,6 +71,7 @@ target/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+*.nbconvert.ipynb
 
 # pyenv
 .python-version
@@ -104,3 +105,4 @@ venv.bak/
 .mypy_cache/
 
 twsapi.zip
+mydata/

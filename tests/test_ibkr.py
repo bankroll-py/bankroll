@@ -1,14 +1,14 @@
+from bankroll import Cash, Currency, Position, Instrument, Stock, Bond, Option, OptionType, Forex, Future, FutureOption, Trade, TradeFlags, DividendPayment
+from bankroll.brokers import ibkr
 from datetime import date
 from decimal import Decimal
-from hypothesis import given, reproduce_failure
+from hypothesis import given, reproduce_failure, settings, Verbosity
 from hypothesis.strategies import builds, dates, decimals, from_regex, from_type, lists, one_of, sampled_from, text
 from itertools import groupby
-from model import Cash, Currency, Position, Instrument, Stock, Bond, Option, OptionType, Forex, Future, FutureOption, Trade, TradeFlags
 from pathlib import Path
 
 import helpers
 import ib_insync as IB
-import ibkr
 import logging
 import unittest
 
@@ -198,16 +198,50 @@ class TestIBKRTrades(unittest.TestCase):
         self.assertEqual(ts[0].flags, TradeFlags.OPEN)
 
 
+class TestIBKRActivity(unittest.TestCase):
+    def setUp(self) -> None:
+        self.activity = ibkr.parseNonTradeActivity(
+            Path('tests/ibkr_activity.xml'))
+        self.activity.sort(key=lambda t: t.date)
+
+        self.activityByDate = {
+            d: list(t)
+            for d, t in groupby(self.activity, key=lambda t: t.date.date())
+        }
+
+    def test_activityValidity(self) -> None:
+        self.assertGreater(len(self.activity), 0)
+
+    def test_postedAndPaid(self) -> None:
+        ts = self.activityByDate[date(2019, 2, 14)]
+        self.assertEqual(len(ts), 1)
+        self.assertEqual(
+            ts[0],
+            DividendPayment(date=ts[0].date,
+                            stock=Stock('AAPL', Currency.USD),
+                            proceeds=helpers.cashUSD(Decimal('23.36'))))
+
+        self.assertNotIn(date(2019, 2, 7), self.activityByDate)
+        self.assertNotIn(date(2019, 2, 8), self.activityByDate)
+
+    def test_postedUnpaid(self) -> None:
+        self.assertNotIn(date(2018, 12, 19), self.activityByDate)
+        self.assertNotIn(date(2018, 12, 20), self.activityByDate)
+        self.assertNotIn(date(2019, 1, 25), self.activityByDate)
+
+
 class TestIBKRParsing(unittest.TestCase):
     validSymbols = text(min_size=1)
     validCurrencies = from_type(Currency).map(lambda c: c.name)
     validAssetCategories = sampled_from(
-        ['STK', 'BOND', 'OPT', 'FUT', 'CASH', 'FOP'])
+        ['STK', 'BILL', 'BOND', 'OPT', 'FUT', 'CASH', 'FOP'])
     allAssetCategories = one_of(
         validAssetCategories,
         sampled_from(
             ['IND', 'CFD', 'FUND', 'CMDTY', 'IOPT', 'BAG', 'NEWS', 'WAR']))
-    validDates = dates().map(lambda d: d.strftime('%Y%m%d'))
+
+    # For some reason, %Y wasn't zero-padding the year to 4 digits on CI, so provide our own century
+    validDates = dates().map(lambda d: d.strftime('20%y%m%d'))
     validQuantities = helpers.positionQuantities().map(str)
     validCodes = lists(sampled_from(['O', 'C', 'A', 'Ep', 'Ex', 'R', 'P',
                                      'D']),
@@ -220,7 +254,7 @@ class TestIBKRParsing(unittest.TestCase):
     validStrikes = helpers.strikes().map(str)
     validPutCalls = sampled_from(['P', 'C'])
 
-    validTradeConfirms = builds(ibkr.IBTradeConfirm,
+    validTradeConfirms = builds(ibkr._IBTradeConfirm,
                                 symbol=validSymbols,
                                 underlyingSymbol=validSymbols,
                                 currency=validCurrencies,
@@ -237,7 +271,7 @@ class TestIBKRParsing(unittest.TestCase):
                                 putCall=validPutCalls,
                                 code=validCodes)
 
-    allTradeConfirms = builds(ibkr.IBTradeConfirm,
+    allTradeConfirms = builds(ibkr._IBTradeConfirm,
                               symbol=one_of(validSymbols, text()),
                               underlyingSymbol=one_of(validSymbols, text()),
                               currency=one_of(validCurrencies, text()),
@@ -301,27 +335,34 @@ class TestIBKRParsing(unittest.TestCase):
                           position=one_of(validQuantities,
                                           decimals().map(str), text()))
 
-    def validateTradeContract(self, tradeConfirm: ibkr.IBTradeConfirm,
+    def validateTradeContract(self, tradeConfirm: ibkr._IBTradeConfirm,
                               instrument: Instrument) -> None:
-        contract = ibkr.contract(instrument)
-        self.assertEqual(contract.secType, tradeConfirm.assetCategory)
+        contract = ibkr._contract(instrument)
+        if tradeConfirm.assetCategory == 'BILL':
+            self.assertEqual(contract.secType, 'BOND')
+        else:
+            self.assertEqual(contract.secType, tradeConfirm.assetCategory)
         self.assertEqual(contract.currency, tradeConfirm.currency)
 
         if isinstance(instrument, Option):
-            self.assertAlmostEqual(contract.strike,
-                                   float(tradeConfirm.strike),
-                                   places=1)
+            self.assertEqual(
+                Option.quantizeStrike(Decimal(contract.strike)),
+                Option.quantizeStrike(Decimal(tradeConfirm.strike)))
             self.assertEqual(contract.right, tradeConfirm.putCall)
 
         if isinstance(instrument, Option) or isinstance(instrument, Future):
-            self.assertEqual(contract.multiplier, tradeConfirm.multiplier)
+            self.assertEqual(
+                Instrument.quantizeMultiplier(Decimal(contract.multiplier)),
+                Instrument.quantizeMultiplier(Decimal(
+                    tradeConfirm.multiplier)))
             self.assertEqual(contract.lastTradeDateOrContractMonth,
                              tradeConfirm.expiry)
 
     @given(allTradeConfirms)
-    def test_fuzzTradeConfirm(self, tradeConfirm: ibkr.IBTradeConfirm) -> None:
+    def test_fuzzTradeConfirm(self,
+                              tradeConfirm: ibkr._IBTradeConfirm) -> None:
         try:
-            trade = ibkr.parseTradeConfirm(tradeConfirm)
+            trade = ibkr._parseTradeConfirm(tradeConfirm)
         except ValueError:
             return
 
@@ -330,31 +371,37 @@ class TestIBKRParsing(unittest.TestCase):
     @unittest.skip('Exists to validate test data only')
     @given(validTradeConfirms)
     def test_parsedTradeConfirmConvertsToContract(
-            self, tradeConfirm: ibkr.IBTradeConfirm) -> None:
-        trade = ibkr.parseTradeConfirm(tradeConfirm)
+            self, tradeConfirm: ibkr._IBTradeConfirm) -> None:
+        trade = ibkr._parseTradeConfirm(tradeConfirm)
         self.validateTradeContract(tradeConfirm, trade.instrument)
 
     def validatePositionContract(self, position: IB.Position,
                                  instrument: Instrument) -> None:
-        contract = ibkr.contract(instrument)
-        self.assertEqual(contract.secType, position.contract.secType)
+        contract = ibkr._contract(instrument)
+        if position.contract.secType == 'BILL':
+            self.assertEqual(contract.secType, 'BOND')
+        else:
+            self.assertEqual(contract.secType, position.contract.secType)
         self.assertEqual(contract.currency, position.contract.currency)
 
         if isinstance(instrument, Option):
-            self.assertAlmostEqual(float(contract.strike),
-                                   float(position.contract.strike),
-                                   places=1)
+            self.assertEqual(
+                Option.quantizeStrike(Decimal(contract.strike)),
+                Option.quantizeStrike(Decimal(position.contract.strike)))
             self.assertEqual(contract.right, position.contract.right)
 
         if isinstance(instrument, Option) or isinstance(instrument, Future):
-            self.assertEqual(contract.multiplier, position.contract.multiplier)
+            self.assertEqual(
+                Instrument.quantizeMultiplier(Decimal(contract.multiplier)),
+                Instrument.quantizeMultiplier(
+                    Decimal(position.contract.multiplier)))
             self.assertEqual(contract.lastTradeDateOrContractMonth,
                              position.contract.lastTradeDateOrContractMonth)
 
     @given(allPositions)
     def test_fuzzPosition(self, position: IB.Position) -> None:
         try:
-            parsedPosition = ibkr.extractPosition(position)
+            parsedPosition = ibkr._extractPosition(position)
         except ValueError:
             return
 
@@ -366,7 +413,7 @@ class TestIBKRParsing(unittest.TestCase):
     @given(validPositions)
     def test_parsedPositionConvertsToContract(self,
                                               position: IB.Position) -> None:
-        parsedPosition = ibkr.extractPosition(position)
+        parsedPosition = ibkr._extractPosition(position)
         self.assertEqual(parsedPosition.quantity,
                          Position.quantizeQuantity(Decimal(position.position)))
         self.validatePositionContract(position, parsedPosition.instrument)
