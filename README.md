@@ -150,7 +150,12 @@ python -m bankroll \
 
 ## Fidelity
 
-[Fidelity](https://www.fidelity.com) is supported through a similar facility as [Schwab](#charles-schwab). More detailed instructions have yet to be written—[contributions welcome](CONTRIBUTING.md)!
+[Fidelity](https://www.fidelity.com) is supported through a similar facility as [Schwab](#charles-schwab).
+
+* To export position data, [download from the Portfolio Positions page](https://www.fidelity.com/webcontent/ap002390-mlo-content/18.09/help/learn_portfolio_positions.shtml#canidownload).
+* To export transactions data, [download from the History page](https://www.fidelity.com/customer-service/faqs-exporting-account-information#).
+
+More detailed instructions have yet to be written—[contributions welcome](CONTRIBUTING.md)!
 
 ## Vanguard
 
