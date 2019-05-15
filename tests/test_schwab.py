@@ -61,7 +61,33 @@ class TestSchwabTransactions(unittest.TestCase):
     def test_activityValidity(self) -> None:
         self.assertGreater(len(self.activity), 0)
 
-    def test_buySecurity(self) -> None:
+    def test_buyBond(self) -> None:
+        ts = self.activityByDate[date(2018, 3, 25)]
+        self.assertEqual(len(ts), 1)
+        self.assertEqual(
+            ts[0],
+            Trade(date=ts[0].date,
+                  instrument=Bond(symbol='912586AC5', currency=Currency.USD),
+                  quantity=Decimal('10000'),
+                  amount=Cash(currency=Currency.USD,
+                              quantity=Decimal('-9956.80')),
+                  fees=Cash(currency=Currency.USD, quantity=Decimal(0)),
+                  flags=TradeFlags.OPEN))
+
+    def test_redeemBond(self) -> None:
+        ts = self.activityByDate[date(2018, 6, 2)]
+        self.assertEqual(len(ts), 1)
+        self.assertEqual(
+            ts[0],
+            Trade(date=ts[0].date,
+                  instrument=Bond(symbol='912586AC5', currency=Currency.USD),
+                  quantity=Decimal('-10000'),
+                  amount=Cash(currency=Currency.USD,
+                              quantity=Decimal('10000')),
+                  fees=Cash(currency=Currency.USD, quantity=Decimal(0)),
+                  flags=TradeFlags.CLOSE | TradeFlags.EXPIRED))
+
+    def test_buyStock(self) -> None:
         ts = self.activityByDate[date(2017, 2, 22)]
         self.assertEqual(len(ts), 1)
         self.assertEqual(

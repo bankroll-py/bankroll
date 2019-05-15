@@ -3,8 +3,9 @@ from bankroll.parsetools import lenientParse
 from datetime import date, datetime
 from decimal import Decimal
 from enum import unique
+from itertools import chain, groupby
 from pathlib import Path
-from typing import Dict, List, NamedTuple, Optional, Sequence
+from typing import Dict, Iterable, List, NamedTuple, Optional, Sequence, TypeVar
 
 import bankroll.configuration as configuration
 import csv
@@ -79,6 +80,7 @@ class _SchwabPosition(NamedTuple):
     peRatio: str
     wk52Low: str
     wk52High: str
+    volume: str
     securityType: str
 
 
@@ -102,6 +104,13 @@ def _parseSchwabPosition(p: _SchwabPosition) -> Optional[Position]:
                                    quantity=_schwabDecimal(p.costBasis)))
 
 
+_T = TypeVar('_T')
+
+
+def padToLength(seq: Sequence[_T], length: int, padding: _T) -> Iterable[_T]:
+    return chain(seq, [padding] * (length - len(seq)))
+
+
 def parsePositions(path: Path, lenient: bool = False) -> Sequence[Position]:
     with open(path, newline='') as csvfile:
         reader = csv.reader(csvfile)
@@ -113,9 +122,14 @@ def parsePositions(path: Path, lenient: bool = False) -> Sequence[Position]:
         return list(
             filter(
                 None,
-                lenientParse((_SchwabPosition._make(r) for r in rows),
-                             transform=_parseSchwabPosition,
-                             lenient=lenient)))
+                lenientParse(
+                    (
+                        _SchwabPosition._make(
+                            # Not all rows are the correct length, so pad until they are
+                            padToLength(r, len(_SchwabPosition._fields), ''))
+                        for r in rows),
+                    transform=_parseSchwabPosition,
+                    lenient=lenient)))
 
 
 class _SchwabTransaction(NamedTuple):
@@ -166,7 +180,10 @@ def _forceParseSchwabTransaction(t: _SchwabTransaction,
                  flags=flags)
 
 
-def _parseSchwabTransaction(t: _SchwabTransaction) -> Optional[Activity]:
+def _parseSchwabTransaction(
+        t: _SchwabTransaction,
+        otherTransactionsThisDate: Iterable[_SchwabTransaction]
+) -> Optional[Activity]:
     dividendActions = [
         'Cash Dividend',
         'Reinvest Dividend',
@@ -178,6 +195,41 @@ def _parseSchwabTransaction(t: _SchwabTransaction) -> Optional[Activity]:
                                proceeds=Cash(currency=Currency.USD,
                                              quantity=_schwabDecimal(
                                                  t.amount)))
+
+    # Bond redemptions are split into two entries, for some reason.
+    if t.action == 'Full Redemption Adj':
+        redemption = next(
+            (r for r in otherTransactionsThisDate
+             if r.symbol == t.symbol and r.action == 'Full Redemption'), None)
+        if not redemption:
+            raise ValueError(
+                f'Expected to find "Full Redemption" action on same date as {t}'
+            )
+
+        quantity = Decimal(redemption.quantity)
+        amount = _schwabDecimal(t.amount)
+
+        return Trade(
+            date=_parseSchwabTransactionDate(t.date),
+            instrument=Bond(t.symbol, currency=Currency.USD),
+            quantity=quantity,
+            amount=Cash(currency=Currency.USD, quantity=amount),
+            fees=Cash(currency=Currency.USD, quantity=Decimal(0)),
+            # TODO: Do we want a new TradeFlag?
+            flags=TradeFlags.CLOSE | TradeFlags.EXPIRED)
+
+    if t.action == 'Full Redemption':
+        adj = next(
+            (r for r in otherTransactionsThisDate
+             if r.symbol == t.symbol and r.action == 'Full Redemption Adj'),
+            None)
+        if not adj:
+            raise ValueError(
+                f'Expected to find "Full Redemption Adj" action on same date as {t}'
+            )
+
+        # Will process on the adjustment entry
+        return None
 
     ignoredActions = [
         'Wire Funds',
@@ -233,10 +285,18 @@ def parseTransactions(path: Path, lenient: bool = False) -> List[Activity]:
             and Decimal(r.quantity) > 0
         ]
 
+        # Annoying hack because some transactions depend on others around them.
+        rowsByDate = {
+            d: list(t)
+            for d, t in groupby(sorted(rows, key=lambda t: t.date),
+                                key=lambda t: t.date)
+        }
+
         activity = filter(
             None,
             lenientParse(rows,
-                         transform=_parseSchwabTransaction,
+                         transform=lambda t: _parseSchwabTransaction(
+                             t, otherTransactionsThisDate=rowsByDate[t.date]),
                          lenient=lenient))
         return _fixUpShortSales(list(activity), inboundTransfers)
 

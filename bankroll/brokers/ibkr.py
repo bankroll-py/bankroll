@@ -607,7 +607,8 @@ class IBDataProvider(MarketDataProvider):
         self._client = client
         super().__init__()
 
-    def qualifyContracts(self, instruments: Iterable[Instrument]) -> Dict[Instrument, IB.Contract]:
+    def qualifyContracts(self, instruments: Iterable[Instrument]
+                         ) -> Dict[Instrument, IB.Contract]:
         # IB.Contract is not guaranteed to be hashable, so we orient the table this way, albeit less useful.
         # TODO: Check uniqueness of instruments
         contractsByInstrument: Dict[Instrument, IB.Contract] = {
@@ -621,15 +622,15 @@ class IBDataProvider(MarketDataProvider):
 
     def fetchHistoricalData(self, instrument: Instrument) -> pd.DataFrame:
         contractsByInstrument = self.qualifyContracts([instrument])
-        data = self._client.reqHistoricalData(contractsByInstrument[instrument],
-                                              endDateTime='',
-                                              durationStr='10 Y',
-                                              barSizeSetting='1 day',
-                                              whatToShow='TRADES',
-                                              useRTH=True,
-                                              formatDate=1)
+        data = self._client.reqHistoricalData(
+            contractsByInstrument[instrument],
+            endDateTime='',
+            durationStr='10 Y',
+            barSizeSetting='1 day',
+            whatToShow='TRADES',
+            useRTH=True,
+            formatDate=1)
         return IB.util.df(data)
-
 
     def fetchQuotes(self,
                     instruments: Iterable[Instrument],
@@ -652,20 +653,26 @@ class IBDataProvider(MarketDataProvider):
             last: Optional[Cash] = None
             close: Optional[Cash] = None
 
+            factor = 1
+
+            # Tickers are quoted in GBX despite all the other data being in GBP.
+            if instrument.currency == Currency.GBP:
+                factor = 100
+
             if (ticker.bid
                     and math.isfinite(ticker.bid)) and not ticker.bidSize == 0:
                 bid = Cash(currency=instrument.currency,
-                           quantity=Decimal(ticker.bid))
+                           quantity=Decimal(ticker.bid) / factor)
             if (ticker.ask
                     and math.isfinite(ticker.ask)) and not ticker.askSize == 0:
                 ask = Cash(currency=instrument.currency,
-                           quantity=Decimal(ticker.ask))
+                           quantity=Decimal(ticker.ask) / factor)
             if (ticker.last and math.isfinite(
                     ticker.last)) and not ticker.lastSize == 0:
                 last = Cash(currency=instrument.currency,
-                            quantity=Decimal(ticker.last))
+                            quantity=Decimal(ticker.last) / factor)
             if ticker.close and math.isfinite(ticker.close):
                 close = Cash(currency=instrument.currency,
-                             quantity=Decimal(ticker.close))
+                             quantity=Decimal(ticker.close) / factor)
 
             yield (instrument, Quote(bid=bid, ask=ask, last=last, close=close))
