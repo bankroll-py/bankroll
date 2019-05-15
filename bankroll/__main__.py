@@ -90,12 +90,9 @@ def printPositions(data: DataAggregator, args: Namespace) -> None:
         elif args.live_value:
             logging.warning(f'Could not fetch market value for {p.instrument}')
 
-        if not isinstance(p.instrument, Stock):
-            continue
-
         print(f'\tCost basis: {p.costBasis}')
 
-        if args.realized_basis:
+        if args.realized_basis and isinstance(p.instrument, Stock):
             realizedBasis = analysis.realizedBasisForSymbol(
                 p.instrument.symbol, activity=data.activity)
             print(f'\tRealized basis: {realizedBasis}')
