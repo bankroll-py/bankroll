@@ -9,6 +9,7 @@ Ingest portfolio and other data from multiple brokerages, and analyze it.
    1. [Charles Schwab](#charles-schwab)
    1. [Fidelity](#fidelity)
    1. [Vanguard](#vanguard)
+   1. [(your broker here)](#your-broker-here)
 1. [Saving configuration](#saving-configuration)
 1. [Extending `bankroll`](#extending-bankroll)
 
@@ -160,6 +161,10 @@ More detailed instructions have yet to be written—[contributions welcome](CONT
 ## Vanguard
 
 [Vanguard](https://investor.vanguard.com) is a **work in progress**, and may not be as fully-featured as the other brokerages listed here. [Contributions welcome](CONTRIBUTING.md)!
+
+## (your broker here)
+
+`bankroll` intends to abstract away broker-specific details as much as possible, to minimize the work required to support each one, so if your broker isn't listed above, please consider [contributing](CONTRIBUTING.md) an implementation for them! We want the list to grow over time, because it's extremely useful to be able to aggregate and analyze data across multiple brokers at once.
 
 # Saving configuration
 
