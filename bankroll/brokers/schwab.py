@@ -3,8 +3,9 @@ from bankroll.parsetools import lenientParse
 from datetime import date, datetime
 from decimal import Decimal
 from enum import unique
+from itertools import chain
 from pathlib import Path
-from typing import Dict, List, NamedTuple, Optional, Sequence
+from typing import Dict, Iterable, List, NamedTuple, Optional, Sequence, TypeVar
 
 import bankroll.configuration as configuration
 import csv
@@ -79,6 +80,7 @@ class _SchwabPosition(NamedTuple):
     peRatio: str
     wk52Low: str
     wk52High: str
+    volume: str
     securityType: str
 
 
@@ -102,6 +104,13 @@ def _parseSchwabPosition(p: _SchwabPosition) -> Optional[Position]:
                                    quantity=_schwabDecimal(p.costBasis)))
 
 
+_T = TypeVar('_T')
+
+
+def padToLength(seq: Sequence[_T], length: int, padding: _T) -> Iterable[_T]:
+    return chain(seq, [padding] * (length - len(seq)))
+
+
 def parsePositions(path: Path, lenient: bool = False) -> Sequence[Position]:
     with open(path, newline='') as csvfile:
         reader = csv.reader(csvfile)
@@ -113,9 +122,14 @@ def parsePositions(path: Path, lenient: bool = False) -> Sequence[Position]:
         return list(
             filter(
                 None,
-                lenientParse((_SchwabPosition._make(r) for r in rows),
-                             transform=_parseSchwabPosition,
-                             lenient=lenient)))
+                lenientParse(
+                    (
+                        _SchwabPosition._make(
+                            # Not all rows are the correct length, so pad until they are
+                            padToLength(r, len(_SchwabPosition._fields), ''))
+                        for r in rows),
+                    transform=_parseSchwabPosition,
+                    lenient=lenient)))
 
 
 class _SchwabTransaction(NamedTuple):
