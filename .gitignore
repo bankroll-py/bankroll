@@ -106,3 +106,7 @@ venv.bak/
 
 twsapi.zip
 mydata/
+
+*.ini
+!bankroll.default.ini
+!bankroll.test.ini
