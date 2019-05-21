@@ -12,7 +12,7 @@ pip uninstall -r requirements.txt --yes
 echo
 echo " => Installing bankroll"
 
-pip install .
+pip install -U .
 
 echo
 echo " => Testing bankroll --help"
