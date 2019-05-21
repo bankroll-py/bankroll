@@ -229,6 +229,20 @@ class TestIBKRActivity(unittest.TestCase):
         self.assertNotIn(date(2018, 12, 20), self.activityByDate)
         self.assertNotIn(date(2019, 1, 25), self.activityByDate)
 
+    def test_bondInterest(self) -> None:
+        ts = self.activityByDate[date(2019, 1, 17)]
+        self.assertEqual(len(ts), 1)
+        self.assertEqual(
+            ts[0],
+            CashPayment(date=ts[0].date,
+                        instrument=Bond('BA 3 3/4 02/17/19',
+                                        Currency.USD,
+                                        validateSymbol=False),
+                        proceeds=helpers.cashUSD(Decimal('18.75'))))
+
+        self.assertNotIn(date(2019, 1, 15), self.activityByDate)
+        self.assertNotIn(date(2019, 1, 14), self.activityByDate)
+
 
 class TestIBKRParsing(unittest.TestCase):
     validSymbols = text(min_size=1)
