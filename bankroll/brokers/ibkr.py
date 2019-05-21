@@ -54,10 +54,12 @@ def loadPositionsAndActivity(
     if twsPort:
         client = IB.IB()
 
-        # Random client ID to minimize chances of conflict
-        client.connect('127.0.0.1',
-                       port=int(twsPort),
-                       clientId=randint(1, 1000000))
+        client.connect(
+            '127.0.0.1',
+            port=int(twsPort),
+            # Random client ID to minimize chances of conflict
+            clientId=randint(1, 1000000),
+            readonly=True)
 
         positions += downloadPositions(client, lenient=lenient)
 

@@ -30,7 +30,7 @@ setup(
         "Typing :: Typed",
     ],
     install_requires=[
-        'ib-insync>=0.9.47',
+        'ib-insync>=0.9.50',
         'progress>=1.5',
         'backoff>=1.8',
         'pyfolio>=0.9.0',
