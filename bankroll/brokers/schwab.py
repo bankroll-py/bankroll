@@ -191,7 +191,7 @@ def _parseSchwabTransaction(
 
     if t.action in dividendActions:
         return CashPayment(date=_parseSchwabTransactionDate(t.date),
-                               stock=Stock(t.symbol, currency=Currency.USD),
+                               instrument=Stock(t.symbol, currency=Currency.USD),
                                proceeds=Cash(currency=Currency.USD,
                                              quantity=_schwabDecimal(
                                                  t.amount)))

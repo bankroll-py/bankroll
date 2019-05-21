@@ -460,7 +460,7 @@ def _parseChangeInDividendAccrual(entry: _IBChangeInDividendAccrual
                     quantity=-Decimal(entry.netAmount))
 
     return CashPayment(date=_parseIBDate(entry.payDate),
-                           stock=Stock(entry.symbol,
+                           instrument=Stock(entry.symbol,
                                        currency=Currency(entry.currency)),
                            proceeds=proceeds)
 

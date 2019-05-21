@@ -162,7 +162,7 @@ def _forceParseVanguardTransaction(t: _VanguardTransaction,
 def _parseVanguardTransaction(t: _VanguardTransaction) -> Optional[Activity]:
     if t.transactionType == 'Dividend':
         return CashPayment(date=_parseVanguardTransactionDate(t.tradeDate),
-                               stock=Stock(
+                               instrument=Stock(
                                    t.symbol if t.symbol else t.investmentName,
                                    currency=Currency.USD),
                                proceeds=Cash(currency=Currency.USD,

@@ -207,7 +207,7 @@ def _forceParseFidelityTransaction(t: _FidelityTransaction,
 def _parseFidelityTransaction(t: _FidelityTransaction) -> Optional[Activity]:
     if t.action == 'DIVIDEND RECEIVED':
         return CashPayment(date=_parseFidelityTransactionDate(t.date),
-                               stock=Stock(t.symbol,
+                               instrument=Stock(t.symbol,
                                            currency=Currency(t.currency)),
                                proceeds=Cash(currency=Currency(t.currency),
                                              quantity=Decimal(t.amount)))

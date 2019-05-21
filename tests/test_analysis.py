@@ -93,8 +93,8 @@ class TestAnalysis(unittest.TestCase):
                   flags=TradeFlags.OPEN),
             # and get a $100 dividend,
             CashPayment(date=datetime.now(),
-                            stock=Stock('SPY', Currency.USD),
-                            proceeds=helpers.cashUSD(Decimal('100')))
+                        instrument=Stock('SPY', Currency.USD),
+                        proceeds=helpers.cashUSD(Decimal('100')))
         ]
 
         basis = realizedBasisForSymbol('SPY', activity)
@@ -113,8 +113,8 @@ class TestAnalysis(unittest.TestCase):
                   flags=TradeFlags.OPEN),
             # and get a $100 dividend,
             CashPayment(date=datetime.now(),
-                            stock=Stock('SPY', Currency.USD),
-                            proceeds=helpers.cashUSD(Decimal('100'))),
+                        instrument=Stock('SPY', Currency.USD),
+                        proceeds=helpers.cashUSD(Decimal('100'))),
             # then reinvest it for an equivalent amount of shares,
             Trade(date=datetime.now(),
                   instrument=Stock('SPY', Currency.USD),

@@ -107,8 +107,8 @@ class TestFidelityTransactions(unittest.TestCase):
         self.assertEqual(
             ts[1],
             CashPayment(date=ts[1].date,
-                            stock=Stock('ROBO', Currency.USD),
-                            proceeds=helpers.cashUSD(Decimal('6.78'))))
+                        instrument=Stock('ROBO', Currency.USD),
+                        proceeds=helpers.cashUSD(Decimal('6.78'))))
 
     def test_reinvestShares(self) -> None:
         ts = self.activityByDate[date(2017, 11, 9)]

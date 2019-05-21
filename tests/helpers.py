@@ -148,7 +148,7 @@ def dividendPayments(date: SearchStrategy[datetime] = datetimes(),
                      stock: SearchStrategy[Stock] = stocks(),
                      proceeds: SearchStrategy[Cash] = cash()
                      ) -> SearchStrategy[CashPayment]:
-    return builds(CashPayment, date=date, stock=stock, proceeds=proceeds)
+    return builds(CashPayment, date=date, instrument=stock, proceeds=proceeds)
 
 
 def trades(date: SearchStrategy[datetime] = datetimes(),

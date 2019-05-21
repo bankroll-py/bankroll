@@ -218,8 +218,8 @@ class TestIBKRActivity(unittest.TestCase):
         self.assertEqual(
             ts[0],
             CashPayment(date=ts[0].date,
-                            stock=Stock('AAPL', Currency.USD),
-                            proceeds=helpers.cashUSD(Decimal('23.36'))))
+                        instrument=Stock('AAPL', Currency.USD),
+                        proceeds=helpers.cashUSD(Decimal('23.36'))))
 
         self.assertNotIn(date(2019, 2, 7), self.activityByDate)
         self.assertNotIn(date(2019, 2, 8), self.activityByDate)

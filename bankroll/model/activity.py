@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 from enum import Flag, auto
@@ -9,59 +10,20 @@ from .instrument import Instrument, Stock
 from .position import Position
 
 
+@dataclass(frozen=True)
 class Activity(ABC):
-    @abstractmethod
-    def __init__(self, date: datetime):
-        self._date = date
-        super().__init__()
-
-    @property
-    def date(self) -> datetime:
-        return self._date
-
-    @abstractmethod
-    def __eq__(self, other: Any) -> bool:
-        if not isinstance(other, Activity):
-            return False
-
-        return bool(self.date == other.date)
-
-    @abstractmethod
-    def __hash__(self) -> int:
-        return hash(self.date)
+    date: datetime
 
 
 # Represents a cash payment, such as a stock dividend or bond interest, whether
 # or not it was cashed out or reinvested.
+@dataclass(frozen=True)
 class CashPayment(Activity):
-    def __init__(self, date: datetime, stock: Stock, proceeds: Cash):
-        self._stock = stock
-        self._proceeds = proceeds
-        super().__init__(date)
-
-    @property
-    def stock(self) -> Stock:
-        return self._stock
-
-    @property
-    def proceeds(self) -> Cash:
-        return self._proceeds
-
-    def __eq__(self, other: Any) -> bool:
-        if not isinstance(other, CashPayment) or not super().__eq__(other):
-            return False
-
-        return bool(self.stock == other.stock
-                    and self.proceeds == other.proceeds)
-
-    def __hash__(self) -> int:
-        return super().__hash__() ^ hash((self.stock, self.proceeds))
-
-    def __repr__(self) -> str:
-        return f'CashPayment(date={self.date!r}, stock={self.stock!r}, proceeds={self.proceeds!r})'
+    instrument: Instrument
+    proceeds: Cash
 
     def __str__(self) -> str:
-        return f'{self.date.date()} Dividend       {self.stock:21} {self.proceeds.paddedString(padding=10)}'
+        return f'{self.date.date()} Cash payment   {self.instrument:21} {self.proceeds.paddedString(padding=10)}'
 
 
 class TradeFlags(Flag):

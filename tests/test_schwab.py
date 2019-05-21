@@ -106,8 +106,8 @@ class TestSchwabTransactions(unittest.TestCase):
         self.assertEqual(
             ts[0],
             CashPayment(date=ts[0].date,
-                            stock=Stock('VOO', Currency.USD),
-                            proceeds=helpers.cashUSD(Decimal('22.95'))))
+                        instrument=Stock('VOO', Currency.USD),
+                        proceeds=helpers.cashUSD(Decimal('22.95'))))
 
     def test_cashDividend(self) -> None:
         ts = self.activityByDate[date(2018, 3, 6)]
@@ -115,8 +115,8 @@ class TestSchwabTransactions(unittest.TestCase):
         self.assertEqual(
             ts[0],
             CashPayment(date=ts[0].date,
-                            stock=Stock('VGLT', Currency.USD),
-                            proceeds=helpers.cashUSD(Decimal('12.85'))))
+                        instrument=Stock('VGLT', Currency.USD),
+                        proceeds=helpers.cashUSD(Decimal('12.85'))))
 
     def test_reinvestShares(self) -> None:
         ts = self.activityByDate[date(2017, 3, 29)]

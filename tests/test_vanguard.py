@@ -123,8 +123,8 @@ class TestVanguardTransactions(unittest.TestCase):
         self.assertEqual(
             ts[0],
             CashPayment(date=ts[0].date,
-                            stock=Stock('VWO', Currency.USD),
-                            proceeds=helpers.cashUSD(Decimal('29.35'))))
+                        instrument=Stock('VWO', Currency.USD),
+                        proceeds=helpers.cashUSD(Decimal('29.35'))))
 
         self.assertEqual(
             ts[1],
