@@ -1,6 +1,6 @@
 from functools import reduce
 from itertools import groupby
-from .model import Activity, Cash, DividendPayment, Trade, Instrument, Option, MarketDataProvider, Quote, Position
+from .model import Activity, Cash, CashPayment, Trade, Instrument, Option, MarketDataProvider, Quote, Position
 from progress.bar import Bar
 from typing import Dict, Iterable, Optional, Tuple
 
@@ -17,8 +17,8 @@ def _normalizeSymbol(symbol: str) -> str:
 def _activityAffectsSymbol(activity: Activity, symbol: str) -> bool:
     normalized = _normalizeSymbol(symbol)
 
-    if isinstance(activity, DividendPayment):
-        return _normalizeSymbol(activity.stock.symbol) == normalized
+    if isinstance(activity, CashPayment):
+        return _normalizeSymbol(activity.instrument.symbol) == normalized
     elif isinstance(activity, Trade):
         return (isinstance(activity.instrument, Option) and _normalizeSymbol(
             activity.instrument.underlying) == normalized) or _normalizeSymbol(
@@ -33,7 +33,7 @@ def _activityAffectsSymbol(activity: Activity, symbol: str) -> bool:
 def realizedBasisForSymbol(symbol: str,
                            activity: Iterable[Activity]) -> Optional[Cash]:
     def f(basis: Optional[Cash], activity: Activity) -> Optional[Cash]:
-        if isinstance(activity, DividendPayment):
+        if isinstance(activity, CashPayment):
             return basis - activity.proceeds if basis else -activity.proceeds
         elif isinstance(activity, Trade):
             return basis - activity.proceeds if basis else -activity.proceeds

@@ -1,4 +1,4 @@
-from bankroll import Activity, Bond, Cash, Currency, Instrument, Position, Stock, DividendPayment, Trade, TradeFlags
+from bankroll import Activity, Bond, Cash, Currency, Instrument, Position, Stock, CashPayment, Trade, TradeFlags
 from bankroll.brokers import vanguard
 from datetime import date
 from decimal import Decimal
@@ -122,9 +122,9 @@ class TestVanguardTransactions(unittest.TestCase):
 
         self.assertEqual(
             ts[0],
-            DividendPayment(date=ts[0].date,
-                            stock=Stock('VWO', Currency.USD),
-                            proceeds=helpers.cashUSD(Decimal('29.35'))))
+            CashPayment(date=ts[0].date,
+                        instrument=Stock('VWO', Currency.USD),
+                        proceeds=helpers.cashUSD(Decimal('29.35'))))
 
         self.assertEqual(
             ts[1],

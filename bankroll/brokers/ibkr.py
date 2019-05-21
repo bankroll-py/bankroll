@@ -2,12 +2,12 @@ from datetime import datetime
 from decimal import Context, Decimal, DivisionByZero, Overflow, InvalidOperation, localcontext
 from enum import Enum, IntEnum, unique
 from itertools import count
-from bankroll.model import Currency, Cash, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, TradeFlags, Trade, MarketDataProvider, Quote, Activity, DividendPayment
+from bankroll.model import Currency, Cash, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, TradeFlags, Trade, MarketDataProvider, Quote, Activity, CashPayment
 from bankroll.parsetools import lenientParse
 from pathlib import Path
 from progress.spinner import Spinner
 from random import randint
-from typing import Any, Awaitable, Callable, Dict, Iterable, List, Mapping, NamedTuple, Optional, Tuple, Type, no_type_check
+from typing import Any, Awaitable, Callable, Dict, Iterable, List, Mapping, NamedTuple, Optional, Tuple, Type, Union, no_type_check
 import pandas as pd
 
 import backoff
@@ -328,60 +328,62 @@ def _parseIBDate(datestr: str) -> datetime:
     return datetime.strptime(datestr, '%Y%m%d')
 
 
-def _parseFutureOptionTrade(trade: _IBTradeConfirm) -> Instrument:
-    if trade.putCall == 'C':
+def _parseFutureOption(
+        entry: Union[_IBTradeConfirm, _IBChangeInDividendAccrual]
+) -> Instrument:
+    if entry.putCall == 'C':
         optionType = OptionType.CALL
-    elif trade.putCall == 'P':
+    elif entry.putCall == 'P':
         optionType = OptionType.PUT
     else:
-        raise ValueError(f'Unexpected value for putCall in IB trade: {trade}')
+        raise ValueError(f'Unexpected value for putCall in IB entry: {entry}')
 
-    return FutureOption(symbol=trade.symbol,
-                        currency=Currency[trade.currency],
-                        underlying=trade.underlyingSymbol,
+    return FutureOption(symbol=entry.symbol,
+                        currency=Currency[entry.currency],
+                        underlying=entry.underlyingSymbol,
                         optionType=optionType,
-                        expiration=_parseIBDate(trade.expiry).date(),
-                        strike=_parseFiniteDecimal(trade.strike),
-                        multiplier=_parseFiniteDecimal(trade.multiplier))
+                        expiration=_parseIBDate(entry.expiry).date(),
+                        strike=_parseFiniteDecimal(entry.strike),
+                        multiplier=_parseFiniteDecimal(entry.multiplier))
+
+
+def _parseInstrument(entry: Union[_IBTradeConfirm, _IBChangeInDividendAccrual]
+                     ) -> Instrument:
+    symbol = entry.symbol
+    if not symbol:
+        raise ValueError(f'Missing symbol in entry: {entry}')
+
+    if entry.currency not in Currency.__members__:
+        raise ValueError(f'Unrecognized currency in entry: {entry}')
+
+    currency = Currency[entry.currency]
+
+    tag = entry.assetCategory
+    if tag == 'STK':
+        return Stock(symbol=symbol, currency=currency)
+    elif tag == 'BILL' or tag == 'BOND':
+        return Bond(symbol=symbol, currency=currency, validateSymbol=False)
+    elif tag == 'OPT':
+        return _parseOption(symbol=symbol,
+                            currency=currency,
+                            multiplier=_parseFiniteDecimal(entry.multiplier))
+    elif tag == 'FUT':
+        return Future(symbol=symbol,
+                      currency=currency,
+                      multiplier=_parseFiniteDecimal(entry.multiplier),
+                      expiration=_parseIBDate(entry.expiry).date())
+    elif tag == 'CASH':
+        return _parseForex(symbol=symbol, currency=currency)
+    elif tag == 'FOP':
+        return _parseFutureOption(entry)
+    else:
+        raise ValueError(
+            f'Unrecognized/unsupported security type in entry: {entry}')
 
 
 def _parseTradeConfirm(trade: _IBTradeConfirm) -> Trade:
-    tag = trade.assetCategory
-    symbol = trade.symbol
-    if not symbol:
-        raise ValueError(f'Missing symbol in trade: {trade}')
-
-    if trade.currency not in Currency.__members__:
-        raise ValueError(f'Unrecognized currency in trade: {trade}')
-
-    currency = Currency[trade.currency]
-
     try:
-        instrument: Instrument
-        if tag == 'STK':
-            instrument = Stock(symbol=symbol, currency=currency)
-        elif tag == 'BILL' or tag == 'BOND':
-            instrument = Bond(symbol=symbol,
-                              currency=currency,
-                              validateSymbol=False)
-        elif tag == 'OPT':
-            instrument = _parseOption(symbol=symbol,
-                                      currency=currency,
-                                      multiplier=_parseFiniteDecimal(
-                                          trade.multiplier))
-        elif tag == 'FUT':
-            instrument = Future(symbol=symbol,
-                                currency=currency,
-                                multiplier=_parseFiniteDecimal(
-                                    trade.multiplier),
-                                expiration=_parseIBDate(trade.expiry).date())
-        elif tag == 'CASH':
-            instrument = _parseForex(symbol=symbol, currency=currency)
-        elif tag == 'FOP':
-            instrument = _parseFutureOptionTrade(trade)
-        else:
-            raise ValueError(
-                f'Unrecognized/unsupported security type in trade: {trade}')
+        instrument = _parseInstrument(trade)
 
         flagsByCode = {
             'O': TradeFlags.OPEN,
@@ -450,19 +452,13 @@ def _parseChangeInDividendAccrual(entry: _IBChangeInDividendAccrual
     if 'Re' not in codes:
         return None
 
-    if entry.assetCategory != 'STK':
-        raise ValueError(
-            f'Expected to see dividend accrual for a stock, not {entry.assetCategory}: {entry}'
-        )
-
     # IB "reverses" dividend postings when they're paid out, so they all appear as debits.
     proceeds = Cash(currency=Currency(entry.currency),
                     quantity=-Decimal(entry.netAmount))
 
-    return DividendPayment(date=_parseIBDate(entry.payDate),
-                           stock=Stock(entry.symbol,
-                                       currency=Currency(entry.currency)),
-                           proceeds=proceeds)
+    return CashPayment(date=_parseIBDate(entry.payDate),
+                       instrument=_parseInstrument(entry),
+                       proceeds=proceeds)
 
 
 def _activityFromReport(report: IB.FlexReport,

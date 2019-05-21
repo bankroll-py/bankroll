@@ -1,4 +1,4 @@
-from bankroll import Cash, Currency, Position, Instrument, Stock, Bond, Option, OptionType, Forex, Future, FutureOption, Trade, TradeFlags, DividendPayment
+from bankroll import Cash, Currency, Position, Instrument, Stock, Bond, Option, OptionType, Forex, Future, FutureOption, Trade, TradeFlags, CashPayment
 from bankroll.brokers import ibkr
 from datetime import date
 from decimal import Decimal
@@ -217,9 +217,9 @@ class TestIBKRActivity(unittest.TestCase):
         self.assertEqual(len(ts), 1)
         self.assertEqual(
             ts[0],
-            DividendPayment(date=ts[0].date,
-                            stock=Stock('AAPL', Currency.USD),
-                            proceeds=helpers.cashUSD(Decimal('23.36'))))
+            CashPayment(date=ts[0].date,
+                        instrument=Stock('AAPL', Currency.USD),
+                        proceeds=helpers.cashUSD(Decimal('23.36'))))
 
         self.assertNotIn(date(2019, 2, 7), self.activityByDate)
         self.assertNotIn(date(2019, 2, 8), self.activityByDate)
@@ -228,6 +228,20 @@ class TestIBKRActivity(unittest.TestCase):
         self.assertNotIn(date(2018, 12, 19), self.activityByDate)
         self.assertNotIn(date(2018, 12, 20), self.activityByDate)
         self.assertNotIn(date(2019, 1, 25), self.activityByDate)
+
+    def test_bondInterest(self) -> None:
+        ts = self.activityByDate[date(2019, 1, 17)]
+        self.assertEqual(len(ts), 1)
+        self.assertEqual(
+            ts[0],
+            CashPayment(date=ts[0].date,
+                        instrument=Bond('BA 3 3/4 02/17/19',
+                                        Currency.USD,
+                                        validateSymbol=False),
+                        proceeds=helpers.cashUSD(Decimal('18.75'))))
+
+        self.assertNotIn(date(2019, 1, 15), self.activityByDate)
+        self.assertNotIn(date(2019, 1, 14), self.activityByDate)
 
 
 class TestIBKRParsing(unittest.TestCase):
