@@ -1,4 +1,4 @@
-from bankroll import Cash, Currency, Stock, Bond, Option, OptionType, Position, DividendPayment, Trade, TradeFlags
+from bankroll import Cash, Currency, Stock, Bond, Option, OptionType, Position, CashPayment, Trade, TradeFlags
 from bankroll.brokers import fidelity
 from datetime import date
 from decimal import Decimal
@@ -106,7 +106,7 @@ class TestFidelityTransactions(unittest.TestCase):
         self.assertEqual(len(ts), 4)
         self.assertEqual(
             ts[1],
-            DividendPayment(date=ts[1].date,
+            CashPayment(date=ts[1].date,
                             stock=Stock('ROBO', Currency.USD),
                             proceeds=helpers.cashUSD(Decimal('6.78'))))
 

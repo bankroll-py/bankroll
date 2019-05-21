@@ -1,4 +1,4 @@
-from bankroll.model import Activity, Cash, Currency, Instrument, Stock, Bond, Option, OptionType, Position, DividendPayment, Trade, TradeFlags
+from bankroll.model import Activity, Cash, Currency, Instrument, Stock, Bond, Option, OptionType, Position, CashPayment, Trade, TradeFlags
 from bankroll.parsetools import lenientParse
 from datetime import date, datetime
 from decimal import Decimal
@@ -190,7 +190,7 @@ def _parseSchwabTransaction(
     ]
 
     if t.action in dividendActions:
-        return DividendPayment(date=_parseSchwabTransactionDate(t.date),
+        return CashPayment(date=_parseSchwabTransactionDate(t.date),
                                stock=Stock(t.symbol, currency=Currency.USD),
                                proceeds=Cash(currency=Currency.USD,
                                              quantity=_schwabDecimal(

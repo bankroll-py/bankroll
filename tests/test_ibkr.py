@@ -1,4 +1,4 @@
-from bankroll import Cash, Currency, Position, Instrument, Stock, Bond, Option, OptionType, Forex, Future, FutureOption, Trade, TradeFlags, DividendPayment
+from bankroll import Cash, Currency, Position, Instrument, Stock, Bond, Option, OptionType, Forex, Future, FutureOption, Trade, TradeFlags, CashPayment
 from bankroll.brokers import ibkr
 from datetime import date
 from decimal import Decimal
@@ -217,7 +217,7 @@ class TestIBKRActivity(unittest.TestCase):
         self.assertEqual(len(ts), 1)
         self.assertEqual(
             ts[0],
-            DividendPayment(date=ts[0].date,
+            CashPayment(date=ts[0].date,
                             stock=Stock('AAPL', Currency.USD),
                             proceeds=helpers.cashUSD(Decimal('23.36'))))
 

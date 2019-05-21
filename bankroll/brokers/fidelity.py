@@ -1,5 +1,5 @@
 from bankroll.csvsectionslicer import parseSectionsForCSV, CSVSectionCriterion, CSVSectionResult
-from bankroll.model import Activity, Cash, Currency, Instrument, Stock, Bond, Option, OptionType, Position, DividendPayment, Trade, TradeFlags
+from bankroll.model import Activity, Cash, Currency, Instrument, Stock, Bond, Option, OptionType, Position, CashPayment, Trade, TradeFlags
 from bankroll.parsetools import lenientParse
 from datetime import date, datetime
 from decimal import Decimal
@@ -206,7 +206,7 @@ def _forceParseFidelityTransaction(t: _FidelityTransaction,
 
 def _parseFidelityTransaction(t: _FidelityTransaction) -> Optional[Activity]:
     if t.action == 'DIVIDEND RECEIVED':
-        return DividendPayment(date=_parseFidelityTransactionDate(t.date),
+        return CashPayment(date=_parseFidelityTransactionDate(t.date),
                                stock=Stock(t.symbol,
                                            currency=Currency(t.currency)),
                                proceeds=Cash(currency=Currency(t.currency),

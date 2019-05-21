@@ -31,8 +31,9 @@ class Activity(ABC):
         return hash(self.date)
 
 
-# Represents dividend activity, whether or not it was cashed out or reinvested.
-class DividendPayment(Activity):
+# Represents a cash payment, such as a stock dividend or bond interest, whether
+# or not it was cashed out or reinvested.
+class CashPayment(Activity):
     def __init__(self, date: datetime, stock: Stock, proceeds: Cash):
         self._stock = stock
         self._proceeds = proceeds
@@ -47,7 +48,7 @@ class DividendPayment(Activity):
         return self._proceeds
 
     def __eq__(self, other: Any) -> bool:
-        if not isinstance(other, DividendPayment) or not super().__eq__(other):
+        if not isinstance(other, CashPayment) or not super().__eq__(other):
             return False
 
         return bool(self.stock == other.stock
@@ -57,7 +58,7 @@ class DividendPayment(Activity):
         return super().__hash__() ^ hash((self.stock, self.proceeds))
 
     def __repr__(self) -> str:
-        return f'DividendPayment(date={self.date!r}, stock={self.stock!r}, proceeds={self.proceeds!r})'
+        return f'CashPayment(date={self.date!r}, stock={self.stock!r}, proceeds={self.proceeds!r})'
 
     def __str__(self) -> str:
         return f'{self.date.date()} Dividend       {self.stock:21} {self.proceeds.paddedString(padding=10)}'

@@ -1,4 +1,4 @@
-from bankroll import Cash, Currency, Stock, Bond, Option, OptionType, Position, DividendPayment, Trade, TradeFlags
+from bankroll import Cash, Currency, Stock, Bond, Option, OptionType, Position, CashPayment, Trade, TradeFlags
 from bankroll.brokers import schwab
 from datetime import date
 from decimal import Decimal
@@ -105,7 +105,7 @@ class TestSchwabTransactions(unittest.TestCase):
         self.assertEqual(len(ts), 1)
         self.assertEqual(
             ts[0],
-            DividendPayment(date=ts[0].date,
+            CashPayment(date=ts[0].date,
                             stock=Stock('VOO', Currency.USD),
                             proceeds=helpers.cashUSD(Decimal('22.95'))))
 
@@ -114,7 +114,7 @@ class TestSchwabTransactions(unittest.TestCase):
         self.assertEqual(len(ts), 1)
         self.assertEqual(
             ts[0],
-            DividendPayment(date=ts[0].date,
+            CashPayment(date=ts[0].date,
                             stock=Stock('VGLT', Currency.USD),
                             proceeds=helpers.cashUSD(Decimal('12.85'))))
 

@@ -1,5 +1,5 @@
 from bankroll.analysis import realizedBasisForSymbol
-from bankroll.model import Activity, Bond, Cash, Currency, Instrument, Position, Stock, DividendPayment, Trade, TradeFlags
+from bankroll.model import Activity, Bond, Cash, Currency, Instrument, Position, Stock, CashPayment, Trade, TradeFlags
 from bankroll.csvsectionslicer import parseSectionsForCSV, CSVSectionCriterion, CSVSectionResult
 from bankroll.parsetools import lenientParse
 from collections import namedtuple
@@ -161,7 +161,7 @@ def _forceParseVanguardTransaction(t: _VanguardTransaction,
 
 def _parseVanguardTransaction(t: _VanguardTransaction) -> Optional[Activity]:
     if t.transactionType == 'Dividend':
-        return DividendPayment(date=_parseVanguardTransactionDate(t.tradeDate),
+        return CashPayment(date=_parseVanguardTransactionDate(t.tradeDate),
                                stock=Stock(
                                    t.symbol if t.symbol else t.investmentName,
                                    currency=Currency.USD),

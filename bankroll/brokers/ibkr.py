@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Context, Decimal, DivisionByZero, Overflow, InvalidOperation, localcontext
 from enum import Enum, IntEnum, unique
 from itertools import count
-from bankroll.model import Currency, Cash, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, TradeFlags, Trade, MarketDataProvider, Quote, Activity, DividendPayment
+from bankroll.model import Currency, Cash, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, TradeFlags, Trade, MarketDataProvider, Quote, Activity, CashPayment
 from bankroll.parsetools import lenientParse
 from pathlib import Path
 from progress.spinner import Spinner
@@ -459,7 +459,7 @@ def _parseChangeInDividendAccrual(entry: _IBChangeInDividendAccrual
     proceeds = Cash(currency=Currency(entry.currency),
                     quantity=-Decimal(entry.netAmount))
 
-    return DividendPayment(date=_parseIBDate(entry.payDate),
+    return CashPayment(date=_parseIBDate(entry.payDate),
                            stock=Stock(entry.symbol,
                                        currency=Currency(entry.currency)),
                            proceeds=proceeds)

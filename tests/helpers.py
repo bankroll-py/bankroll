@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 from hypothesis.strategies import builds, dates, datetimes, decimals, from_regex, from_type, just, lists, integers, none, one_of, register_type_strategy, sampled_from, text, SearchStrategy
-from bankroll import Activity, Cash, Currency, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, DividendPayment, Trade, TradeFlags, Quote
+from bankroll import Activity, Cash, Currency, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, CashPayment, Trade, TradeFlags, Quote
 from bankroll.configuration import Settings
 from typing import List, Optional, TypeVar
 
@@ -147,8 +147,8 @@ def positions(instrument: SearchStrategy[Instrument] = instruments(),
 def dividendPayments(date: SearchStrategy[datetime] = datetimes(),
                      stock: SearchStrategy[Stock] = stocks(),
                      proceeds: SearchStrategy[Cash] = cash()
-                     ) -> SearchStrategy[DividendPayment]:
-    return builds(DividendPayment, date=date, stock=stock, proceeds=proceeds)
+                     ) -> SearchStrategy[CashPayment]:
+    return builds(CashPayment, date=date, stock=stock, proceeds=proceeds)
 
 
 def trades(date: SearchStrategy[datetime] = datetimes(),
@@ -224,7 +224,7 @@ register_type_strategy(
         instrument=just(i), costBasis=cash(currency=just(i.currency)))))
 
 register_type_strategy(Activity, activity())
-register_type_strategy(DividendPayment, dividendPayments())
+register_type_strategy(CashPayment, dividendPayments())
 
 register_type_strategy(
     TradeFlags,
