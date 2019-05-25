@@ -45,9 +45,9 @@ class Instrument(ABC):
 
 
 # Also used for ETFs.
+@dataclass(frozen=True)
 class Stock(Instrument):
-    def __init__(self, symbol: str, currency: Currency):
-        super().__init__(symbol, currency)
+    pass
 
 
 class Bond(Instrument):
