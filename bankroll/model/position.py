@@ -44,15 +44,20 @@ class Position:
                 f'Cost basis {self.costBasis!r} should be zero if quantity is zero'
             )
 
-    def combine(self, other: 'Position') -> 'Position':
-        if self.instrument != other.instrument:
-            raise ValueError(
-                f'Cannot combine positions in two different instruments: {self.instrument} and {other.instrument}'
-            )
+    def __add__(self, other: Any) -> 'Position':
+        if isinstance(other, Position):
+            if self.instrument != other.instrument:
+                raise ValueError(
+                    f'Cannot combine positions in two different instruments: {self.instrument} and {other.instrument}'
+                )
 
-        return Position(instrument=self.instrument,
-                        quantity=self.quantity + other.quantity,
-                        costBasis=self.costBasis + other.costBasis)
+            return Position(instrument=self.instrument,
+                            quantity=self.quantity + other.quantity,
+                            costBasis=self.costBasis + other.costBasis)
+        else:
+            return NotImplemented
+
+    __radd__ = __add__
 
     def __str__(self) -> str:
         return f'{self.instrument:21} {self.quantity.normalize():>14,f} @ {self.averagePrice}'
