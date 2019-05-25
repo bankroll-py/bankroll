@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from decimal import Decimal, ROUND_HALF_EVEN
 from enum import Enum, unique
+from functools import total_ordering
 from typing import Any, ClassVar, TypeVar
 
 
@@ -48,6 +49,7 @@ _T = TypeVar('_T', Decimal, int)
 
 
 @dataclass(frozen=True)
+@total_ordering
 class Cash:
     quantization: ClassVar[Decimal] = Decimal('0.0001')
 
@@ -136,33 +138,3 @@ class Cash:
             return self.quantity < other.quantity
         else:
             return bool(self.quantity < other)
-
-    def __le__(self, other: Any) -> bool:
-        if isinstance(other, Cash):
-            if self.currency != other.currency:
-                raise ValueError(
-                    f'Currency of {self} must match {other} for comparison')
-
-            return self.quantity <= other.quantity
-        else:
-            return bool(self.quantity <= other)
-
-    def __gt__(self, other: Any) -> bool:
-        if isinstance(other, Cash):
-            if self.currency != other.currency:
-                raise ValueError(
-                    f'Currency of {self} must match {other} for comparison')
-
-            return self.quantity > other.quantity
-        else:
-            return bool(self.quantity > other)
-
-    def __ge__(self, other: Any) -> bool:
-        if isinstance(other, Cash):
-            if self.currency != other.currency:
-                raise ValueError(
-                    f'Currency of {self} must match {other} for comparison')
-
-            return self.quantity >= other.quantity
-        else:
-            return bool(self.quantity >= other)
