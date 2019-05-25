@@ -1,6 +1,7 @@
+from dataclasses import dataclass
 from decimal import Decimal, ROUND_HALF_EVEN
 from enum import Enum, unique
-from typing import Any, TypeVar
+from typing import Any, ClassVar, TypeVar
 
 
 @unique
@@ -46,8 +47,12 @@ class Currency(Enum):
 _T = TypeVar('_T', Decimal, int)
 
 
+@dataclass(frozen=True)
 class Cash:
-    quantization = Decimal('0.0001')
+    quantization: ClassVar[Decimal] = Decimal('0.0001')
+
+    currency: Currency
+    quantity: Decimal
 
     @classmethod
     def quantize(cls, d: Decimal) -> Decimal:
@@ -58,23 +63,12 @@ class Cash:
             raise ValueError(
                 f'Cash quantity {quantity} is not a finite number')
 
-        self._currency = currency
-        self._quantity = self.quantize(quantity)
+        super().__setattr__('currency', currency)
+        super().__setattr__('quantity', self.quantize(quantity))
         super().__init__()
-
-    @property
-    def currency(self) -> Currency:
-        return self._currency
-
-    @property
-    def quantity(self) -> Decimal:
-        return self._quantity
 
     def paddedString(self, padding: int = 0) -> str:
         return self.currency.formatWithPadding(self.quantity, padding)
-
-    def __repr__(self) -> str:
-        return f'Cash(currency={self.currency!r}, quantity={self.quantity!r})'
 
     def __str__(self) -> str:
         return self.currency.format(self.quantity)
@@ -174,6 +168,3 @@ class Cash:
             return self.quantity >= other.quantity
         else:
             return bool(self.quantity >= other)
-
-    def __hash__(self) -> int:
-        return hash((self.currency, self.quantity))
