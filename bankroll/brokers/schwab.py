@@ -1,4 +1,4 @@
-from bankroll.model import Activity, Cash, Currency, Instrument, Stock, Bond, Option, OptionType, Position, CashPayment, Trade, TradeFlags
+from bankroll.model import AccountData, Activity, Cash, Currency, Instrument, Stock, Bond, Option, OptionType, Position, CashPayment, Trade, TradeFlags
 from bankroll.parsetools import lenientParse
 from datetime import date, datetime
 from decimal import Decimal
@@ -339,3 +339,37 @@ def _fixUpShortSales(activity: Sequence[Activity],
 
     # Start from oldest transactions, work to newer
     return [f(t) for t in reversed(activity)]
+
+
+class SchwabAccount(AccountData):
+    _positions: Optional[Sequence[Position]]
+    _activity: Optional[Sequence[Activity]]
+
+    def __init__(self,
+                 positions: Optional[Path] = None,
+                 transactions: Optional[Path] = None,
+                 lenient: bool = False):
+        self._positionsPath = positions
+        self._transactionsPath = transactions
+        self._lenient = lenient
+        super().__init__()
+
+    def positions(self) -> Iterable[Position]:
+        if not self._positionsPath:
+            return []
+
+        if not self._positions:
+            self._positions = parsePositions(self._positionsPath,
+                                             lenient=self._lenient)
+
+        return self._positions
+
+    def activity(self) -> Iterable[Activity]:
+        if not self._transactionsPath:
+            return []
+
+        if not self._activity:
+            self._activity = parseTransactions(self._transactionsPath,
+                                               lenient=self._lenient)
+
+        return self._activity
