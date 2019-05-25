@@ -4,6 +4,7 @@ from .model import Activity, Cash, CashPayment, Trade, Instrument, Option, Marke
 from progress.bar import Bar
 from typing import Dict, Iterable, Optional, Tuple
 
+import operator
 import re
 
 
@@ -78,6 +79,6 @@ def liveValuesForPositions(
 
 
 def deduplicatePositions(positions: Iterable[Position]) -> Iterable[Position]:
-    return (reduce(lambda a, b: a.combine(b), ps)
+    return (reduce(operator.add, ps)
             for i, ps in groupby(sorted(positions, key=lambda p: p.instrument),
                                  key=lambda p: p.instrument))

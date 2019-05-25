@@ -151,7 +151,7 @@ class TestPosition(unittest.TestCase):
         assume(a.instrument != b.instrument)
 
         with self.assertRaises(ValueError):
-            a.combine(b)
+            a + b
 
     @given(from_type(Instrument))
     def test_combineIncreasesBasis(self, i: Instrument) -> None:
@@ -164,7 +164,7 @@ class TestPosition(unittest.TestCase):
                      costBasis=Cash(currency=i.currency,
                                     quantity=Decimal('20')))
 
-        combined = a.combine(b)
+        combined = a + b
         self.assertEqual(combined.instrument, i)
         self.assertEqual(combined.quantity, Decimal('400'))
         self.assertEqual(combined.costBasis,
@@ -184,7 +184,7 @@ class TestPosition(unittest.TestCase):
         b = Position(instrument=i,
                      quantity=bQty,
                      costBasis=Cash(currency=i.currency, quantity=bPrice))
-        self.assertEqual(a.combine(b), b.combine(a))
+        self.assertEqual(a + b, b + a)
 
     @given(from_type(Position))
     def test_combineToZero(self, p: Position) -> None:
@@ -192,7 +192,7 @@ class TestPosition(unittest.TestCase):
                             quantity=-p.quantity,
                             costBasis=-p.costBasis)
 
-        combined = p.combine(opposite)
+        combined = p + opposite
         self.assertEqual(combined.quantity, Decimal(0))
         self.assertEqual(combined.costBasis, Decimal(0))
 
