@@ -82,12 +82,3 @@ class Trade(Activity):
         else:
             action = 'Sell'
         return f'{self.date.date()} {action} {abs(self.quantity):>9} {self.instrument:21} {self.amount.paddedString(padding=10)} (before {self.fees.paddedString(padding=5)} in fees)'
-
-    def _replace(self, **kwargs: Any) -> 'Trade':
-        vals: Dict[str, Any] = {
-            k.lstrip('_'): v
-            for k, v in self.__dict__.items()
-        }
-        vals.update(kwargs)
-
-        return Trade(**vals)

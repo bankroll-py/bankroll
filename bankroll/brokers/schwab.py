@@ -9,6 +9,7 @@ from typing import Dict, Iterable, List, NamedTuple, Optional, Sequence, TypeVar
 
 import bankroll.configuration as configuration
 import csv
+import dataclasses
 import re
 
 
@@ -191,10 +192,9 @@ def _parseSchwabTransaction(
 
     if t.action in dividendActions:
         return CashPayment(date=_parseSchwabTransactionDate(t.date),
-                               instrument=Stock(t.symbol, currency=Currency.USD),
-                               proceeds=Cash(currency=Currency.USD,
-                                             quantity=_schwabDecimal(
-                                                 t.amount)))
+                           instrument=Stock(t.symbol, currency=Currency.USD),
+                           proceeds=Cash(currency=Currency.USD,
+                                         quantity=_schwabDecimal(t.amount)))
 
     # Bond redemptions are split into two entries, for some reason.
     if t.action == 'Full Redemption Adj':
@@ -318,8 +318,9 @@ def _fixUpShortSales(activity: Sequence[Activity],
         # TODO: How should this work if the quantity is greater than the position?
         if pos < 0 and t.quantity > 0 and t.quantity <= abs(
                 pos) and t.flags & TradeFlags.OPEN:
-            return t._replace(flags=(t.flags ^ TradeFlags.OPEN)
-                              | TradeFlags.CLOSE)
+            return dataclasses.replace(t,
+                                       flags=(t.flags ^ TradeFlags.OPEN)
+                                       | TradeFlags.CLOSE)
         # Schwab records restricted stock sales as short selling followed by a security transfer.
         # If we find a short sale, see if there's a later transfer, and if so, record as closing a position.
         elif t.quantity < 0 and t.flags & TradeFlags.OPEN:
@@ -328,8 +329,9 @@ def _fixUpShortSales(activity: Sequence[Activity],
                    t.instrument.symbol and tx.quantity == abs(t.quantity))
 
             if next(txs, None):
-                return t._replace(flags=(t.flags ^ TradeFlags.OPEN)
-                                  | TradeFlags.CLOSE)
+                return dataclasses.replace(t,
+                                           flags=(t.flags ^ TradeFlags.OPEN)
+                                           | TradeFlags.CLOSE)
             else:
                 return t
         else:
