@@ -58,14 +58,12 @@ class Cash:
     def quantize(cls, d: Decimal) -> Decimal:
         return d.quantize(cls.quantization, rounding=ROUND_HALF_EVEN)
 
-    def __init__(self, currency: Currency, quantity: Decimal):
-        if not quantity.is_finite():
+    def __post_init__(self) -> None:
+        if not self.quantity.is_finite():
             raise ValueError(
-                f'Cash quantity {quantity} is not a finite number')
+                f'Cash quantity {self.quantity} is not a finite number')
 
-        super().__setattr__('currency', currency)
-        super().__setattr__('quantity', self.quantize(quantity))
-        super().__init__()
+        super().__setattr__('quantity', self.quantize(self.quantity))
 
     def paddedString(self, padding: int = 0) -> str:
         return self.currency.formatWithPadding(self.quantity, padding)
