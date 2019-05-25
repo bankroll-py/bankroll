@@ -122,12 +122,10 @@ class Cash:
         return Cash(currency=self.currency, quantity=abs(self.quantity))
 
     def __eq__(self, other: Any) -> bool:
-        if not isinstance(other, Cash):
-            # Make mypy happy
-            b: bool = self.quantity == other
-            return b
-
-        return self.currency == other.currency and self.quantity == other.quantity
+        if isinstance(other, Cash):
+            return self.currency == other.currency and self.quantity == other.quantity
+        else:
+            return bool(self.quantity == other)
 
     def __lt__(self, other: Any) -> bool:
         if isinstance(other, Cash):
