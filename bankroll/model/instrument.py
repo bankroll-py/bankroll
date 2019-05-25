@@ -1,76 +1,47 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from datetime import date
 from enum import Enum, unique
 from decimal import Decimal, ROUND_HALF_EVEN
-from typing import Any, Optional
+from functools import total_ordering
+from typing import Any, ClassVar, Optional
 
 from .cash import Currency
 
 import re
 
 
+@dataclass(frozen=True)
+@total_ordering
 class Instrument(ABC):
-    multiplierQuantization = Decimal('0.1')
+    multiplierQuantization: ClassVar[Decimal] = Decimal('0.1')
+
+    symbol: str
+    currency: Currency
 
     @classmethod
     def quantizeMultiplier(cls, multiplier: Decimal) -> Decimal:
         return multiplier.quantize(cls.multiplierQuantization,
                                    rounding=ROUND_HALF_EVEN)
 
-    @abstractmethod
-    def __init__(self, symbol: str, currency: Currency):
-        if not symbol:
+    def __post_init__(self) -> None:
+        if not self.symbol:
             raise ValueError('Expected non-empty symbol for instrument')
-        if not currency:
+        if not self.currency:
             raise ValueError('Expected currency for instrument')
-
-        self._symbol = symbol
-        self._currency = currency
-        super().__init__()
-
-    @property
-    def symbol(self) -> str:
-        return self._symbol
-
-    @property
-    def currency(self) -> Currency:
-        return self._currency
 
     @property
     def multiplier(self) -> Decimal:
         return Decimal(1)
 
-    def __eq__(self, other: Any) -> bool:
-        # Strict typechecking, because we want different types of Instrument to be inequal.
-        if type(self) != type(other):
-            return False
-
-        return bool(self.symbol == other.symbol
-                    and self.currency == other.currency)
-
-    def __hash__(self) -> int:
-        return hash((self.currency, self.symbol))
-
     def __lt__(self, other: 'Instrument') -> bool:
         return self.symbol < other.symbol
-
-    def __le__(self, other: 'Instrument') -> bool:
-        return self.symbol <= other.symbol
-
-    def __gt__(self, other: 'Instrument') -> bool:
-        return self.symbol > other.symbol
-
-    def __ge__(self, other: 'Instrument') -> bool:
-        return self.symbol >= other.symbol
 
     def __format__(self, spec: str) -> str:
         return format(self.symbol, spec)
 
-    def __repr__(self) -> str:
-        return f'{type(self)!r}(symbol={self.symbol!r}, currency={self.currency!r})'
-
     def __str__(self) -> str:
-        return self._symbol
+        return self.symbol
 
 
 # Also used for ETFs.
