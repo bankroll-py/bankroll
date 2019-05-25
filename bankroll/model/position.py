@@ -1,14 +1,15 @@
-from decimal import Decimal, ROUND_HALF_EVEN
-from typing import Any
+from dataclasses import dataclass
+from decimal import ROUND_HALF_EVEN, Decimal
+from typing import Any, ClassVar
 
 from .cash import Cash
 from .instrument import Instrument
-from dataclasses import dataclass
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(frozen=True)
 class Position:
-    quantityQuantization = Decimal('0.0001')
+    quantityQuantization: ClassVar[Decimal] = Decimal('0.0001')
+
     instrument: Instrument
     quantity: Decimal
     costBasis: Cash
@@ -36,7 +37,7 @@ class Position:
             raise ValueError(
                 f'Position quantity {self.quantity} is not a finite number')
 
-        self.quantity = self.quantizeQuantity(self.quantity)
+        super().__setattr__('quantity', self.quantizeQuantity(self.quantity))
 
         if self.quantity == 0 and self.costBasis != 0:
             raise ValueError(
