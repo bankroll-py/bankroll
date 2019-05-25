@@ -84,6 +84,8 @@ class Cash:
         else:
             return Cash(currency=self.currency, quantity=self.quantity + other)
 
+    __radd__ = __add__
+
     def __sub__(self, other: Any) -> 'Cash':
         if isinstance(other, Cash):
             if self.currency != other.currency:
@@ -104,6 +106,8 @@ class Cash:
             return self.quantity * other.quantity
         else:
             return Cash(currency=self.currency, quantity=self.quantity * other)
+
+    __rmul__ = __mul__
 
     def __truediv__(self, other: _T) -> 'Cash':
         if isinstance(other, Cash):
