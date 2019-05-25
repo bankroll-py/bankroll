@@ -184,7 +184,7 @@ class TestIBKRTrades(unittest.TestCase):
             ts[0].instrument,
             FutureOption(symbol=symbol,
                          currency=Currency.USD,
-                         underlying='GBUJ9',
+                         underlying='BPM9',
                          optionType=OptionType.CALL,
                          expiration=date(2019, 4, 5),
                          strike=Decimal('1.335'),
