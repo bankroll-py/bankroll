@@ -47,7 +47,7 @@ class Instrument(ABC):
 
 
 # Also used for ETFs.
-@dataclass(unsafe_hash=True)
+@dataclass(unsafe_hash=True, init=False)
 class Stock(Instrument):
     def __init__(self, symbol: str, currency: Currency):
         super().__init__(symbol=symbol,
@@ -55,7 +55,7 @@ class Stock(Instrument):
                          multiplier=Decimal(1))
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(unsafe_hash=True, init=False)
 class Bond(Instrument):
     regexCUSIP: ClassVar[str] = r'^[0-9]{3}[0-9A-Z]{5}[0-9]$'
 
@@ -81,7 +81,7 @@ class OptionType(Enum):
     CALL = 'C'
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(unsafe_hash=True, init=False)
 class Option(Instrument):
     # Matches the multiplicative factor in OCC options symbology.
     strikeQuantization: ClassVar[Decimal] = Decimal('0.001')
@@ -126,7 +126,7 @@ class Option(Instrument):
                          multiplier=multiplier)
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(unsafe_hash=True, init=False)
 class FutureOption(Option):
     def __init__(self, symbol: str, underlying: str, currency: Currency,
                  optionType: OptionType, expiration: date, strike: Decimal,
@@ -140,7 +140,7 @@ class FutureOption(Option):
                          symbol=symbol)
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(unsafe_hash=True, init=False)
 class Future(Instrument):
     expiration: date
 
@@ -153,7 +153,7 @@ class Future(Instrument):
                          multiplier=multiplier)
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(unsafe_hash=True, init=False)
 class Forex(Instrument):
     def __init__(self, baseCurrency: Currency, quoteCurrency: Currency):
         if baseCurrency == quoteCurrency:
