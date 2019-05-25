@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, InitVar
 from datetime import date
 from enum import Enum, unique
 from decimal import Decimal, ROUND_HALF_EVEN
@@ -50,21 +50,23 @@ class Stock(Instrument):
     pass
 
 
+@dataclass(frozen=True)
 class Bond(Instrument):
-    regexCUSIP = r'^[0-9]{3}[0-9A-Z]{5}[0-9]$'
+    regexCUSIP: ClassVar[str] = r'^[0-9]{3}[0-9A-Z]{5}[0-9]$'
+
+    validateSymbol: InitVar[bool] = True
 
     @classmethod
     def validBondSymbol(cls, symbol: str) -> bool:
         return re.match(cls.regexCUSIP, symbol) is not None
 
-    def __init__(self,
-                 symbol: str,
-                 currency: Currency,
-                 validateSymbol: bool = True):
-        if validateSymbol and not self.validBondSymbol(symbol):
-            raise ValueError(f'Expected symbol to be a bond CUSIP: {symbol}')
+    # Default value needed to match super's type for __post_init__.
+    def __post_init__(self, validateSymbol: bool = True) -> None:
+        if validateSymbol and not self.validBondSymbol(self.symbol):
+            raise ValueError(
+                f'Expected symbol to be a bond CUSIP: {self.symbol}')
 
-        super().__init__(symbol, currency)
+        super().__post_init__()
 
 
 @unique
