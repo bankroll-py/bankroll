@@ -2,12 +2,12 @@ from datetime import datetime
 from decimal import Context, Decimal, DivisionByZero, Overflow, InvalidOperation, localcontext
 from enum import Enum, IntEnum, unique
 from itertools import count
-from bankroll.model import Currency, Cash, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, TradeFlags, Trade, MarketDataProvider, Quote, Activity, CashPayment
+from bankroll.model import AccountData, Currency, Cash, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, TradeFlags, Trade, MarketDataProvider, Quote, Activity, CashPayment
 from bankroll.parsetools import lenientParse
 from pathlib import Path
 from progress.spinner import Spinner
 from random import randint
-from typing import Any, Awaitable, Callable, Dict, Iterable, List, Mapping, NamedTuple, Optional, Tuple, Type, Union, no_type_check
+from typing import Any, Awaitable, Callable, Dict, Iterable, List, Mapping, NamedTuple, Optional, Sequence, Tuple, Type, Union, no_type_check
 import pandas as pd
 
 import backoff
@@ -674,3 +674,82 @@ class IBDataProvider(MarketDataProvider):
                              quantity=Decimal(ticker.close) / factor)
 
             yield (instrument, Quote(bid=bid, ask=ask, last=last, close=close))
+
+
+class IBAccount(AccountData):
+    _cachedActivity: Optional[Sequence[Activity]]
+    _client: Optional[IB.IB]
+
+    def __init__(self,
+                 twsPort: Optional[int] = None,
+                 flexToken: Optional[str] = None,
+                 trades: Union[Path, int, None] = None,
+                 activity: Union[Path, int, None] = None,
+                 lenient: bool = False):
+        self._twsPort = twsPort
+        self._flexToken = flexToken
+        self._trades = trades
+        self._activity = activity
+        self._lenient = lenient
+        super().__init__()
+
+    @property
+    def client(self) -> Optional[IB.IB]:
+        if not self._twsPort:
+            return None
+
+        if not self._client:
+            self._client = IB.IB()
+            self._client.connect(
+                '127.0.0.1',
+                port=self._twsPort,
+                # Random client ID to minimize chances of conflict
+                clientId=randint(1, 1000000),
+                readonly=True)
+
+        return self._client
+
+    def positions(self) -> Iterable[Position]:
+        if not self._client:
+            return []
+
+        return downloadPositions(self._client, self._lenient)
+
+    def activity(self) -> Iterable[Activity]:
+        if self._cachedActivity:
+            return self._cachedActivity
+
+        self._cachedActivity = []
+
+        if isinstance(self._trades, Path):
+            self._cachedActivity += parseTrades(self._trades,
+                                                lenient=self._lenient)
+        elif self._trades:
+            if not self._flexToken:
+                raise ValueError(
+                    f'Trades "{self._trades}"" must exist as local path, or a Flex token must be provided to run as a query'
+                )
+
+            self._cachedActivity += downloadTrades(token=self._flexToken,
+                                                   queryID=self._trades,
+                                                   lenient=self._lenient)
+
+        if isinstance(self._activity, Path):
+            self._cachedActivity += parseNonTradeActivity(
+                self._activity, lenient=self._lenient)
+        elif self._activity:
+            if not self._flexToken:
+                raise ValueError(
+                    f'Activity "{self._activity}"" must exist as local path, or a Flex token must be provided to run as a query'
+                )
+
+            self._cachedActivity += downloadNonTradeActivity(
+                token=self._flexToken,
+                queryID=self._activity,
+                lenient=self._lenient)
+
+        return self._cachedActivity
+
+    @property
+    def marketDataProvider(self) -> Optional[MarketDataProvider]:
+        return IBDataProvider(client=self.client)
