@@ -20,7 +20,7 @@ class AccountAggregator(AccountData):
 
     @classmethod
     def fromSettings(cls, settings: Mapping[Settings, str],
-                     lenient: bool) -> AccountAggregator:
+                     lenient: bool) -> 'AccountAggregator':
         return AccountAggregator(accounts=[
             fidelity.FidelityAccount.fromSettings(settings, lenient=lenient),
             ibkr.IBAccount.fromSettings(settings, lenient=lenient),
