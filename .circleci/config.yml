@@ -46,6 +46,10 @@ jobs:
           key: v1-dependencies-{{ checksum "requirements.txt" }}
 
       - run:
+          name: typecheck
+          command: script/typecheck
+
+      - run:
           name: run tests
           command: script/test
       
