@@ -680,6 +680,35 @@ class IBAccount(AccountData):
     _cachedActivity: Optional[Sequence[Activity]]
     _client: Optional[IB.IB]
 
+    @classmethod
+    def fromSettings(cls, settings: Mapping[configuration.Settings, str],
+                     lenient: bool) -> 'IBAccount':
+        port = settings.get(Settings.TWS_PORT)
+
+        tradesSetting = settings.get(Settings.TRADES)
+        trades: Union[Path, int, None]
+        if tradesSetting:
+            path = Path(tradesSetting)
+            if path.is_file():
+                trades = path
+            else:
+                trades = int(tradesSetting)
+
+        activitySetting = settings.get(Settings.ACTIVITY)
+        activity: Union[Path, int, None]
+        if activitySetting:
+            path = Path(activitySetting)
+            if path.is_file():
+                activity = path
+            else:
+                activity = int(activitySetting)
+
+        return cls(twsPort=int(port) if port else None,
+                   flexToken=settings.get(Settings.FLEX_TOKEN),
+                   trades=trades,
+                   activity=activity,
+                   lenient=lenient)
+
     def __init__(self,
                  twsPort: Optional[int] = None,
                  flexToken: Optional[str] = None,

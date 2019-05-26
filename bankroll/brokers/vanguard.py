@@ -7,7 +7,7 @@ from datetime import datetime
 from decimal import Decimal
 from enum import unique
 from pathlib import Path
-from typing import Dict, Iterable, List, NamedTuple, Optional, Sequence, Set, Tuple
+from typing import Dict, Iterable, List, Mapping, NamedTuple, Optional, Sequence, Set, Tuple
 
 import bankroll.configuration as configuration
 import csv
@@ -212,6 +212,14 @@ def _parseTransactions(path: Path, lenient: bool = False) -> List[Activity]:
 
 class VanguardAccount(AccountData):
     _positionsAndActivity: Optional[PositionsAndActivity]
+
+    @classmethod
+    def fromSettings(cls, settings: Mapping[configuration.Settings, str],
+                     lenient: bool) -> 'VanguardAccount':
+        statement = settings.get(Settings.STATEMENT)
+
+        return cls(statement=Path(statement) if statement else None,
+                   lenient=lenient)
 
     def __init__(self, statement: Optional[Path] = None,
                  lenient: bool = False):

@@ -5,7 +5,7 @@ from decimal import Decimal
 from enum import unique
 from itertools import chain, groupby
 from pathlib import Path
-from typing import Dict, Iterable, List, NamedTuple, Optional, Sequence, TypeVar
+from typing import Dict, Iterable, List, Mapping, NamedTuple, Optional, Sequence, Type, TypeVar
 
 import bankroll.configuration as configuration
 import csv
@@ -344,6 +344,16 @@ def _fixUpShortSales(activity: Sequence[Activity],
 class SchwabAccount(AccountData):
     _positions: Optional[Sequence[Position]]
     _activity: Optional[Sequence[Activity]]
+
+    @classmethod
+    def fromSettings(cls, settings: Mapping[configuration.Settings, str],
+                     lenient: bool) -> 'SchwabAccount':
+        positions = settings.get(Settings.POSITIONS)
+        transactions = settings.get(Settings.TRANSACTIONS)
+
+        return cls(positions=Path(positions) if positions else None,
+                   transactions=Path(transactions) if transactions else None,
+                   lenient=lenient)
 
     def __init__(self,
                  positions: Optional[Path] = None,

@@ -6,7 +6,7 @@ from decimal import Decimal
 from enum import IntEnum, unique
 from pathlib import Path
 from sys import stderr
-from typing import Callable, Dict, Iterable, List, NamedTuple, Optional, Sequence, Set
+from typing import Callable, Dict, Iterable, List, Mapping, NamedTuple, Optional, Sequence, Set
 from warnings import warn
 
 import bankroll.configuration as configuration
@@ -252,6 +252,16 @@ def parseTransactions(path: Path, lenient: bool = False) -> List[Activity]:
 class FidelityAccount(AccountData):
     _positions: Optional[Sequence[Position]]
     _activity: Optional[Sequence[Activity]]
+
+    @classmethod
+    def fromSettings(cls, settings: Mapping[configuration.Settings, str],
+                     lenient: bool) -> 'FidelityAccount':
+        positions = settings.get(Settings.POSITIONS)
+        transactions = settings.get(Settings.TRANSACTIONS)
+
+        return cls(positions=Path(positions) if positions else None,
+                   transactions=Path(transactions) if transactions else None,
+                   lenient=lenient)
 
     def __init__(self,
                  positions: Optional[Path] = None,

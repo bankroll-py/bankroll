@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Iterable, Optional
+from bankroll.configuration import Settings
+from typing import Iterable, Mapping, Optional
 
 from .activity import Activity
 from .marketdata import MarketDataProvider
@@ -10,6 +11,19 @@ from .position import Position
 # (e.g., exported files) or a mechanism to get the data (e.g., a live
 # connection).
 class AccountData(ABC):
+    # Instantiates the receiving type using the information in the given
+    # settings map.
+    #
+    # TODO: Refactor/simplify Configuration class so it can be used in cases
+    # like this, instead of an unintuitive mapping.
+    #
+    # TODO: Hoist `lenient` into a Setting to make this less awkward.
+    @abstractmethod
+    @classmethod
+    def fromSettings(cls, settings: Mapping[Settings, str],
+                     lenient: bool) -> 'AccountData':
+        pass
+
     # Returns the positions currently held, fetching the data on-demand if
     # necessary.
     #
