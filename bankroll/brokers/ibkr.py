@@ -43,59 +43,6 @@ class Settings(configuration.Settings):
         return 'IBKR'
 
 
-def loadPositionsAndActivity(
-        settings: Mapping[Settings, str], lenient: bool
-) -> Tuple[List[Position], List[Activity], Optional[IB.IB]]:
-    positions: List[Position] = []
-    activity: List[Activity] = []
-    client: Optional[IB.IB] = None
-
-    twsPort = settings.get(Settings.TWS_PORT)
-    if twsPort:
-        client = IB.IB()
-
-        client.connect(
-            '127.0.0.1',
-            port=int(twsPort),
-            # Random client ID to minimize chances of conflict
-            clientId=randint(1, 1000000),
-            readonly=True)
-
-        positions += downloadPositions(client, lenient=lenient)
-
-    flexToken = settings.get(Settings.FLEX_TOKEN)
-
-    trades = settings.get(Settings.TRADES)
-    if trades:
-        path = Path(trades)
-        if path.is_file():
-            activity += parseTrades(path, lenient=lenient)
-        elif flexToken:
-            activity += downloadTrades(token=flexToken,
-                                       queryID=int(trades),
-                                       lenient=lenient)
-        else:
-            raise ValueError(
-                f'Trades "{trades}"" must exist as local path, or a Flex token must be provided to run as a query'
-            )
-
-    activitySetting = settings.get(Settings.ACTIVITY)
-    if activitySetting:
-        path = Path(activitySetting)
-        if path.is_file():
-            activity += parseNonTradeActivity(path, lenient=lenient)
-        elif flexToken:
-            activity += downloadNonTradeActivity(token=flexToken,
-                                                 queryID=int(activitySetting),
-                                                 lenient=lenient)
-        else:
-            raise ValueError(
-                f'Activity "{activity}"" must exist as local path, or a Flex token must be provided to run as a query'
-            )
-
-    return (positions, activity, client)
-
-
 def _parseFiniteDecimal(input: str) -> Decimal:
     with localcontext(ctx=Context(traps=[DivisionByZero, Overflow])):
         value = Decimal(input)
@@ -213,7 +160,7 @@ def _extractPosition(p: IB.Position) -> Position:
         )
 
 
-def downloadPositions(ib: IB.IB, lenient: bool) -> List[Position]:
+def _downloadPositions(ib: IB.IB, lenient: bool) -> List[Position]:
     return list(
         lenientParse(ib.positions(),
                      transform=_extractPosition,
@@ -442,7 +389,7 @@ def _tradesFromReport(report: IB.FlexReport, lenient: bool) -> List[Trade]:
             lenient=lenient))
 
 
-def parseTrades(path: Path, lenient: bool = False) -> List[Trade]:
+def _parseTrades(path: Path, lenient: bool = False) -> List[Trade]:
     return _tradesFromReport(IB.FlexReport(path=path), lenient=lenient)
 
 
@@ -475,7 +422,8 @@ def _activityFromReport(report: IB.FlexReport,
 
 # TODO: This should eventually be unified with trade parsing.
 # See https://github.com/jspahrsummers/bankroll/issues/36.
-def parseNonTradeActivity(path: Path, lenient: bool = False) -> List[Activity]:
+def _parseNonTradeActivity(path: Path,
+                           lenient: bool = False) -> List[Activity]:
     return _activityFromReport(IB.FlexReport(path=path), lenient=lenient)
 
 
@@ -518,8 +466,8 @@ def _downloadFlexReport(name: str, token: str, queryID: int) -> IB.FlexReport:
             logger.removeHandler(handler)
 
 
-def downloadTrades(token: str, queryID: int,
-                   lenient: bool = False) -> List[Trade]:
+def _downloadTrades(token: str, queryID: int,
+                    lenient: bool = False) -> List[Trade]:
     return _tradesFromReport(_downloadFlexReport(name='Trades',
                                                  token=token,
                                                  queryID=queryID),
@@ -528,8 +476,8 @@ def downloadTrades(token: str, queryID: int,
 
 # TODO: This should eventually be unified with trade parsing.
 # See https://github.com/jspahrsummers/bankroll/issues/36.
-def downloadNonTradeActivity(token: str, queryID: int,
-                             lenient: bool = False) -> List[Activity]:
+def _downloadNonTradeActivity(token: str, queryID: int,
+                              lenient: bool = False) -> List[Activity]:
     return _activityFromReport(_downloadFlexReport(name='Activity',
                                                    token=token,
                                                    queryID=queryID),
@@ -742,7 +690,7 @@ class IBAccount(AccountData):
         if not self._client:
             return []
 
-        return downloadPositions(self._client, self._lenient)
+        return _downloadPositions(self._client, self._lenient)
 
     def activity(self) -> Iterable[Activity]:
         if self._cachedActivity:
@@ -751,20 +699,20 @@ class IBAccount(AccountData):
         self._cachedActivity = []
 
         if isinstance(self._trades, Path):
-            self._cachedActivity += parseTrades(self._trades,
-                                                lenient=self._lenient)
+            self._cachedActivity += _parseTrades(self._trades,
+                                                 lenient=self._lenient)
         elif self._trades:
             if not self._flexToken:
                 raise ValueError(
                     f'Trades "{self._trades}"" must exist as local path, or a Flex token must be provided to run as a query'
                 )
 
-            self._cachedActivity += downloadTrades(token=self._flexToken,
-                                                   queryID=self._trades,
-                                                   lenient=self._lenient)
+            self._cachedActivity += _downloadTrades(token=self._flexToken,
+                                                    queryID=self._trades,
+                                                    lenient=self._lenient)
 
         if isinstance(self._activity, Path):
-            self._cachedActivity += parseNonTradeActivity(
+            self._cachedActivity += _parseNonTradeActivity(
                 self._activity, lenient=self._lenient)
         elif self._activity:
             if not self._flexToken:
@@ -772,7 +720,7 @@ class IBAccount(AccountData):
                     f'Activity "{self._activity}"" must exist as local path, or a Flex token must be provided to run as a query'
                 )
 
-            self._cachedActivity += downloadNonTradeActivity(
+            self._cachedActivity += _downloadNonTradeActivity(
                 token=self._flexToken,
                 queryID=self._activity,
                 lenient=self._lenient)

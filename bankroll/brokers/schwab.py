@@ -112,7 +112,7 @@ def padToLength(seq: Sequence[_T], length: int, padding: _T) -> Iterable[_T]:
     return chain(seq, [padding] * (length - len(seq)))
 
 
-def parsePositions(path: Path, lenient: bool = False) -> Sequence[Position]:
+def _parsePositions(path: Path, lenient: bool = False) -> Sequence[Position]:
     with open(path, newline='') as csvfile:
         reader = csv.reader(csvfile)
 
@@ -269,7 +269,7 @@ def _parseSchwabTransaction(
 
 
 # Transactions will be ordered from oldest to newest
-def parseTransactions(path: Path, lenient: bool = False) -> List[Activity]:
+def _parseTransactions(path: Path, lenient: bool = False) -> List[Activity]:
     with open(path, newline='') as csvfile:
         reader = csv.reader(csvfile)
 
@@ -369,7 +369,7 @@ class SchwabAccount(AccountData):
             return []
 
         if not self._positions:
-            self._positions = parsePositions(self._positionsPath,
+            self._positions = _parsePositions(self._positionsPath,
                                              lenient=self._lenient)
 
         return self._positions
@@ -379,7 +379,7 @@ class SchwabAccount(AccountData):
             return []
 
         if not self._activity:
-            self._activity = parseTransactions(self._transactionsPath,
+            self._activity = _parseTransactions(self._transactionsPath,
                                                lenient=self._lenient)
 
         return self._activity

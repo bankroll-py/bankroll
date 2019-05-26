@@ -107,8 +107,8 @@ def _parsePositions(path: Path,
                          lenient=lenient))
 
 
-def parsePositionsAndActivity(path: Path,
-                              lenient: bool = False) -> PositionsAndActivity:
+def _parsePositionsAndActivity(path: Path,
+                               lenient: bool = False) -> PositionsAndActivity:
     activity = _parseTransactions(path, lenient=lenient)
     positions = _parsePositions(path, activity=activity, lenient=lenient)
     return PositionsAndActivity(positions, activity)
@@ -232,7 +232,7 @@ class VanguardAccount(AccountData):
             return None
 
         if not self._positionsAndActivity:
-            self._positionsAndActivity = parsePositionsAndActivity(
+            self._positionsAndActivity = _parsePositionsAndActivity(
                 self._statement, lenient=self._lenient)
 
         return self._positionsAndActivity

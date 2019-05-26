@@ -94,7 +94,7 @@ def _parseOptionsPosition(description: str) -> Option:
                   strike=Decimal(match['strike']))
 
 
-def parsePositions(path: Path, lenient: bool = False) -> List[Position]:
+def _parsePositions(path: Path, lenient: bool = False) -> List[Position]:
     with open(path, newline='') as csvfile:
         stocksCriterion = CSVSectionCriterion(startSectionRowMatch=["Stocks"],
                                               endSectionRowMatch=[""],
@@ -228,7 +228,7 @@ def _parseFidelityTransaction(t: _FidelityTransaction) -> Optional[Activity]:
 
 
 # Transactions will be ordered from newest to oldest
-def parseTransactions(path: Path, lenient: bool = False) -> List[Activity]:
+def _parseTransactions(path: Path, lenient: bool = False) -> List[Activity]:
     with open(path, newline='') as csvfile:
         transactionsCriterion = CSVSectionCriterion(
             startSectionRowMatch=["Run Date", "Account", "Action"],
@@ -277,8 +277,8 @@ class FidelityAccount(AccountData):
             return []
 
         if not self._positions:
-            self._positions = parsePositions(self._positionsPath,
-                                             lenient=self._lenient)
+            self._positions = _parsePositions(self._positionsPath,
+                                              lenient=self._lenient)
 
         return self._positions
 
@@ -287,7 +287,7 @@ class FidelityAccount(AccountData):
             return []
 
         if not self._activity:
-            self._activity = parseTransactions(self._transactionsPath,
-                                               lenient=self._lenient)
+            self._activity = _parseTransactions(self._transactionsPath,
+                                                lenient=self._lenient)
 
         return self._activity
