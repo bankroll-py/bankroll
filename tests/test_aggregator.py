@@ -29,37 +29,31 @@ class TestAccountAggregator(unittest.TestCase):
         # Tests that keys do not clobber each other.
         self.assertEqual(len(self.settings), 7)
 
-        self.data = AccountAggregator(self.settings)
-
-    def testValuesStartEmpty(self) -> None:
-        self.assertEqual(self.data.positions, [])
-        self.assertEqual(self.data.activity, [])
-        self.assertIsNone(self.data.dataProvider)
+        self.data = AccountAggregator.fromSettings(self.settings,
+                                                   lenient=False)
 
     def testLoadData(self) -> None:
-        self.data.loadData(lenient=False)
-
-        instruments = set((p.instrument for p in self.data.positions))
+        instruments = set((p.instrument for p in self.data.positions()))
 
         for p in fidelity.parsePositions(
                 Path(self.settings[fidelity.Settings.POSITIONS])):
             self.assertIn(p.instrument, instruments)
         for a in fidelity.parseTransactions(
                 Path(self.settings[fidelity.Settings.TRANSACTIONS])):
-            self.assertIn(a, self.data.activity)
+            self.assertIn(a, self.data.activity())
 
         for p in schwab.parsePositions(
                 Path(self.settings[schwab.Settings.POSITIONS])):
             self.assertIn(p.instrument, instruments)
         for a in schwab.parseTransactions(
                 Path(self.settings[schwab.Settings.TRANSACTIONS])):
-            self.assertIn(a, self.data.activity)
+            self.assertIn(a, self.data.activity())
 
         for a in ibkr.parseTrades(Path(self.settings[ibkr.Settings.TRADES])):
-            self.assertIn(a, self.data.activity)
+            self.assertIn(a, self.data.activity())
         for a in ibkr.parseNonTradeActivity(
                 Path(self.settings[ibkr.Settings.ACTIVITY])):
-            self.assertIn(a, self.data.activity)
+            self.assertIn(a, self.data.activity())
 
         vanguardData = vanguard.parsePositionsAndActivity(
             Path(self.settings[vanguard.Settings.STATEMENT]))
@@ -67,4 +61,4 @@ class TestAccountAggregator(unittest.TestCase):
         for p in vanguardData.positions:
             self.assertIn(p.instrument, instruments)
         for a in vanguardData.activity:
-            self.assertIn(a, self.data.activity)
+            self.assertIn(a, self.data.activity())
