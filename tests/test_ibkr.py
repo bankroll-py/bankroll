@@ -15,8 +15,11 @@ import unittest
 
 class TestIBKRTrades(unittest.TestCase):
     def setUp(self) -> None:
-        self.trades = [t for t in
-            ibkr.IBAccount(trades=Path('tests/ibkr_trades.xml')).activity() if isinstance(t, Trade)]
+        self.trades = [
+            t for t in ibkr.IBAccount(
+                trades=Path('tests/ibkr_trades.xml')).activity()
+            if isinstance(t, Trade)
+        ]
         self.trades.sort(key=lambda t: t.instrument.symbol)
 
         self.tradesBySymbol = {
@@ -201,7 +204,9 @@ class TestIBKRTrades(unittest.TestCase):
 
 class TestIBKRActivity(unittest.TestCase):
     def setUp(self) -> None:
-        self.activity = list(ibkr.IBAccount(activity=Path('tests/ibkr_activity.xml')).activity())
+        self.activity = list(
+            ibkr.IBAccount(
+                activity=Path('tests/ibkr_activity.xml')).activity())
         self.activity.sort(key=lambda t: t.date)
 
         self.activityByDate = {
