@@ -11,8 +11,9 @@ import unittest
 
 class TestFidelityPositions(unittest.TestCase):
     def setUp(self) -> None:
-        self.positions = fidelity.parsePositions(
-            Path('tests/fidelity_positions.csv'))
+        self.positions = list(
+            fidelity.FidelityAccount(
+                positions=Path('tests/fidelity_positions.csv')).positions())
         self.positions.sort(key=lambda p: p.instrument)
 
     def test_positionValidity(self) -> None:
@@ -76,8 +77,9 @@ class TestFidelityPositions(unittest.TestCase):
 
 class TestFidelityTransactions(unittest.TestCase):
     def setUp(self) -> None:
-        self.activity = fidelity.parseTransactions(
-            Path('tests/fidelity_transactions.csv'))
+        self.activity = list(
+            fidelity.FidelityAccount(transactions=Path(
+                'tests/fidelity_transactions.csv')).activity())
         self.activity.sort(key=lambda t: t.date)
 
         self.activityByDate = {

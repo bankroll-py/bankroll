@@ -12,7 +12,8 @@ import unittest
 class TestSchwabPositions(unittest.TestCase):
     def setUp(self) -> None:
         self.positions = list(
-            schwab.parsePositions(Path('tests/schwab_positions.CSV')))
+            schwab.SchwabAccount(
+                positions=Path('tests/schwab_positions.CSV')).positions())
         self.positions.sort(key=lambda p: p.instrument.symbol)
 
     def test_positionValidity(self) -> None:
@@ -50,7 +51,8 @@ class TestSchwabPositions(unittest.TestCase):
 class TestSchwabTransactions(unittest.TestCase):
     def setUp(self) -> None:
         self.activity = list(
-            schwab.parseTransactions(Path('tests/schwab_transactions.CSV')))
+            schwab.SchwabAccount(
+                transactions=Path('tests/schwab_transactions.CSV')).activity())
         self.activity.sort(key=lambda t: t.date)
 
         self.activityByDate = {
