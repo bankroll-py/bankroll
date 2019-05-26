@@ -35,30 +35,31 @@ class TestAccountAggregator(unittest.TestCase):
     def testLoadData(self) -> None:
         instruments = set((p.instrument for p in self.data.positions()))
 
-        for p in fidelity.parsePositions(
-                Path(self.settings[fidelity.Settings.POSITIONS])):
+        fidelityAccount = fidelity.FidelityAccount(
+            positions=Path(self.settings[fidelity.Settings.POSITIONS]),
+            transactions=Path(self.settings[fidelity.Settings.TRANSACTIONS]))
+        for p in fidelityAccount.positions():
             self.assertIn(p.instrument, instruments)
-        for a in fidelity.parseTransactions(
-                Path(self.settings[fidelity.Settings.TRANSACTIONS])):
+        for a in fidelityAccount.activity():
             self.assertIn(a, self.data.activity())
 
-        for p in schwab.parsePositions(
-                Path(self.settings[schwab.Settings.POSITIONS])):
+        schwabAccount = schwab.SchwabAccount(
+            positions=Path(self.settings[schwab.Settings.POSITIONS]),
+            transactions=Path(self.settings[schwab.Settings.TRANSACTIONS]))
+        for p in schwabAccount.positions():
             self.assertIn(p.instrument, instruments)
-        for a in schwab.parseTransactions(
-                Path(self.settings[schwab.Settings.TRANSACTIONS])):
+        for a in schwabAccount.activity():
             self.assertIn(a, self.data.activity())
 
-        for a in ibkr.parseTrades(Path(self.settings[ibkr.Settings.TRADES])):
-            self.assertIn(a, self.data.activity())
-        for a in ibkr.parseNonTradeActivity(
-                Path(self.settings[ibkr.Settings.ACTIVITY])):
+        ibAccount = ibkr.IBAccount(
+            trades=Path(self.settings[ibkr.Settings.TRADES]),
+            activity=Path(self.settings[ibkr.Settings.ACTIVITY]))
+        for a in ibAccount.activity():
             self.assertIn(a, self.data.activity())
 
-        vanguardData = vanguard.parsePositionsAndActivity(
-            Path(self.settings[vanguard.Settings.STATEMENT]))
-
-        for p in vanguardData.positions:
+        vanguardAccount = vanguard.VanguardAccount(
+            statement=Path(self.settings[vanguard.Settings.STATEMENT]))
+        for p in vanguardAccount.positions():
             self.assertIn(p.instrument, instruments)
-        for a in vanguardData.activity:
+        for a in vanguardAccount.activity():
             self.assertIn(a, self.data.activity())
