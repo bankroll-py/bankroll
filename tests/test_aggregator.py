@@ -1,50 +1,62 @@
 from bankroll.aggregator import AccountAggregator
 from bankroll.brokers import *
 from bankroll.configuration import Settings
+from bankroll.model import AccountData
 from pathlib import Path
+from typing import List
 
 import helpers
 import unittest
 
 
 class TestAccountAggregator(unittest.TestCase):
-    settings = helpers.fixtureSettings
+    accounts: List[AccountData]
 
     def setUp(self) -> None:
-        # Tests that keys do not clobber each other.
-        self.assertEqual(len(self.settings), 7)
+        settings = helpers.fixtureSettings
 
-        self.data = AccountAggregator.fromSettings(self.settings,
-                                                   lenient=False)
+        self.accounts = [
+            fidelity.FidelityAccount(
+                positions=Path(settings[fidelity.Settings.POSITIONS]),
+                transactions=Path(settings[fidelity.Settings.TRANSACTIONS])),
+            schwab.SchwabAccount(
+                positions=Path(settings[schwab.Settings.POSITIONS]),
+                transactions=Path(settings[schwab.Settings.TRANSACTIONS])),
+            ibkr.IBAccount(trades=Path(settings[ibkr.Settings.TRADES]),
+                           activity=Path(settings[ibkr.Settings.ACTIVITY])),
+            vanguard.VanguardAccount(
+                statement=Path(settings[vanguard.Settings.STATEMENT]))
+        ]
+
+    def testAccountAggregatorTestsAreComplete(self) -> None:
+        for subclass in AccountData.__subclasses__():
+            if subclass == AccountAggregator:
+                continue
+
+            self.assertTrue(
+                any((type(a) == subclass for a in self.accounts)),
+                msg=
+                f'Expected to find {subclass} in TestAccountAggregator (to fix this error, instantiate an example {subclass} in the setUp method)'
+            )
 
     def testLoadData(self) -> None:
-        instruments = set((p.instrument for p in self.data.positions()))
+        aggregator = AccountAggregator.fromSettings(helpers.fixtureSettings,
+                                                    lenient=False)
+        instruments = set((p.instrument for p in aggregator.positions()))
 
-        fidelityAccount = fidelity.FidelityAccount(
-            positions=Path(self.settings[fidelity.Settings.POSITIONS]),
-            transactions=Path(self.settings[fidelity.Settings.TRANSACTIONS]))
-        for p in fidelityAccount.positions():
-            self.assertIn(p.instrument, instruments)
-        for a in fidelityAccount.activity():
-            self.assertIn(a, self.data.activity())
+        for account in self.accounts:
+            for p in account.positions():
+                self.assertIn(
+                    p.instrument,
+                    instruments,
+                    msg=
+                    f'Expected {p} from {account} to show up in aggregated data'
+                )
 
-        schwabAccount = schwab.SchwabAccount(
-            positions=Path(self.settings[schwab.Settings.POSITIONS]),
-            transactions=Path(self.settings[schwab.Settings.TRANSACTIONS]))
-        for p in schwabAccount.positions():
-            self.assertIn(p.instrument, instruments)
-        for a in schwabAccount.activity():
-            self.assertIn(a, self.data.activity())
-
-        ibAccount = ibkr.IBAccount(
-            trades=Path(self.settings[ibkr.Settings.TRADES]),
-            activity=Path(self.settings[ibkr.Settings.ACTIVITY]))
-        for a in ibAccount.activity():
-            self.assertIn(a, self.data.activity())
-
-        vanguardAccount = vanguard.VanguardAccount(
-            statement=Path(self.settings[vanguard.Settings.STATEMENT]))
-        for p in vanguardAccount.positions():
-            self.assertIn(p.instrument, instruments)
-        for a in vanguardAccount.activity():
-            self.assertIn(a, self.data.activity())
+            for a in account.activity():
+                self.assertIn(
+                    a,
+                    aggregator.activity(),
+                    msg=
+                    f'Expected {a} from {account} to show up in aggregated data'
+                )

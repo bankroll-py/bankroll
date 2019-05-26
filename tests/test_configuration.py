@@ -47,6 +47,10 @@ class TestConfiguration(unittest.TestCase):
         vanguardSettings = self.config.section(vanguard.Settings)
         self.assertIsNone(vanguardSettings.get(vanguard.Settings.STATEMENT))
 
+    def testNamespacedSettingsDoNotClobberEachOther(self) -> None:
+        # Tests that settings keys do not clobber each other.
+        self.assertEqual(len(helpers.fixtureSettings), 7)
+
     # Verifies that settings keys are present in bankroll.default.ini, even if commented out.
     @given(from_type(Settings))
     def testSettingsListedInDefaultINI(self, key: Settings) -> None:
