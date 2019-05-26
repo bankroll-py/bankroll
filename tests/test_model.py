@@ -303,11 +303,11 @@ class TestAccountData(unittest.TestCase):
         assume(not isinstance(account, ibkr.IBAccount))
 
         self.assertNotEqual(list(account.positions()), [])
-    
+
     @given(from_type(AccountData))
     def test_activityLoads(self, account: AccountData) -> None:
         self.assertNotEqual(list(account.activity()), [])
-    
+
     @given(from_type(AccountData))
     def test_dataLoadingIsIdempotent(self, account: AccountData) -> None:
         self.assertEqual(list(account.positions()), list(account.positions()))
