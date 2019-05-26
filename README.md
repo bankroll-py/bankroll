@@ -166,6 +166,8 @@ More detailed instructions have yet to be written—[contributions welcome](CONT
 
 `bankroll` intends to abstract away broker-specific details as much as possible, to minimize the work required to support each one, so if your broker isn't listed above, please consider [contributing](CONTRIBUTING.md) an implementation for them! We want the list to grow over time, because it's extremely useful to be able to aggregate and analyze data across multiple brokers at once.
 
+To add a new brokerage, create a new subclass of [`AccountData`](bankroll/model/account.py), then implement the methods as required by the interface. As long as the new subclass is loaded at runtime, it will be automatically included in functionality like [data aggregation](bankroll/aggregator.py).
+
 # Saving configuration
 
 To preserve settings across runs, all of the command-line arguments demonstrated above can also be saved into an [INI file](https://docs.python.org/3/library/configparser.html#supported-ini-file-structure). The configuration file is especially useful to store default values, because when a setting is specified in a configuration file _as well as_ on the command line, the command-line argument will take precedence.

@@ -2,12 +2,12 @@ from datetime import datetime
 from decimal import Context, Decimal, DivisionByZero, Overflow, InvalidOperation, localcontext
 from enum import Enum, IntEnum, unique
 from itertools import count
-from bankroll.model import Currency, Cash, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, TradeFlags, Trade, MarketDataProvider, Quote, Activity, CashPayment
+from bankroll.model import AccountData, Currency, Cash, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, TradeFlags, Trade, MarketDataProvider, Quote, Activity, CashPayment
 from bankroll.parsetools import lenientParse
 from pathlib import Path
 from progress.spinner import Spinner
 from random import randint
-from typing import Any, Awaitable, Callable, Dict, Iterable, List, Mapping, NamedTuple, Optional, Tuple, Type, Union, no_type_check
+from typing import Any, Awaitable, Callable, Dict, Iterable, List, Mapping, NamedTuple, Optional, Sequence, Tuple, Type, Union, no_type_check
 import pandas as pd
 
 import backoff
@@ -41,59 +41,6 @@ class Settings(configuration.Settings):
     @classmethod
     def sectionName(cls) -> str:
         return 'IBKR'
-
-
-def loadPositionsAndActivity(
-        settings: Mapping[Settings, str], lenient: bool
-) -> Tuple[List[Position], List[Activity], Optional[IB.IB]]:
-    positions: List[Position] = []
-    activity: List[Activity] = []
-    client: Optional[IB.IB] = None
-
-    twsPort = settings.get(Settings.TWS_PORT)
-    if twsPort:
-        client = IB.IB()
-
-        client.connect(
-            '127.0.0.1',
-            port=int(twsPort),
-            # Random client ID to minimize chances of conflict
-            clientId=randint(1, 1000000),
-            readonly=True)
-
-        positions += downloadPositions(client, lenient=lenient)
-
-    flexToken = settings.get(Settings.FLEX_TOKEN)
-
-    trades = settings.get(Settings.TRADES)
-    if trades:
-        path = Path(trades)
-        if path.is_file():
-            activity += parseTrades(path, lenient=lenient)
-        elif flexToken:
-            activity += downloadTrades(token=flexToken,
-                                       queryID=int(trades),
-                                       lenient=lenient)
-        else:
-            raise ValueError(
-                f'Trades "{trades}"" must exist as local path, or a Flex token must be provided to run as a query'
-            )
-
-    activitySetting = settings.get(Settings.ACTIVITY)
-    if activitySetting:
-        path = Path(activitySetting)
-        if path.is_file():
-            activity += parseNonTradeActivity(path, lenient=lenient)
-        elif flexToken:
-            activity += downloadNonTradeActivity(token=flexToken,
-                                                 queryID=int(activitySetting),
-                                                 lenient=lenient)
-        else:
-            raise ValueError(
-                f'Activity "{activity}"" must exist as local path, or a Flex token must be provided to run as a query'
-            )
-
-    return (positions, activity, client)
 
 
 def _parseFiniteDecimal(input: str) -> Decimal:
@@ -213,7 +160,7 @@ def _extractPosition(p: IB.Position) -> Position:
         )
 
 
-def downloadPositions(ib: IB.IB, lenient: bool) -> List[Position]:
+def _downloadPositions(ib: IB.IB, lenient: bool) -> List[Position]:
     return list(
         lenientParse(ib.positions(),
                      transform=_extractPosition,
@@ -442,7 +389,7 @@ def _tradesFromReport(report: IB.FlexReport, lenient: bool) -> List[Trade]:
             lenient=lenient))
 
 
-def parseTrades(path: Path, lenient: bool = False) -> List[Trade]:
+def _parseTrades(path: Path, lenient: bool = False) -> List[Trade]:
     return _tradesFromReport(IB.FlexReport(path=path), lenient=lenient)
 
 
@@ -475,7 +422,8 @@ def _activityFromReport(report: IB.FlexReport,
 
 # TODO: This should eventually be unified with trade parsing.
 # See https://github.com/jspahrsummers/bankroll/issues/36.
-def parseNonTradeActivity(path: Path, lenient: bool = False) -> List[Activity]:
+def _parseNonTradeActivity(path: Path,
+                           lenient: bool = False) -> List[Activity]:
     return _activityFromReport(IB.FlexReport(path=path), lenient=lenient)
 
 
@@ -518,8 +466,8 @@ def _downloadFlexReport(name: str, token: str, queryID: int) -> IB.FlexReport:
             logger.removeHandler(handler)
 
 
-def downloadTrades(token: str, queryID: int,
-                   lenient: bool = False) -> List[Trade]:
+def _downloadTrades(token: str, queryID: int,
+                    lenient: bool = False) -> List[Trade]:
     return _tradesFromReport(_downloadFlexReport(name='Trades',
                                                  token=token,
                                                  queryID=queryID),
@@ -528,8 +476,8 @@ def downloadTrades(token: str, queryID: int,
 
 # TODO: This should eventually be unified with trade parsing.
 # See https://github.com/jspahrsummers/bankroll/issues/36.
-def downloadNonTradeActivity(token: str, queryID: int,
-                             lenient: bool = False) -> List[Activity]:
+def _downloadNonTradeActivity(token: str, queryID: int,
+                              lenient: bool = False) -> List[Activity]:
     return _activityFromReport(_downloadFlexReport(name='Activity',
                                                    token=token,
                                                    queryID=queryID),
@@ -674,3 +622,111 @@ class IBDataProvider(MarketDataProvider):
                              quantity=Decimal(ticker.close) / factor)
 
             yield (instrument, Quote(bid=bid, ask=ask, last=last, close=close))
+
+
+class IBAccount(AccountData):
+    _cachedActivity: Optional[Sequence[Activity]] = None
+    _client: Optional[IB.IB] = None
+
+    @classmethod
+    def fromSettings(cls, settings: Mapping[configuration.Settings, str],
+                     lenient: bool) -> 'IBAccount':
+        port = settings.get(Settings.TWS_PORT)
+
+        tradesSetting = settings.get(Settings.TRADES)
+        trades: Union[Path, int, None]
+        if tradesSetting:
+            path = Path(tradesSetting)
+            if path.is_file():
+                trades = path
+            else:
+                trades = int(tradesSetting)
+
+        activitySetting = settings.get(Settings.ACTIVITY)
+        activity: Union[Path, int, None]
+        if activitySetting:
+            path = Path(activitySetting)
+            if path.is_file():
+                activity = path
+            else:
+                activity = int(activitySetting)
+
+        return cls(twsPort=int(port) if port else None,
+                   flexToken=settings.get(Settings.FLEX_TOKEN),
+                   trades=trades,
+                   activity=activity,
+                   lenient=lenient)
+
+    def __init__(self,
+                 twsPort: Optional[int] = None,
+                 flexToken: Optional[str] = None,
+                 trades: Union[Path, int, None] = None,
+                 activity: Union[Path, int, None] = None,
+                 lenient: bool = False):
+        self._twsPort = twsPort
+        self._flexToken = flexToken
+        self._trades = trades
+        self._activity = activity
+        self._lenient = lenient
+        super().__init__()
+
+    @property
+    def client(self) -> Optional[IB.IB]:
+        if not self._twsPort:
+            return None
+
+        if not self._client:
+            self._client = IB.IB()
+            self._client.connect(
+                '127.0.0.1',
+                port=self._twsPort,
+                # Random client ID to minimize chances of conflict
+                clientId=randint(1, 1000000),
+                readonly=True)
+
+        return self._client
+
+    def positions(self) -> Iterable[Position]:
+        if not self._client:
+            return []
+
+        return _downloadPositions(self._client, self._lenient)
+
+    def activity(self) -> Iterable[Activity]:
+        if self._cachedActivity:
+            return self._cachedActivity
+
+        self._cachedActivity = []
+
+        if isinstance(self._trades, Path):
+            self._cachedActivity += _parseTrades(self._trades,
+                                                 lenient=self._lenient)
+        elif self._trades:
+            if not self._flexToken:
+                raise ValueError(
+                    f'Trades "{self._trades}"" must exist as local path, or a Flex token must be provided to run as a query'
+                )
+
+            self._cachedActivity += _downloadTrades(token=self._flexToken,
+                                                    queryID=self._trades,
+                                                    lenient=self._lenient)
+
+        if isinstance(self._activity, Path):
+            self._cachedActivity += _parseNonTradeActivity(
+                self._activity, lenient=self._lenient)
+        elif self._activity:
+            if not self._flexToken:
+                raise ValueError(
+                    f'Activity "{self._activity}"" must exist as local path, or a Flex token must be provided to run as a query'
+                )
+
+            self._cachedActivity += _downloadNonTradeActivity(
+                token=self._flexToken,
+                queryID=self._activity,
+                lenient=self._lenient)
+
+        return self._cachedActivity
+
+    @property
+    def marketDataProvider(self) -> Optional[MarketDataProvider]:
+        return IBDataProvider(client=self.client)

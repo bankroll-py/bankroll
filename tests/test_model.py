@@ -1,4 +1,5 @@
-from bankroll.model import Cash, Currency, Instrument, Bond, Stock, Option, OptionType, FutureOption, Future, Position, Quote, Trade
+from bankroll.brokers import ibkr
+from bankroll.model import AccountData, Cash, Currency, Instrument, Bond, Stock, Option, OptionType, FutureOption, Future, Position, Quote, Trade
 from datetime import date
 from decimal import Decimal, ROUND_UP
 from hypothesis import assume, given, reproduce_failure
@@ -292,6 +293,25 @@ class TestTrade(unittest.TestCase):
                     0,
                     msg='Sell transaction for loss should have a negative price'
                 )
+
+
+class TestAccountData(unittest.TestCase):
+    @given(from_type(AccountData))
+    def test_positionsLoad(self, account: AccountData) -> None:
+        # IB position loading requires a live data connection, which we won't
+        # have in test.
+        assume(not isinstance(account, ibkr.IBAccount))
+
+        self.assertNotEqual(list(account.positions()), [])
+
+    @given(from_type(AccountData))
+    def test_activityLoads(self, account: AccountData) -> None:
+        self.assertNotEqual(list(account.activity()), [])
+
+    @given(from_type(AccountData))
+    def test_dataLoadingIsIdempotent(self, account: AccountData) -> None:
+        self.assertEqual(list(account.positions()), list(account.positions()))
+        self.assertEqual(list(account.activity()), list(account.activity()))
 
 
 if __name__ == '__main__':

@@ -1,70 +1,62 @@
-from bankroll.aggregator import DataAggregator
+from bankroll.aggregator import AccountAggregator
 from bankroll.brokers import *
 from bankroll.configuration import Settings
+from bankroll.model import AccountData
 from pathlib import Path
+from typing import List
 
 import helpers
 import unittest
 
 
-class TestDataAggregator(unittest.TestCase):
+class TestAccountAggregator(unittest.TestCase):
+    accounts: List[AccountData]
+
     def setUp(self) -> None:
-        self.settings = {
-            fidelity.Settings.POSITIONS:
-            'tests/fidelity_positions.csv',
-            fidelity.Settings.TRANSACTIONS:
-            'tests/fidelity_transactions.csv',
-            ibkr.Settings.ACTIVITY:
-            'tests/ibkr_activity.xml',
-            ibkr.Settings.TRADES:
-            'tests/ibkr_trades.xml',
-            schwab.Settings.POSITIONS:
-            'tests/schwab_positions.CSV',
-            schwab.Settings.TRANSACTIONS:
-            'tests/schwab_transactions.CSV',
-            vanguard.Settings.STATEMENT:
-            'tests/vanguard_positions_and_transactions.csv',
-        }
+        settings = helpers.fixtureSettings
 
-        # Tests that keys do not clobber each other.
-        self.assertEqual(len(self.settings), 7)
+        self.accounts = [
+            fidelity.FidelityAccount(
+                positions=Path(settings[fidelity.Settings.POSITIONS]),
+                transactions=Path(settings[fidelity.Settings.TRANSACTIONS])),
+            schwab.SchwabAccount(
+                positions=Path(settings[schwab.Settings.POSITIONS]),
+                transactions=Path(settings[schwab.Settings.TRANSACTIONS])),
+            ibkr.IBAccount(trades=Path(settings[ibkr.Settings.TRADES]),
+                           activity=Path(settings[ibkr.Settings.ACTIVITY])),
+            vanguard.VanguardAccount(
+                statement=Path(settings[vanguard.Settings.STATEMENT]))
+        ]
 
-        self.data = DataAggregator(self.settings)
+    def testAccountAggregatorTestsAreComplete(self) -> None:
+        for subclass in AccountData.__subclasses__():
+            if subclass == AccountAggregator:
+                continue
 
-    def testValuesStartEmpty(self) -> None:
-        self.assertEqual(self.data.positions, [])
-        self.assertEqual(self.data.activity, [])
-        self.assertIsNone(self.data.dataProvider)
+            self.assertTrue(
+                any((type(a) == subclass for a in self.accounts)),
+                msg=
+                f'Expected to find {subclass} in TestAccountAggregator (to fix this error, instantiate an example {subclass} in the setUp method)'
+            )
 
     def testLoadData(self) -> None:
-        self.data.loadData(lenient=False)
+        aggregator = AccountAggregator.fromSettings(helpers.fixtureSettings,
+                                                    lenient=False)
+        instruments = set((p.instrument for p in aggregator.positions()))
 
-        instruments = set((p.instrument for p in self.data.positions))
+        for account in self.accounts:
+            for p in account.positions():
+                self.assertIn(
+                    p.instrument,
+                    instruments,
+                    msg=
+                    f'Expected {p} from {account} to show up in aggregated data'
+                )
 
-        for p in fidelity.parsePositions(
-                Path(self.settings[fidelity.Settings.POSITIONS])):
-            self.assertIn(p.instrument, instruments)
-        for a in fidelity.parseTransactions(
-                Path(self.settings[fidelity.Settings.TRANSACTIONS])):
-            self.assertIn(a, self.data.activity)
-
-        for p in schwab.parsePositions(
-                Path(self.settings[schwab.Settings.POSITIONS])):
-            self.assertIn(p.instrument, instruments)
-        for a in schwab.parseTransactions(
-                Path(self.settings[schwab.Settings.TRANSACTIONS])):
-            self.assertIn(a, self.data.activity)
-
-        for a in ibkr.parseTrades(Path(self.settings[ibkr.Settings.TRADES])):
-            self.assertIn(a, self.data.activity)
-        for a in ibkr.parseNonTradeActivity(
-                Path(self.settings[ibkr.Settings.ACTIVITY])):
-            self.assertIn(a, self.data.activity)
-
-        vanguardData = vanguard.parsePositionsAndActivity(
-            Path(self.settings[vanguard.Settings.STATEMENT]))
-
-        for p in vanguardData.positions:
-            self.assertIn(p.instrument, instruments)
-        for a in vanguardData.activity:
-            self.assertIn(a, self.data.activity)
+            for a in account.activity():
+                self.assertIn(
+                    a,
+                    aggregator.activity(),
+                    msg=
+                    f'Expected {a} from {account} to show up in aggregated data'
+                )

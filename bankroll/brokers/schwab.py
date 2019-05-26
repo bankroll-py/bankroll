@@ -1,11 +1,11 @@
-from bankroll.model import Activity, Cash, Currency, Instrument, Stock, Bond, Option, OptionType, Position, CashPayment, Trade, TradeFlags
+from bankroll.model import AccountData, Activity, Cash, Currency, Instrument, Stock, Bond, Option, OptionType, Position, CashPayment, Trade, TradeFlags
 from bankroll.parsetools import lenientParse
 from datetime import date, datetime
 from decimal import Decimal
 from enum import unique
 from itertools import chain, groupby
 from pathlib import Path
-from typing import Dict, Iterable, List, NamedTuple, Optional, Sequence, TypeVar
+from typing import Dict, Iterable, List, Mapping, NamedTuple, Optional, Sequence, Type, TypeVar
 
 import bankroll.configuration as configuration
 import csv
@@ -112,7 +112,7 @@ def padToLength(seq: Sequence[_T], length: int, padding: _T) -> Iterable[_T]:
     return chain(seq, [padding] * (length - len(seq)))
 
 
-def parsePositions(path: Path, lenient: bool = False) -> Sequence[Position]:
+def _parsePositions(path: Path, lenient: bool = False) -> Sequence[Position]:
     with open(path, newline='') as csvfile:
         reader = csv.reader(csvfile)
 
@@ -269,7 +269,7 @@ def _parseSchwabTransaction(
 
 
 # Transactions will be ordered from oldest to newest
-def parseTransactions(path: Path, lenient: bool = False) -> List[Activity]:
+def _parseTransactions(path: Path, lenient: bool = False) -> List[Activity]:
     with open(path, newline='') as csvfile:
         reader = csv.reader(csvfile)
 
@@ -339,3 +339,47 @@ def _fixUpShortSales(activity: Sequence[Activity],
 
     # Start from oldest transactions, work to newer
     return [f(t) for t in reversed(activity)]
+
+
+class SchwabAccount(AccountData):
+    _positions: Optional[Sequence[Position]] = None
+    _activity: Optional[Sequence[Activity]] = None
+
+    @classmethod
+    def fromSettings(cls, settings: Mapping[configuration.Settings, str],
+                     lenient: bool) -> 'SchwabAccount':
+        positions = settings.get(Settings.POSITIONS)
+        transactions = settings.get(Settings.TRANSACTIONS)
+
+        return cls(positions=Path(positions) if positions else None,
+                   transactions=Path(transactions) if transactions else None,
+                   lenient=lenient)
+
+    def __init__(self,
+                 positions: Optional[Path] = None,
+                 transactions: Optional[Path] = None,
+                 lenient: bool = False):
+        self._positionsPath = positions
+        self._transactionsPath = transactions
+        self._lenient = lenient
+        super().__init__()
+
+    def positions(self) -> Iterable[Position]:
+        if not self._positionsPath:
+            return []
+
+        if not self._positions:
+            self._positions = _parsePositions(self._positionsPath,
+                                             lenient=self._lenient)
+
+        return self._positions
+
+    def activity(self) -> Iterable[Activity]:
+        if not self._transactionsPath:
+            return []
+
+        if not self._activity:
+            self._activity = _parseTransactions(self._transactionsPath,
+                                               lenient=self._lenient)
+
+        return self._activity
