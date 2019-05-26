@@ -7,7 +7,7 @@ from bankroll.configuration import Configuration, Settings
 from bankroll.model import AccountData, Activity, MarketDataProvider, Position
 
 
-class DataAggregator(AccountData):
+class AccountAggregator(AccountData):
     @classmethod
     def allSettings(cls, config: Configuration = Configuration()
                     ) -> Dict[Settings, str]:
@@ -20,14 +20,14 @@ class DataAggregator(AccountData):
 
     @classmethod
     def fromSettings(cls, settings: Mapping[Settings, str],
-                     lenient: bool) -> DataAggregator:
-        return DataAggregator(accounts=[
+                     lenient: bool) -> AccountAggregator:
+        return AccountAggregator(accounts=[
             fidelity.FidelityAccount.fromSettings(settings, lenient=lenient),
             ibkr.IBAccount.fromSettings(settings, lenient=lenient),
             schwab.SchwabAccount.fromSettings(settings, lenient=lenient),
             vanguard.VanguardAccount.fromSettings(settings, lenient=lenient),
         ],
-                              lenient=lenient)
+                                 lenient=lenient)
 
     def __init__(self, accounts: Sequence[AccountData], lenient: bool):
         self._accounts = accounts

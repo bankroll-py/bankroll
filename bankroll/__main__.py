@@ -1,6 +1,6 @@
 from argparse import ArgumentParser, Namespace
 from itertools import chain
-from bankroll import Activity, Instrument, Stock, Position, Trade, Cash, MarketDataProvider, DataAggregator, analysis
+from bankroll import Activity, Instrument, Stock, Position, Trade, Cash, MarketDataProvider, AccountAggregator, analysis
 from bankroll.brokers import *
 from bankroll.configuration import Configuration, Settings, addSettingsToArgumentGroup
 from progress.bar import Bar
@@ -70,7 +70,7 @@ readVanguardSettings = addSettingsToArgumentGroup(vanguard.Settings,
                                                   vanguardGroup)
 
 
-def printPositions(data: DataAggregator, args: Namespace) -> None:
+def printPositions(data: AccountAggregator, args: Namespace) -> None:
     values: Dict[Position, Cash] = {}
     if args.live_value:
         if data.dataProvider:
@@ -98,7 +98,7 @@ def printPositions(data: DataAggregator, args: Namespace) -> None:
             print(f'\tRealized basis: {realizedBasis}')
 
 
-def printActivity(data: DataAggregator, args: Namespace) -> None:
+def printActivity(data: AccountAggregator, args: Namespace) -> None:
     for t in sorted(data.activity, key=lambda t: t.date, reverse=True):
         print(t)
 
@@ -148,7 +148,7 @@ def main() -> None:
             readVanguardSettings(config, args).items(),
             readIBSettings(config, args).items()))
 
-    data = DataAggregator(mergedSettings).loadData(lenient=args.lenient)
+    data = AccountAggregator(mergedSettings).loadData(lenient=args.lenient)
     commands[args.command](data, args)
 
 

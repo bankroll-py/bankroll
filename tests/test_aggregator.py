@@ -1,4 +1,4 @@
-from bankroll.aggregator import DataAggregator
+from bankroll.aggregator import AccountAggregator
 from bankroll.brokers import *
 from bankroll.configuration import Settings
 from pathlib import Path
@@ -7,7 +7,7 @@ import helpers
 import unittest
 
 
-class TestDataAggregator(unittest.TestCase):
+class TestAccountAggregator(unittest.TestCase):
     def setUp(self) -> None:
         self.settings = {
             fidelity.Settings.POSITIONS:
@@ -29,7 +29,7 @@ class TestDataAggregator(unittest.TestCase):
         # Tests that keys do not clobber each other.
         self.assertEqual(len(self.settings), 7)
 
-        self.data = DataAggregator(self.settings)
+        self.data = AccountAggregator(self.settings)
 
     def testValuesStartEmpty(self) -> None:
         self.assertEqual(self.data.positions, [])
