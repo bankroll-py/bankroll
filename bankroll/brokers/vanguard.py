@@ -211,7 +211,7 @@ def _parseTransactions(path: Path, lenient: bool = False) -> List[Activity]:
 
 
 class VanguardAccount(AccountData):
-    _positionsAndActivity: Optional[PositionsAndActivity]
+    _positionsAndActivity: Optional[PositionsAndActivity] = None
 
     @classmethod
     def fromSettings(cls, settings: Mapping[configuration.Settings, str],

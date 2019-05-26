@@ -677,8 +677,8 @@ class IBDataProvider(MarketDataProvider):
 
 
 class IBAccount(AccountData):
-    _cachedActivity: Optional[Sequence[Activity]]
-    _client: Optional[IB.IB]
+    _cachedActivity: Optional[Sequence[Activity]] = None
+    _client: Optional[IB.IB] = None
 
     @classmethod
     def fromSettings(cls, settings: Mapping[configuration.Settings, str],

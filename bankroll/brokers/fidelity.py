@@ -250,8 +250,8 @@ def parseTransactions(path: Path, lenient: bool = False) -> List[Activity]:
 
 
 class FidelityAccount(AccountData):
-    _positions: Optional[Sequence[Position]]
-    _activity: Optional[Sequence[Activity]]
+    _positions: Optional[Sequence[Position]] = None
+    _activity: Optional[Sequence[Activity]] = None
 
     @classmethod
     def fromSettings(cls, settings: Mapping[configuration.Settings, str],
