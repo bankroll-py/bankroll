@@ -12,25 +12,21 @@ class AccountAggregator(AccountData):
     def allSettings(cls, config: Configuration = Configuration()
                     ) -> Dict[Settings, str]:
         return dict(
-            chain(
-                config.section(ibkr.Settings).items(),
-                config.section(fidelity.Settings).items(),
-                config.section(schwab.Settings).items(),
-                config.section(vanguard.Settings).items()))
+            chain.from_iterable(
+                (config.section(settingsCls).items()
+                 for settingsCls in Settings.__subclasses__())))
 
     @classmethod
     def fromSettings(cls, settings: Mapping[Settings, str],
                      lenient: bool) -> 'AccountAggregator':
-        return AccountAggregator(accounts=[
-            fidelity.FidelityAccount.fromSettings(settings, lenient=lenient),
-            ibkr.IBAccount.fromSettings(settings, lenient=lenient),
-            schwab.SchwabAccount.fromSettings(settings, lenient=lenient),
-            vanguard.VanguardAccount.fromSettings(settings, lenient=lenient),
-        ],
-                                 lenient=lenient)
+        return AccountAggregator(
+            accounts=(accountCls.fromSettings(settings, lenient=lenient)
+                      for accountCls in AccountData.__subclasses__()
+                      if not issubclass(accountCls, AccountAggregator)),
+            lenient=lenient)
 
-    def __init__(self, accounts: Sequence[AccountData], lenient: bool):
-        self._accounts = accounts
+    def __init__(self, accounts: Iterable[AccountData], lenient: bool):
+        self._accounts = list(accounts)
         self._lenient = lenient
         super().__init__()
 
