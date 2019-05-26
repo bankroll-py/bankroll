@@ -8,24 +8,9 @@ import unittest
 
 
 class TestAccountAggregator(unittest.TestCase):
-    def setUp(self) -> None:
-        self.settings = {
-            fidelity.Settings.POSITIONS:
-            'tests/fidelity_positions.csv',
-            fidelity.Settings.TRANSACTIONS:
-            'tests/fidelity_transactions.csv',
-            ibkr.Settings.ACTIVITY:
-            'tests/ibkr_activity.xml',
-            ibkr.Settings.TRADES:
-            'tests/ibkr_trades.xml',
-            schwab.Settings.POSITIONS:
-            'tests/schwab_positions.CSV',
-            schwab.Settings.TRANSACTIONS:
-            'tests/schwab_transactions.CSV',
-            vanguard.Settings.STATEMENT:
-            'tests/vanguard_positions_and_transactions.csv',
-        }
+    settings = helpers.fixtureSettings
 
+    def setUp(self) -> None:
         # Tests that keys do not clobber each other.
         self.assertEqual(len(self.settings), 7)
 

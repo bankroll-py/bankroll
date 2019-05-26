@@ -1,7 +1,8 @@
 from datetime import date, datetime
 from decimal import Decimal
 from hypothesis.strategies import builds, dates, datetimes, decimals, from_regex, from_type, just, lists, integers, none, one_of, register_type_strategy, sampled_from, text, SearchStrategy
-from bankroll import Activity, Cash, Currency, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, CashPayment, Trade, TradeFlags, Quote
+from bankroll import AccountData, Activity, Cash, Currency, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, CashPayment, Trade, TradeFlags, Quote
+from bankroll.brokers import *
 from bankroll.configuration import Settings
 from typing import List, Optional, TypeVar
 
@@ -247,6 +248,22 @@ register_type_strategy(Quote, uniformCurrencyQuotes())
 
 register_type_strategy(
     Settings, one_of([from_type(s) for s in Settings.__subclasses__()]))
+
+fixtureSettings = {
+    fidelity.Settings.POSITIONS: 'tests/fidelity_positions.csv',
+    fidelity.Settings.TRANSACTIONS: 'tests/fidelity_transactions.csv',
+    ibkr.Settings.ACTIVITY: 'tests/ibkr_activity.xml',
+    ibkr.Settings.TRADES: 'tests/ibkr_trades.xml',
+    schwab.Settings.POSITIONS: 'tests/schwab_positions.CSV',
+    schwab.Settings.TRANSACTIONS: 'tests/schwab_transactions.CSV',
+    vanguard.Settings.STATEMENT:
+    'tests/vanguard_positions_and_transactions.csv',
+}
+
+register_type_strategy(
+    AccountData,
+    sampled_from(AccountData.__subclasses__()).map(
+        lambda cls: cls.fromSettings(fixtureSettings, lenient=False)))
 
 
 def cashUSD(amount: Decimal) -> Cash:
