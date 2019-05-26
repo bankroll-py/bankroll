@@ -1,5 +1,5 @@
 from bankroll.analysis import realizedBasisForSymbol
-from bankroll.model import Activity, Bond, Cash, Currency, Instrument, Position, Stock, CashPayment, Trade, TradeFlags
+from bankroll.model import AccountData, Activity, Bond, Cash, Currency, Instrument, Position, Stock, CashPayment, Trade, TradeFlags
 from bankroll.csvsectionslicer import parseSectionsForCSV, CSVSectionCriterion, CSVSectionResult
 from bankroll.parsetools import lenientParse
 from collections import namedtuple
@@ -7,7 +7,7 @@ from datetime import datetime
 from decimal import Decimal
 from enum import unique
 from pathlib import Path
-from typing import Dict, List, NamedTuple, Optional, Set, Tuple
+from typing import Dict, Iterable, List, NamedTuple, Optional, Sequence, Set, Tuple
 
 import bankroll.configuration as configuration
 import csv
@@ -162,11 +162,11 @@ def _forceParseVanguardTransaction(t: _VanguardTransaction,
 def _parseVanguardTransaction(t: _VanguardTransaction) -> Optional[Activity]:
     if t.transactionType == 'Dividend':
         return CashPayment(date=_parseVanguardTransactionDate(t.tradeDate),
-                               instrument=Stock(
-                                   t.symbol if t.symbol else t.investmentName,
-                                   currency=Currency.USD),
-                               proceeds=Cash(currency=Currency.USD,
-                                             quantity=Decimal(t.netAmount)))
+                           instrument=Stock(
+                               t.symbol if t.symbol else t.investmentName,
+                               currency=Currency.USD),
+                           proceeds=Cash(currency=Currency.USD,
+                                         quantity=Decimal(t.netAmount)))
 
     validTransactionTypes = set([
         'Buy', 'Sell', 'Reinvestment', 'Corp Action (Redemption)',
@@ -208,3 +208,31 @@ def _parseTransactions(path: Path, lenient: bool = False) -> List[Activity]:
                     (_VanguardTransaction._make(r) for r in sections[0].rows),
                     transform=_parseVanguardTransaction,
                     lenient=lenient)))
+
+
+class VanguardAccount(AccountData):
+    _positionsAndActivity: Optional[PositionsAndActivity]
+
+    def __init__(self, statement: Optional[Path] = None,
+                 lenient: bool = False):
+        self._statement = statement
+        self._lenient = lenient
+        super().__init__()
+
+    def positionsAndActivity(self) -> Optional[PositionsAndActivity]:
+        if not self._statement:
+            return None
+
+        if not self._positionsAndActivity:
+            self._positionsAndActivity = parsePositionsAndActivity(
+                self._statement, lenient=self._lenient)
+
+        return self._positionsAndActivity
+
+    def positions(self) -> Iterable[Position]:
+        paa = self.positionsAndActivity()
+        return paa.positions if paa else []
+
+    def activity(self) -> Iterable[Activity]:
+        paa = self.positionsAndActivity()
+        return paa.activity if paa else []
