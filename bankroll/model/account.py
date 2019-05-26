@@ -18,8 +18,8 @@ class AccountData(ABC):
     # like this, instead of an unintuitive mapping.
     #
     # TODO: Hoist `lenient` into a Setting to make this less awkward.
-    @abstractmethod
     @classmethod
+    @abstractmethod
     def fromSettings(cls, settings: Mapping[Settings, str],
                      lenient: bool) -> 'AccountData':
         pass
