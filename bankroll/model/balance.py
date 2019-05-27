@@ -4,6 +4,11 @@ from typing import Dict
 from .cash import Cash, Currency
 
 
+# Represents uninvested cash (which nonetheless may accrue interest) sitting in
+# a brokerage account.
+#
+# Cash explicitly invested in money market funds (e.g., such that they show up
+# as Positions) will not be included in this accounting.
 @dataclass(frozen=True)
 class AccountBalance:
     cash: Dict[Currency, Cash]

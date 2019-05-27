@@ -1,4 +1,4 @@
-from bankroll import Activity, Bond, Cash, Currency, Instrument, Position, Stock, CashPayment, Trade, TradeFlags
+from bankroll import AccountBalance, Activity, Bond, Cash, Currency, Instrument, Position, Stock, CashPayment, Trade, TradeFlags
 from bankroll.brokers import vanguard
 from datetime import date
 from decimal import Decimal
@@ -195,6 +195,15 @@ class TestVanguardTransactions(unittest.TestCase):
                 amount=Cash(currency=Currency.USD, quantity=Decimal('0.00')),
                 fees=Cash(currency=Currency.USD, quantity=Decimal('0.00')),
                 flags=TradeFlags.CLOSE))
+
+
+class TestVanguardBalance(unittest.TestCase):
+    def setUp(self) -> None:
+        self.balance = vanguard.VanguardAccount(statement=Path(
+            'tests/vanguard_positions_and_transactions.csv')).balance()
+
+    def testEmptyUninvestedBalance(self) -> None:
+        self.assertEqual(self.balance.cash, {})
 
 
 if __name__ == '__main__':

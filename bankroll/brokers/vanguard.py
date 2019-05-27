@@ -1,5 +1,5 @@
 from bankroll.analysis import realizedBasisForSymbol
-from bankroll.model import AccountData, Activity, Bond, Cash, Currency, Instrument, Position, Stock, CashPayment, Trade, TradeFlags
+from bankroll.model import AccountBalance, AccountData, Activity, Bond, Cash, Currency, Instrument, Position, Stock, CashPayment, Trade, TradeFlags
 from bankroll.csvsectionslicer import parseSectionsForCSV, CSVSectionCriterion, CSVSectionResult
 from bankroll.parsetools import lenientParse
 from collections import namedtuple
@@ -244,3 +244,8 @@ class VanguardAccount(AccountData):
     def activity(self) -> Iterable[Activity]:
         paa = self.positionsAndActivity()
         return paa.activity if paa else []
+
+    def balance(self) -> AccountBalance:
+        # Vanguard puts all cash into money market funds, which will show up to
+        # us as Positions, not uninvested cash.
+        return AccountBalance(cash={})
