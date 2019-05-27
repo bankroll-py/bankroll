@@ -150,6 +150,12 @@ class Cash:
         else:
             return NotImplemented
 
+    def __rtruediv__(self, other: Union[Decimal, int]) -> 'Cash':
+        if isinstance(other, Decimal) or isinstance(other, int):
+            return Cash(currency=self.currency, quantity=other / self.quantity)
+        else:
+            return NotImplemented
+
     def __neg__(self) -> 'Cash':
         return Cash(currency=self.currency, quantity=-self.quantity)
 
