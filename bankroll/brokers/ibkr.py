@@ -712,10 +712,10 @@ class IBAccount(AccountData):
         return self._client
 
     def positions(self) -> Iterable[Position]:
-        if not self._client:
+        if not self.client:
             return []
 
-        return _downloadPositions(self._client, self._lenient)
+        return _downloadPositions(self.client, self._lenient)
 
     def activity(self) -> Iterable[Activity]:
         if self._cachedActivity:
@@ -753,10 +753,10 @@ class IBAccount(AccountData):
         return self._cachedActivity
 
     def balance(self) -> AccountBalance:
-        if not self._client:
+        if not self.client:
             return AccountBalance(cash={})
 
-        return _downloadBalance(self._client, self._lenient)
+        return _downloadBalance(self.client, self._lenient)
 
     @property
     def marketDataProvider(self) -> Optional[MarketDataProvider]:
