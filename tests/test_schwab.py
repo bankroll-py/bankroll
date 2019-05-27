@@ -1,4 +1,4 @@
-from bankroll import Cash, Currency, Stock, Bond, Option, OptionType, Position, CashPayment, Trade, TradeFlags
+from bankroll import AccountBalance, Cash, Currency, Stock, Bond, Option, OptionType, Position, CashPayment, Trade, TradeFlags
 from bankroll.brokers import schwab
 from datetime import date
 from decimal import Decimal
@@ -281,6 +281,16 @@ class TestSchwabTransactions(unittest.TestCase):
                               quantity=Decimal('920.78')),
                   fees=Cash(currency=Currency.USD, quantity=Decimal('13.65')),
                   flags=TradeFlags.CLOSE))
+
+
+class TestSchwabBalance(unittest.TestCase):
+    def setUp(self) -> None:
+        self.balance = schwab.SchwabAccount(
+            positions=Path('tests/schwab_positions.CSV')).balance()
+
+    def testUSDBalance(self) -> None:
+        self.assertEqual(self.balance.cash,
+                         {Currency.USD: helpers.cashUSD(Decimal('500.21'))})
 
 
 if __name__ == '__main__':

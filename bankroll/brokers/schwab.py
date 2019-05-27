@@ -1,15 +1,17 @@
-from bankroll.model import AccountData, Activity, Cash, Currency, Instrument, Stock, Bond, Option, OptionType, Position, CashPayment, Trade, TradeFlags
+from bankroll.model import AccountBalance, AccountData, Activity, Cash, Currency, Instrument, Stock, Bond, Option, OptionType, Position, CashPayment, Trade, TradeFlags
 from bankroll.parsetools import lenientParse
 from datetime import date, datetime
 from decimal import Decimal
 from enum import unique
+from functools import reduce
 from itertools import chain, groupby
 from pathlib import Path
-from typing import Dict, Iterable, List, Mapping, NamedTuple, Optional, Sequence, Type, TypeVar
+from typing import Dict, Iterable, List, Mapping, NamedTuple, Optional, Sequence, Tuple, Type, TypeVar
 
 import bankroll.configuration as configuration
 import csv
 import dataclasses
+import operator
 import re
 
 
@@ -112,25 +114,54 @@ def padToLength(seq: Sequence[_T], length: int, padding: _T) -> Iterable[_T]:
     return chain(seq, [padding] * (length - len(seq)))
 
 
+def _schwabPositionsFromRows(rows: Iterable[List[str]]
+                             ) -> Iterable[_SchwabPosition]:
+    return (
+        _SchwabPosition._make(
+            # Not all rows are the correct length, so pad until they are (after
+            # stripping out empty last cell)
+            padToLength(r[0:-1], len(_SchwabPosition._fields), ''))
+        for r in rows if len(r) > 1 and r[0] != 'Symbol')
+
+
 def _parsePositions(path: Path, lenient: bool = False) -> Sequence[Position]:
     with open(path, newline='') as csvfile:
         reader = csv.reader(csvfile)
 
-        # Filter out header rows, and invalid data
-        rows = map(lambda r: r[0:-1],
-                   filter(lambda r: len(r) > 1 and r[0] != 'Symbol', reader))
-
         return list(
             filter(
                 None,
-                lenientParse(
-                    (
-                        _SchwabPosition._make(
-                            # Not all rows are the correct length, so pad until they are
-                            padToLength(r, len(_SchwabPosition._fields), ''))
-                        for r in rows),
-                    transform=_parseSchwabPosition,
-                    lenient=lenient)))
+                lenientParse(_schwabPositionsFromRows(reader),
+                             transform=_parseSchwabPosition,
+                             lenient=lenient)))
+
+
+def _parseCashValue(p: _SchwabPosition) -> Tuple[str, Cash]:
+    return (p.symbol,
+            Cash(currency=Currency.USD,
+                 quantity=_schwabDecimal(p.marketValue)))
+
+
+def _parseBalance(path: Path, lenient: bool = False) -> AccountBalance:
+    with open(path, newline='') as csvfile:
+        reader = csv.reader(csvfile)
+
+        interestingKeys = {
+            'Futures Cash',
+            'Cash & Money Market',
+        }
+
+        keysAndCash = lenientParse(_schwabPositionsFromRows(reader),
+                                   transform=_parseCashValue,
+                                   lenient=lenient)
+
+        return AccountBalance(
+            cash={
+                Currency.USD:
+                reduce(operator.add, (cash for key, cash in keysAndCash
+                                      if key in interestingKeys),
+                       Cash(currency=Currency.USD, quantity=Decimal(0)))
+            })
 
 
 class _SchwabTransaction(NamedTuple):
@@ -344,6 +375,7 @@ def _fixUpShortSales(activity: Sequence[Activity],
 class SchwabAccount(AccountData):
     _positions: Optional[Sequence[Position]] = None
     _activity: Optional[Sequence[Activity]] = None
+    _balance: Optional[AccountBalance] = None
 
     @classmethod
     def fromSettings(cls, settings: Mapping[configuration.Settings, str],
@@ -370,7 +402,7 @@ class SchwabAccount(AccountData):
 
         if not self._positions:
             self._positions = _parsePositions(self._positionsPath,
-                                             lenient=self._lenient)
+                                              lenient=self._lenient)
 
         return self._positions
 
@@ -380,6 +412,16 @@ class SchwabAccount(AccountData):
 
         if not self._activity:
             self._activity = _parseTransactions(self._transactionsPath,
-                                               lenient=self._lenient)
+                                                lenient=self._lenient)
 
         return self._activity
+
+    def balance(self) -> AccountBalance:
+        if not self._positionsPath:
+            return AccountBalance(cash={})
+
+        if not self._balance:
+            self._balance = _parseBalance(self._positionsPath,
+                                          lenient=self._lenient)
+
+        return self._balance
