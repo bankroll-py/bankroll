@@ -1,10 +1,13 @@
+from functools import reduce
 from itertools import chain
 from typing import Dict, Iterable, Mapping, Optional, Sequence
 
 from bankroll.analysis import deduplicatePositions
 from bankroll.brokers import *
 from bankroll.configuration import Configuration, Settings
-from bankroll.model import AccountData, Activity, MarketDataProvider, Position
+from bankroll.model import AccountBalance, AccountData, Activity, MarketDataProvider, Position
+
+import operator
 
 
 class AccountAggregator(AccountData):
@@ -39,6 +42,11 @@ class AccountAggregator(AccountData):
     def activity(self) -> Iterable[Activity]:
         return chain.from_iterable(
             (account.activity() for account in self._accounts))
+
+    def balance(self) -> AccountBalance:
+        return reduce(operator.add,
+                      (account.balance() for account in self._accounts),
+                      AccountBalance(cash={}))
 
     @property
     def marketDataProvider(self) -> Optional[MarketDataProvider]:
