@@ -2,7 +2,8 @@ from dataclasses import dataclass
 from decimal import Decimal, ROUND_HALF_EVEN
 from enum import Enum, unique
 from functools import total_ordering
-from typing import Any, ClassVar, TypeVar
+from numbers import Number
+from typing import Any, ClassVar, TypeVar, Union, overload
 
 
 @unique
@@ -52,9 +53,6 @@ class Currency(Enum):
         return f'{symbol}{quantity:{padding},.2f}'
 
 
-_T = TypeVar('_T', Decimal, int)
-
-
 @dataclass(frozen=True)
 @total_ordering
 class Cash:
@@ -80,7 +78,7 @@ class Cash:
     def __str__(self) -> str:
         return self.currency.format(self.quantity)
 
-    def __add__(self, other: Any) -> 'Cash':
+    def __add__(self, other: Union['Cash', Decimal, int]) -> 'Cash':
         if isinstance(other, Cash):
             if self.currency != other.currency:
                 raise ValueError(
@@ -88,12 +86,14 @@ class Cash:
 
             return Cash(currency=self.currency,
                         quantity=self.quantity + other.quantity)
-        else:
+        elif isinstance(other, Decimal) or isinstance(other, int):
             return Cash(currency=self.currency, quantity=self.quantity + other)
+        else:
+            return NotImplemented
 
     __radd__ = __add__
 
-    def __sub__(self, other: Any) -> 'Cash':
+    def __sub__(self, other: Union['Cash', Decimal, int]) -> 'Cash':
         if isinstance(other, Cash):
             if self.currency != other.currency:
                 raise ValueError(
@@ -101,30 +101,54 @@ class Cash:
 
             return Cash(currency=self.currency,
                         quantity=self.quantity - other.quantity)
-        else:
+        elif isinstance(other, Decimal) or isinstance(other, int):
             return Cash(currency=self.currency, quantity=self.quantity - other)
+        else:
+            return NotImplemented
 
-    def __mul__(self, other: _T) -> 'Cash':
+    @overload
+    def __mul__(self, other: 'Cash') -> Decimal:
+        pass
+
+    @overload
+    def __mul__(self, other: Union[Decimal, int]) -> 'Cash':
+        pass
+
+    def __mul__(self,
+                other: Union['Cash', Decimal, int]) -> Union[Decimal, 'Cash']:
         if isinstance(other, Cash):
             if self.currency != other.currency:
                 raise ValueError(
                     f'Currency of {self} must match {other} for arithmetic')
 
             return self.quantity * other.quantity
-        else:
+        elif isinstance(other, Decimal) or isinstance(other, int):
             return Cash(currency=self.currency, quantity=self.quantity * other)
+        else:
+            return NotImplemented
 
     __rmul__ = __mul__
 
-    def __truediv__(self, other: _T) -> 'Cash':
+    @overload
+    def __truediv__(self, other: 'Cash') -> Decimal:
+        pass
+
+    @overload
+    def __truediv__(self, other: Union[Decimal, int]) -> 'Cash':
+        pass
+
+    def __truediv__(self, other: Union['Cash', Decimal, int]
+                    ) -> Union[Decimal, 'Cash']:
         if isinstance(other, Cash):
             if self.currency != other.currency:
                 raise ValueError(
                     f'Currency of {self} must match {other} for arithmetic')
 
             return self.quantity / other.quantity
-        else:
+        elif isinstance(other, Decimal) or isinstance(other, int):
             return Cash(currency=self.currency, quantity=self.quantity / other)
+        else:
+            return NotImplemented
 
     def __neg__(self) -> 'Cash':
         return Cash(currency=self.currency, quantity=-self.quantity)
@@ -135,15 +159,19 @@ class Cash:
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, Cash):
             return self.currency == other.currency and self.quantity == other.quantity
+        elif isinstance(other, Decimal) or isinstance(other, int):
+            return self.quantity == other
         else:
-            return bool(self.quantity == other)
+            return NotImplemented
 
-    def __lt__(self, other: Any) -> bool:
+    def __lt__(self, other: Union['Cash', Decimal, int]) -> bool:
         if isinstance(other, Cash):
             if self.currency != other.currency:
                 raise ValueError(
                     f'Currency of {self} must match {other} for comparison')
 
             return self.quantity < other.quantity
+        elif isinstance(other, Decimal) or isinstance(other, int):
+            return self.quantity < other
         else:
-            return bool(self.quantity < other)
+            return NotImplemented
