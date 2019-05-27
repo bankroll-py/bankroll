@@ -47,6 +47,7 @@ class AccountData(ABC):
     def balance(self) -> AccountBalance:
         pass
 
+    # Offers access to market data, if provided through this brokerage account.
     @property
     def marketDataProvider(self) -> Optional[MarketDataProvider]:
         return None

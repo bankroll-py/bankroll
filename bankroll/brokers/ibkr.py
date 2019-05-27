@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Context, Decimal, DivisionByZero, Overflow, InvalidOperation, localcontext
 from enum import Enum, IntEnum, unique
 from itertools import count
-from bankroll.model import AccountData, Currency, Cash, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, TradeFlags, Trade, MarketDataProvider, Quote, Activity, CashPayment
+from bankroll.model import AccountBalance, AccountData, Currency, Cash, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, TradeFlags, Trade, MarketDataProvider, Quote, Activity, CashPayment
 from bankroll.parsetools import lenientParse
 from pathlib import Path
 from progress.spinner import Spinner
@@ -484,6 +484,31 @@ def _downloadNonTradeActivity(token: str, queryID: int,
                                lenient=lenient)
 
 
+def _extractCash(val: IB.AccountValue) -> Cash:
+    if val.currency not in Currency.__members__:
+        raise ValueError(f'Unrecognized currency in account value: {val}')
+
+    return Cash(currency=Currency[val.currency],
+                quantity=_parseFiniteDecimal(val.value))
+
+
+def _downloadBalance(ib: IB.IB, lenient: bool) -> AccountBalance:
+    accountValues = (val for val in ib.accountSummary()
+                     if val.account == 'All' and val.tag == 'TotalCashBalance'
+                     and val.currency != 'BASE')
+
+    cashByCurrency: Dict[Currency, Cash] = {}
+
+    for cash in lenientParse(accountValues,
+                             transform=_extractCash,
+                             lenient=lenient):
+        cashByCurrency[cash.currency] = cashByCurrency.get(
+            cash.currency, Cash(currency=cash.currency,
+                                quantity=Decimal(0))) + cash
+
+    return AccountBalance(cash=cashByCurrency)
+
+
 def _stockContract(stock: Stock) -> IB.Contract:
     return IB.Stock(symbol=stock.symbol,
                     exchange='SMART',
@@ -726,6 +751,12 @@ class IBAccount(AccountData):
                 lenient=self._lenient)
 
         return self._cachedActivity
+
+    def balance(self) -> AccountBalance:
+        if not self._client:
+            return AccountBalance(cash={})
+
+        return _downloadBalance(self._client, self._lenient)
 
     @property
     def marketDataProvider(self) -> Optional[MarketDataProvider]:
