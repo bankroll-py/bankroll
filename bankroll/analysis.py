@@ -1,8 +1,9 @@
+from decimal import Decimal
 from functools import reduce
 from itertools import groupby
 from .model import Activity, Cash, CashPayment, Currency, Trade, Instrument, Option, MarketDataProvider, Quote, Position, Forex
 from progress.bar import Bar
-from typing import Dict, Iterable, Optional, Tuple
+from typing import Dict, Iterable, Optional, Sequence, Tuple
 
 import operator
 import re
@@ -103,3 +104,27 @@ def currencyConversionRates(
     return ((currenciesByInstrument[instrument], q.market) for instrument, q in
             dataProvider.fetchQuotes(currenciesByInstrument.keys())
             if q.market)
+
+
+# Converts the given cash values into `quoteCurrency` using forex market quotes.
+def convertCashToCurrency(quoteCurrency: Currency, cash: Sequence[Cash],
+                          dataProvider: MarketDataProvider) -> Cash:
+    currencyRates = dict(
+        currencyConversionRates(quoteCurrency=quoteCurrency,
+                                otherCurrencies=(c.currency for c in cash
+                                                 if c != quoteCurrency),
+                                dataProvider=dataProvider))
+    currencyRates[quoteCurrency] = Cash(currency=quoteCurrency,
+                                        quantity=Decimal(1))
+
+    for c in cash:
+        if not c.currency in currencyRates:
+            raise RuntimeError(
+                f'Unable to fetch currency rate for {c.currency} to convert {c}'
+            )
+
+    return reduce(
+        operator.add,
+        (Cash(currency=quoteCurrency,
+              quantity=c.quantity * currencyRates[c.currency].quantity)
+         for c in cash), Cash(currency=quoteCurrency, quantity=Decimal(0)))
