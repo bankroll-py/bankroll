@@ -2,12 +2,12 @@ from datetime import datetime
 from decimal import Context, Decimal, DivisionByZero, Overflow, InvalidOperation, localcontext
 from enum import Enum, IntEnum, unique
 from itertools import count
-from bankroll.model import Currency, Cash, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, TradeFlags, Trade, MarketDataProvider, Quote, Activity, DividendPayment
+from bankroll.model import AccountData, Currency, Cash, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, TradeFlags, Trade, MarketDataProvider, Quote, Activity, CashPayment
 from bankroll.parsetools import lenientParse
 from pathlib import Path
 from progress.spinner import Spinner
 from random import randint
-from typing import Any, Awaitable, Callable, Dict, Iterable, List, Mapping, NamedTuple, Optional, Tuple, Type, no_type_check
+from typing import Any, Awaitable, Callable, Dict, Iterable, List, Mapping, NamedTuple, Optional, Sequence, Tuple, Type, Union, no_type_check
 import pandas as pd
 
 import backoff
@@ -41,57 +41,6 @@ class Settings(configuration.Settings):
     @classmethod
     def sectionName(cls) -> str:
         return 'IBKR'
-
-
-def loadPositionsAndActivity(
-        settings: Mapping[Settings, str], lenient: bool
-) -> Tuple[List[Position], List[Activity], Optional[IB.IB]]:
-    positions: List[Position] = []
-    activity: List[Activity] = []
-    client: Optional[IB.IB] = None
-
-    twsPort = settings.get(Settings.TWS_PORT)
-    if twsPort:
-        client = IB.IB()
-
-        # Random client ID to minimize chances of conflict
-        client.connect('127.0.0.1',
-                       port=int(twsPort),
-                       clientId=randint(1, 1000000))
-
-        positions += downloadPositions(client, lenient=lenient)
-
-    flexToken = settings.get(Settings.FLEX_TOKEN)
-
-    trades = settings.get(Settings.TRADES)
-    if trades:
-        path = Path(trades)
-        if path.is_file():
-            activity += parseTrades(path, lenient=lenient)
-        elif flexToken:
-            activity += downloadTrades(token=flexToken,
-                                       queryID=int(trades),
-                                       lenient=lenient)
-        else:
-            raise ValueError(
-                f'Trades "{trades}"" must exist as local path, or a Flex token must be provided to run as a query'
-            )
-
-    activitySetting = settings.get(Settings.ACTIVITY)
-    if activitySetting:
-        path = Path(activitySetting)
-        if path.is_file():
-            activity += parseNonTradeActivity(path, lenient=lenient)
-        elif flexToken:
-            activity += downloadNonTradeActivity(token=flexToken,
-                                                 queryID=int(activitySetting),
-                                                 lenient=lenient)
-        else:
-            raise ValueError(
-                f'Activity "{activity}"" must exist as local path, or a Flex token must be provided to run as a query'
-            )
-
-    return (positions, activity, client)
 
 
 def _parseFiniteDecimal(input: str) -> Decimal:
@@ -211,7 +160,7 @@ def _extractPosition(p: IB.Position) -> Position:
         )
 
 
-def downloadPositions(ib: IB.IB, lenient: bool) -> List[Position]:
+def _downloadPositions(ib: IB.IB, lenient: bool) -> List[Position]:
     return list(
         lenientParse(ib.positions(),
                      transform=_extractPosition,
@@ -326,60 +275,62 @@ def _parseIBDate(datestr: str) -> datetime:
     return datetime.strptime(datestr, '%Y%m%d')
 
 
-def _parseFutureOptionTrade(trade: _IBTradeConfirm) -> Instrument:
-    if trade.putCall == 'C':
+def _parseFutureOption(
+        entry: Union[_IBTradeConfirm, _IBChangeInDividendAccrual]
+) -> Instrument:
+    if entry.putCall == 'C':
         optionType = OptionType.CALL
-    elif trade.putCall == 'P':
+    elif entry.putCall == 'P':
         optionType = OptionType.PUT
     else:
-        raise ValueError(f'Unexpected value for putCall in IB trade: {trade}')
+        raise ValueError(f'Unexpected value for putCall in IB entry: {entry}')
 
-    return FutureOption(symbol=trade.symbol,
-                        currency=Currency[trade.currency],
-                        underlying=trade.underlyingSymbol,
+    return FutureOption(symbol=entry.symbol,
+                        currency=Currency[entry.currency],
+                        underlying=entry.underlyingSymbol,
                         optionType=optionType,
-                        expiration=_parseIBDate(trade.expiry).date(),
-                        strike=_parseFiniteDecimal(trade.strike),
-                        multiplier=_parseFiniteDecimal(trade.multiplier))
+                        expiration=_parseIBDate(entry.expiry).date(),
+                        strike=_parseFiniteDecimal(entry.strike),
+                        multiplier=_parseFiniteDecimal(entry.multiplier))
+
+
+def _parseInstrument(entry: Union[_IBTradeConfirm, _IBChangeInDividendAccrual]
+                     ) -> Instrument:
+    symbol = entry.symbol
+    if not symbol:
+        raise ValueError(f'Missing symbol in entry: {entry}')
+
+    if entry.currency not in Currency.__members__:
+        raise ValueError(f'Unrecognized currency in entry: {entry}')
+
+    currency = Currency[entry.currency]
+
+    tag = entry.assetCategory
+    if tag == 'STK':
+        return Stock(symbol=symbol, currency=currency)
+    elif tag == 'BILL' or tag == 'BOND':
+        return Bond(symbol=symbol, currency=currency, validateSymbol=False)
+    elif tag == 'OPT':
+        return _parseOption(symbol=symbol,
+                            currency=currency,
+                            multiplier=_parseFiniteDecimal(entry.multiplier))
+    elif tag == 'FUT':
+        return Future(symbol=symbol,
+                      currency=currency,
+                      multiplier=_parseFiniteDecimal(entry.multiplier),
+                      expiration=_parseIBDate(entry.expiry).date())
+    elif tag == 'CASH':
+        return _parseForex(symbol=symbol, currency=currency)
+    elif tag == 'FOP':
+        return _parseFutureOption(entry)
+    else:
+        raise ValueError(
+            f'Unrecognized/unsupported security type in entry: {entry}')
 
 
 def _parseTradeConfirm(trade: _IBTradeConfirm) -> Trade:
-    tag = trade.assetCategory
-    symbol = trade.symbol
-    if not symbol:
-        raise ValueError(f'Missing symbol in trade: {trade}')
-
-    if trade.currency not in Currency.__members__:
-        raise ValueError(f'Unrecognized currency in trade: {trade}')
-
-    currency = Currency[trade.currency]
-
     try:
-        instrument: Instrument
-        if tag == 'STK':
-            instrument = Stock(symbol=symbol, currency=currency)
-        elif tag == 'BILL' or tag == 'BOND':
-            instrument = Bond(symbol=symbol,
-                              currency=currency,
-                              validateSymbol=False)
-        elif tag == 'OPT':
-            instrument = _parseOption(symbol=symbol,
-                                      currency=currency,
-                                      multiplier=_parseFiniteDecimal(
-                                          trade.multiplier))
-        elif tag == 'FUT':
-            instrument = Future(symbol=symbol,
-                                currency=currency,
-                                multiplier=_parseFiniteDecimal(
-                                    trade.multiplier),
-                                expiration=_parseIBDate(trade.expiry).date())
-        elif tag == 'CASH':
-            instrument = _parseForex(symbol=symbol, currency=currency)
-        elif tag == 'FOP':
-            instrument = _parseFutureOptionTrade(trade)
-        else:
-            raise ValueError(
-                f'Unrecognized/unsupported security type in trade: {trade}')
+        instrument = _parseInstrument(trade)
 
         flagsByCode = {
             'O': TradeFlags.OPEN,
@@ -438,7 +389,7 @@ def _tradesFromReport(report: IB.FlexReport, lenient: bool) -> List[Trade]:
             lenient=lenient))
 
 
-def parseTrades(path: Path, lenient: bool = False) -> List[Trade]:
+def _parseTrades(path: Path, lenient: bool = False) -> List[Trade]:
     return _tradesFromReport(IB.FlexReport(path=path), lenient=lenient)
 
 
@@ -448,19 +399,13 @@ def _parseChangeInDividendAccrual(entry: _IBChangeInDividendAccrual
     if 'Re' not in codes:
         return None
 
-    if entry.assetCategory != 'STK':
-        raise ValueError(
-            f'Expected to see dividend accrual for a stock, not {entry.assetCategory}: {entry}'
-        )
-
     # IB "reverses" dividend postings when they're paid out, so they all appear as debits.
     proceeds = Cash(currency=Currency(entry.currency),
                     quantity=-Decimal(entry.netAmount))
 
-    return DividendPayment(date=_parseIBDate(entry.payDate),
-                           stock=Stock(entry.symbol,
-                                       currency=Currency(entry.currency)),
-                           proceeds=proceeds)
+    return CashPayment(date=_parseIBDate(entry.payDate),
+                       instrument=_parseInstrument(entry),
+                       proceeds=proceeds)
 
 
 def _activityFromReport(report: IB.FlexReport,
@@ -477,7 +422,8 @@ def _activityFromReport(report: IB.FlexReport,
 
 # TODO: This should eventually be unified with trade parsing.
 # See https://github.com/jspahrsummers/bankroll/issues/36.
-def parseNonTradeActivity(path: Path, lenient: bool = False) -> List[Activity]:
+def _parseNonTradeActivity(path: Path,
+                           lenient: bool = False) -> List[Activity]:
     return _activityFromReport(IB.FlexReport(path=path), lenient=lenient)
 
 
@@ -520,8 +466,8 @@ def _downloadFlexReport(name: str, token: str, queryID: int) -> IB.FlexReport:
             logger.removeHandler(handler)
 
 
-def downloadTrades(token: str, queryID: int,
-                   lenient: bool = False) -> List[Trade]:
+def _downloadTrades(token: str, queryID: int,
+                    lenient: bool = False) -> List[Trade]:
     return _tradesFromReport(_downloadFlexReport(name='Trades',
                                                  token=token,
                                                  queryID=queryID),
@@ -530,8 +476,8 @@ def downloadTrades(token: str, queryID: int,
 
 # TODO: This should eventually be unified with trade parsing.
 # See https://github.com/jspahrsummers/bankroll/issues/36.
-def downloadNonTradeActivity(token: str, queryID: int,
-                             lenient: bool = False) -> List[Activity]:
+def _downloadNonTradeActivity(token: str, queryID: int,
+                              lenient: bool = False) -> List[Activity]:
     return _activityFromReport(_downloadFlexReport(name='Activity',
                                                    token=token,
                                                    queryID=queryID),
@@ -676,3 +622,111 @@ class IBDataProvider(MarketDataProvider):
                              quantity=Decimal(ticker.close) / factor)
 
             yield (instrument, Quote(bid=bid, ask=ask, last=last, close=close))
+
+
+class IBAccount(AccountData):
+    _cachedActivity: Optional[Sequence[Activity]] = None
+    _client: Optional[IB.IB] = None
+
+    @classmethod
+    def fromSettings(cls, settings: Mapping[configuration.Settings, str],
+                     lenient: bool) -> 'IBAccount':
+        port = settings.get(Settings.TWS_PORT)
+
+        tradesSetting = settings.get(Settings.TRADES)
+        trades: Union[Path, int, None]
+        if tradesSetting:
+            path = Path(tradesSetting)
+            if path.is_file():
+                trades = path
+            else:
+                trades = int(tradesSetting)
+
+        activitySetting = settings.get(Settings.ACTIVITY)
+        activity: Union[Path, int, None]
+        if activitySetting:
+            path = Path(activitySetting)
+            if path.is_file():
+                activity = path
+            else:
+                activity = int(activitySetting)
+
+        return cls(twsPort=int(port) if port else None,
+                   flexToken=settings.get(Settings.FLEX_TOKEN),
+                   trades=trades,
+                   activity=activity,
+                   lenient=lenient)
+
+    def __init__(self,
+                 twsPort: Optional[int] = None,
+                 flexToken: Optional[str] = None,
+                 trades: Union[Path, int, None] = None,
+                 activity: Union[Path, int, None] = None,
+                 lenient: bool = False):
+        self._twsPort = twsPort
+        self._flexToken = flexToken
+        self._trades = trades
+        self._activity = activity
+        self._lenient = lenient
+        super().__init__()
+
+    @property
+    def client(self) -> Optional[IB.IB]:
+        if not self._twsPort:
+            return None
+
+        if not self._client:
+            self._client = IB.IB()
+            self._client.connect(
+                '127.0.0.1',
+                port=self._twsPort,
+                # Random client ID to minimize chances of conflict
+                clientId=randint(1, 1000000),
+                readonly=True)
+
+        return self._client
+
+    def positions(self) -> Iterable[Position]:
+        if not self._client:
+            return []
+
+        return _downloadPositions(self._client, self._lenient)
+
+    def activity(self) -> Iterable[Activity]:
+        if self._cachedActivity:
+            return self._cachedActivity
+
+        self._cachedActivity = []
+
+        if isinstance(self._trades, Path):
+            self._cachedActivity += _parseTrades(self._trades,
+                                                 lenient=self._lenient)
+        elif self._trades:
+            if not self._flexToken:
+                raise ValueError(
+                    f'Trades "{self._trades}"" must exist as local path, or a Flex token must be provided to run as a query'
+                )
+
+            self._cachedActivity += _downloadTrades(token=self._flexToken,
+                                                    queryID=self._trades,
+                                                    lenient=self._lenient)
+
+        if isinstance(self._activity, Path):
+            self._cachedActivity += _parseNonTradeActivity(
+                self._activity, lenient=self._lenient)
+        elif self._activity:
+            if not self._flexToken:
+                raise ValueError(
+                    f'Activity "{self._activity}"" must exist as local path, or a Flex token must be provided to run as a query'
+                )
+
+            self._cachedActivity += _downloadNonTradeActivity(
+                token=self._flexToken,
+                queryID=self._activity,
+                lenient=self._lenient)
+
+        return self._cachedActivity
+
+    @property
+    def marketDataProvider(self) -> Optional[MarketDataProvider]:
+        return IBDataProvider(client=self.client)

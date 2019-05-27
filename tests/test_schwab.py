@@ -1,4 +1,4 @@
-from bankroll import Cash, Currency, Stock, Bond, Option, OptionType, Position, DividendPayment, Trade, TradeFlags
+from bankroll import Cash, Currency, Stock, Bond, Option, OptionType, Position, CashPayment, Trade, TradeFlags
 from bankroll.brokers import schwab
 from datetime import date
 from decimal import Decimal
@@ -12,7 +12,8 @@ import unittest
 class TestSchwabPositions(unittest.TestCase):
     def setUp(self) -> None:
         self.positions = list(
-            schwab.parsePositions(Path('tests/schwab_positions.CSV')))
+            schwab.SchwabAccount(
+                positions=Path('tests/schwab_positions.CSV')).positions())
         self.positions.sort(key=lambda p: p.instrument.symbol)
 
     def test_positionValidity(self) -> None:
@@ -50,7 +51,8 @@ class TestSchwabPositions(unittest.TestCase):
 class TestSchwabTransactions(unittest.TestCase):
     def setUp(self) -> None:
         self.activity = list(
-            schwab.parseTransactions(Path('tests/schwab_transactions.CSV')))
+            schwab.SchwabAccount(
+                transactions=Path('tests/schwab_transactions.CSV')).activity())
         self.activity.sort(key=lambda t: t.date)
 
         self.activityByDate = {
@@ -105,18 +107,18 @@ class TestSchwabTransactions(unittest.TestCase):
         self.assertEqual(len(ts), 1)
         self.assertEqual(
             ts[0],
-            DividendPayment(date=ts[0].date,
-                            stock=Stock('VOO', Currency.USD),
-                            proceeds=helpers.cashUSD(Decimal('22.95'))))
+            CashPayment(date=ts[0].date,
+                        instrument=Stock('VOO', Currency.USD),
+                        proceeds=helpers.cashUSD(Decimal('22.95'))))
 
     def test_cashDividend(self) -> None:
         ts = self.activityByDate[date(2018, 3, 6)]
         self.assertEqual(len(ts), 1)
         self.assertEqual(
             ts[0],
-            DividendPayment(date=ts[0].date,
-                            stock=Stock('VGLT', Currency.USD),
-                            proceeds=helpers.cashUSD(Decimal('12.85'))))
+            CashPayment(date=ts[0].date,
+                        instrument=Stock('VGLT', Currency.USD),
+                        proceeds=helpers.cashUSD(Decimal('12.85'))))
 
     def test_reinvestShares(self) -> None:
         ts = self.activityByDate[date(2017, 3, 29)]

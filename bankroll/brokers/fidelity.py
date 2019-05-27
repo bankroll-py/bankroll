@@ -1,12 +1,12 @@
 from bankroll.csvsectionslicer import parseSectionsForCSV, CSVSectionCriterion, CSVSectionResult
-from bankroll.model import Activity, Cash, Currency, Instrument, Stock, Bond, Option, OptionType, Position, DividendPayment, Trade, TradeFlags
+from bankroll.model import AccountData, Activity, Cash, Currency, Instrument, Stock, Bond, Option, OptionType, Position, CashPayment, Trade, TradeFlags
 from bankroll.parsetools import lenientParse
 from datetime import date, datetime
 from decimal import Decimal
 from enum import IntEnum, unique
 from pathlib import Path
 from sys import stderr
-from typing import Callable, Dict, List, NamedTuple, Optional, Set
+from typing import Callable, Dict, Iterable, List, Mapping, NamedTuple, Optional, Sequence, Set
 from warnings import warn
 
 import bankroll.configuration as configuration
@@ -94,7 +94,7 @@ def _parseOptionsPosition(description: str) -> Option:
                   strike=Decimal(match['strike']))
 
 
-def parsePositions(path: Path, lenient: bool = False) -> List[Position]:
+def _parsePositions(path: Path, lenient: bool = False) -> List[Position]:
     with open(path, newline='') as csvfile:
         stocksCriterion = CSVSectionCriterion(startSectionRowMatch=["Stocks"],
                                               endSectionRowMatch=[""],
@@ -206,11 +206,11 @@ def _forceParseFidelityTransaction(t: _FidelityTransaction,
 
 def _parseFidelityTransaction(t: _FidelityTransaction) -> Optional[Activity]:
     if t.action == 'DIVIDEND RECEIVED':
-        return DividendPayment(date=_parseFidelityTransactionDate(t.date),
-                               stock=Stock(t.symbol,
-                                           currency=Currency(t.currency)),
-                               proceeds=Cash(currency=Currency(t.currency),
-                                             quantity=Decimal(t.amount)))
+        return CashPayment(date=_parseFidelityTransactionDate(t.date),
+                           instrument=Stock(t.symbol,
+                                            currency=Currency(t.currency)),
+                           proceeds=Cash(currency=Currency(t.currency),
+                                         quantity=Decimal(t.amount)))
 
     flags = None
     # TODO: Handle 'OPENING TRANSACTION' and 'CLOSING TRANSACTION' text for options transactions
@@ -228,7 +228,7 @@ def _parseFidelityTransaction(t: _FidelityTransaction) -> Optional[Activity]:
 
 
 # Transactions will be ordered from newest to oldest
-def parseTransactions(path: Path, lenient: bool = False) -> List[Activity]:
+def _parseTransactions(path: Path, lenient: bool = False) -> List[Activity]:
     with open(path, newline='') as csvfile:
         transactionsCriterion = CSVSectionCriterion(
             startSectionRowMatch=["Run Date", "Account", "Action"],
@@ -247,3 +247,47 @@ def parseTransactions(path: Path, lenient: bool = False) -> List[Activity]:
                     (_FidelityTransaction._make(r) for r in sections[0].rows),
                     transform=_parseFidelityTransaction,
                     lenient=lenient)))
+
+
+class FidelityAccount(AccountData):
+    _positions: Optional[Sequence[Position]] = None
+    _activity: Optional[Sequence[Activity]] = None
+
+    @classmethod
+    def fromSettings(cls, settings: Mapping[configuration.Settings, str],
+                     lenient: bool) -> 'FidelityAccount':
+        positions = settings.get(Settings.POSITIONS)
+        transactions = settings.get(Settings.TRANSACTIONS)
+
+        return cls(positions=Path(positions) if positions else None,
+                   transactions=Path(transactions) if transactions else None,
+                   lenient=lenient)
+
+    def __init__(self,
+                 positions: Optional[Path] = None,
+                 transactions: Optional[Path] = None,
+                 lenient: bool = False):
+        self._positionsPath = positions
+        self._transactionsPath = transactions
+        self._lenient = lenient
+        super().__init__()
+
+    def positions(self) -> Iterable[Position]:
+        if not self._positionsPath:
+            return []
+
+        if not self._positions:
+            self._positions = _parsePositions(self._positionsPath,
+                                              lenient=self._lenient)
+
+        return self._positions
+
+    def activity(self) -> Iterable[Activity]:
+        if not self._transactionsPath:
+            return []
+
+        if not self._activity:
+            self._activity = _parseTransactions(self._transactionsPath,
+                                                lenient=self._lenient)
+
+        return self._activity

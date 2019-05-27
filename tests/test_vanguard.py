@@ -1,4 +1,4 @@
-from bankroll import Activity, Bond, Cash, Currency, Instrument, Position, Stock, DividendPayment, Trade, TradeFlags
+from bankroll import Activity, Bond, Cash, Currency, Instrument, Position, Stock, CashPayment, Trade, TradeFlags
 from bankroll.brokers import vanguard
 from datetime import date
 from decimal import Decimal
@@ -11,8 +11,9 @@ import unittest
 
 class TestVanguardPositions(unittest.TestCase):
     def setUp(self) -> None:
-        self.positions = vanguard.parsePositionsAndActivity(
-            Path('tests/vanguard_positions_and_transactions.csv')).positions
+        self.positions = list(
+            vanguard.VanguardAccount(statement=Path(
+                'tests/vanguard_positions_and_transactions.csv')).positions())
         self.positions.sort(key=lambda p: p.instrument.symbol)
 
     def test_positionValidity(self) -> None:
@@ -61,8 +62,9 @@ class TestVanguardPositions(unittest.TestCase):
 
 class TestVanguardTransactions(unittest.TestCase):
     def setUp(self) -> None:
-        self.activity = vanguard.parsePositionsAndActivity(
-            Path('tests/vanguard_positions_and_transactions.csv')).activity
+        self.activity = list(
+            vanguard.VanguardAccount(statement=Path(
+                'tests/vanguard_positions_and_transactions.csv')).activity())
         self.activity.sort(key=lambda t: t.date)
 
         self.activityByDate = {
@@ -122,9 +124,9 @@ class TestVanguardTransactions(unittest.TestCase):
 
         self.assertEqual(
             ts[0],
-            DividendPayment(date=ts[0].date,
-                            stock=Stock('VWO', Currency.USD),
-                            proceeds=helpers.cashUSD(Decimal('29.35'))))
+            CashPayment(date=ts[0].date,
+                        instrument=Stock('VWO', Currency.USD),
+                        proceeds=helpers.cashUSD(Decimal('29.35'))))
 
         self.assertEqual(
             ts[1],

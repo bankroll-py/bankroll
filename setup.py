@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name='bankroll',
-    version='0.2.0',
+    version='0.3.0',
     author='Justin Spahr-Summers',
     author_email='justin@jspahrsummers.com',
     description=
@@ -30,7 +30,7 @@ setup(
         "Typing :: Typed",
     ],
     install_requires=[
-        'ib-insync>=0.9.47',
+        'ib-insync>=0.9.50',
         'progress>=1.5',
         'backoff>=1.8',
         'pyfolio>=0.9.0',

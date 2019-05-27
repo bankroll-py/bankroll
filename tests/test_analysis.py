@@ -1,4 +1,4 @@
-from bankroll import Cash, Currency, Instrument, Stock, Option, OptionType, Quote, Trade, TradeFlags, MarketDataProvider, Position, Activity, DividendPayment
+from bankroll import Cash, Currency, Instrument, Stock, Option, OptionType, Quote, Trade, TradeFlags, MarketDataProvider, Position, Activity, CashPayment
 from bankroll.analysis import _normalizeSymbol, realizedBasisForSymbol, liveValuesForPositions, deduplicatePositions
 from datetime import datetime, date
 from decimal import Decimal
@@ -92,9 +92,9 @@ class TestAnalysis(unittest.TestCase):
                   fees=helpers.cashUSD(Decimal('1')),
                   flags=TradeFlags.OPEN),
             # and get a $100 dividend,
-            DividendPayment(date=datetime.now(),
-                            stock=Stock('SPY', Currency.USD),
-                            proceeds=helpers.cashUSD(Decimal('100')))
+            CashPayment(date=datetime.now(),
+                        instrument=Stock('SPY', Currency.USD),
+                        proceeds=helpers.cashUSD(Decimal('100')))
         ]
 
         basis = realizedBasisForSymbol('SPY', activity)
@@ -112,9 +112,9 @@ class TestAnalysis(unittest.TestCase):
                   fees=helpers.cashUSD(Decimal('1')),
                   flags=TradeFlags.OPEN),
             # and get a $100 dividend,
-            DividendPayment(date=datetime.now(),
-                            stock=Stock('SPY', Currency.USD),
-                            proceeds=helpers.cashUSD(Decimal('100'))),
+            CashPayment(date=datetime.now(),
+                        instrument=Stock('SPY', Currency.USD),
+                        proceeds=helpers.cashUSD(Decimal('100'))),
             # then reinvest it for an equivalent amount of shares,
             Trade(date=datetime.now(),
                   instrument=Stock('SPY', Currency.USD),

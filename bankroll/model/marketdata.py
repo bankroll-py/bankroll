@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from itertools import permutations
 from typing import Any, Iterable, Optional, Tuple, TypeVar
 
@@ -17,55 +18,25 @@ def _allEqual(i: Iterable[_Item]) -> bool:
     return True
 
 
+@dataclass(frozen=True)
 class Quote:
-    def __init__(self,
-                 bid: Optional[Cash] = None,
-                 ask: Optional[Cash] = None,
-                 last: Optional[Cash] = None,
-                 close: Optional[Cash] = None):
-        if bid and ask and ask < bid:
-            raise ValueError(f'Expected ask {ask} to be at least bid {bid}')
+    bid: Optional[Cash] = None
+    ask: Optional[Cash] = None
+    last: Optional[Cash] = None
+    close: Optional[Cash] = None
+
+    def __post_init__(self) -> None:
+        if self.bid and self.ask and self.ask < self.bid:
+            raise ValueError(
+                f'Expected ask {self.ask} to be at least bid {self.bid}')
 
         if not _allEqual(
             (price.currency
-             for price in [bid, ask, last, close] if price is not None)):
+             for price in [self.bid, self.ask, self.last, self.close]
+             if price is not None)):
             raise ValueError(
-                f'Currencies in a quote should match: {[bid, ask, last, close]}'
+                f'Currencies in a quote should match: {[self.bid, self.ask, self.last, self.close]}'
             )
-
-        self._bid = bid
-        self._ask = ask
-        self._last = last
-        self._close = close
-        super().__init__()
-
-    @property
-    def bid(self) -> Optional[Cash]:
-        return self._bid
-
-    @property
-    def ask(self) -> Optional[Cash]:
-        return self._ask
-
-    @property
-    def last(self) -> Optional[Cash]:
-        return self._last
-
-    @property
-    def close(self) -> Optional[Cash]:
-        return self._close
-
-    def __eq__(self, other: Any) -> bool:
-        if not isinstance(other, Quote):
-            return False
-
-        return self.bid == other.bid and self.ask == other.ask and self.last == other.last and self.close == other.close
-
-    def __hash__(self) -> int:
-        return hash((self.bid, self.ask, self.last, self.close))
-
-    def __repr__(self) -> str:
-        return f'Quote(bid={self.bid!r}, ask={self.ask!r}, last={self.last!r}, close={self.close!r})'
 
 
 class MarketDataProvider(ABC):

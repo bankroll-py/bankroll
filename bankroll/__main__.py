@@ -1,6 +1,6 @@
 from argparse import ArgumentParser, Namespace
 from itertools import chain
-from bankroll import Activity, Instrument, Stock, Position, Trade, Cash, MarketDataProvider, DataAggregator, analysis
+from bankroll import Activity, Instrument, Stock, Position, Trade, Cash, MarketDataProvider, AccountAggregator, analysis
 from bankroll.brokers import *
 from bankroll.configuration import Configuration, Settings, addSettingsToArgumentGroup
 from progress.bar import Bar
@@ -70,19 +70,20 @@ readVanguardSettings = addSettingsToArgumentGroup(vanguard.Settings,
                                                   vanguardGroup)
 
 
-def printPositions(data: DataAggregator, args: Namespace) -> None:
+def printPositions(accounts: AccountAggregator, args: Namespace) -> None:
     values: Dict[Position, Cash] = {}
     if args.live_value:
-        if data.dataProvider:
+        dataProvider = accounts.marketDataProvider
+        if dataProvider:
             values = analysis.liveValuesForPositions(
-                data.positions,
-                dataProvider=data.dataProvider,
+                accounts.positions(),
+                dataProvider=dataProvider,
                 progressBar=Bar('Loading market data for positions'))
         else:
             logging.error(
                 'Live data connection required to fetch market values')
 
-    for p in sorted(data.positions, key=lambda p: p.instrument):
+    for p in sorted(accounts.positions(), key=lambda p: p.instrument):
         print(p)
 
         if p in values:
@@ -94,12 +95,12 @@ def printPositions(data: DataAggregator, args: Namespace) -> None:
 
         if args.realized_basis and isinstance(p.instrument, Stock):
             realizedBasis = analysis.realizedBasisForSymbol(
-                p.instrument.symbol, activity=data.activity)
+                p.instrument.symbol, activity=accounts.activity())
             print(f'\tRealized basis: {realizedBasis}')
 
 
-def printActivity(data: DataAggregator, args: Namespace) -> None:
-    for t in sorted(data.activity, key=lambda t: t.date, reverse=True):
+def printActivity(accounts: AccountAggregator, args: Namespace) -> None:
+    for t in sorted(accounts.activity(), key=lambda t: t.date, reverse=True):
         print(t)
 
 
@@ -148,8 +149,9 @@ def main() -> None:
             readVanguardSettings(config, args).items(),
             readIBSettings(config, args).items()))
 
-    data = DataAggregator(mergedSettings).loadData(lenient=args.lenient)
-    commands[args.command](data, args)
+    accounts = AccountAggregator.fromSettings(mergedSettings,
+                                              lenient=args.lenient)
+    commands[args.command](accounts, args)
 
 
 if __name__ == '__main__':

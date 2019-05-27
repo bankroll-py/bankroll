@@ -1,14 +1,15 @@
-from bankroll.model import Activity, Cash, Currency, Instrument, Stock, Bond, Option, OptionType, Position, DividendPayment, Trade, TradeFlags
+from bankroll.model import AccountData, Activity, Cash, Currency, Instrument, Stock, Bond, Option, OptionType, Position, CashPayment, Trade, TradeFlags
 from bankroll.parsetools import lenientParse
 from datetime import date, datetime
 from decimal import Decimal
 from enum import unique
 from itertools import chain, groupby
 from pathlib import Path
-from typing import Dict, Iterable, List, NamedTuple, Optional, Sequence, TypeVar
+from typing import Dict, Iterable, List, Mapping, NamedTuple, Optional, Sequence, Type, TypeVar
 
 import bankroll.configuration as configuration
 import csv
+import dataclasses
 import re
 
 
@@ -111,7 +112,7 @@ def padToLength(seq: Sequence[_T], length: int, padding: _T) -> Iterable[_T]:
     return chain(seq, [padding] * (length - len(seq)))
 
 
-def parsePositions(path: Path, lenient: bool = False) -> Sequence[Position]:
+def _parsePositions(path: Path, lenient: bool = False) -> Sequence[Position]:
     with open(path, newline='') as csvfile:
         reader = csv.reader(csvfile)
 
@@ -190,11 +191,10 @@ def _parseSchwabTransaction(
     ]
 
     if t.action in dividendActions:
-        return DividendPayment(date=_parseSchwabTransactionDate(t.date),
-                               stock=Stock(t.symbol, currency=Currency.USD),
-                               proceeds=Cash(currency=Currency.USD,
-                                             quantity=_schwabDecimal(
-                                                 t.amount)))
+        return CashPayment(date=_parseSchwabTransactionDate(t.date),
+                           instrument=Stock(t.symbol, currency=Currency.USD),
+                           proceeds=Cash(currency=Currency.USD,
+                                         quantity=_schwabDecimal(t.amount)))
 
     # Bond redemptions are split into two entries, for some reason.
     if t.action == 'Full Redemption Adj':
@@ -269,7 +269,7 @@ def _parseSchwabTransaction(
 
 
 # Transactions will be ordered from oldest to newest
-def parseTransactions(path: Path, lenient: bool = False) -> List[Activity]:
+def _parseTransactions(path: Path, lenient: bool = False) -> List[Activity]:
     with open(path, newline='') as csvfile:
         reader = csv.reader(csvfile)
 
@@ -318,8 +318,9 @@ def _fixUpShortSales(activity: Sequence[Activity],
         # TODO: How should this work if the quantity is greater than the position?
         if pos < 0 and t.quantity > 0 and t.quantity <= abs(
                 pos) and t.flags & TradeFlags.OPEN:
-            return t._replace(flags=(t.flags ^ TradeFlags.OPEN)
-                              | TradeFlags.CLOSE)
+            return dataclasses.replace(t,
+                                       flags=(t.flags ^ TradeFlags.OPEN)
+                                       | TradeFlags.CLOSE)
         # Schwab records restricted stock sales as short selling followed by a security transfer.
         # If we find a short sale, see if there's a later transfer, and if so, record as closing a position.
         elif t.quantity < 0 and t.flags & TradeFlags.OPEN:
@@ -328,8 +329,9 @@ def _fixUpShortSales(activity: Sequence[Activity],
                    t.instrument.symbol and tx.quantity == abs(t.quantity))
 
             if next(txs, None):
-                return t._replace(flags=(t.flags ^ TradeFlags.OPEN)
-                                  | TradeFlags.CLOSE)
+                return dataclasses.replace(t,
+                                           flags=(t.flags ^ TradeFlags.OPEN)
+                                           | TradeFlags.CLOSE)
             else:
                 return t
         else:
@@ -337,3 +339,47 @@ def _fixUpShortSales(activity: Sequence[Activity],
 
     # Start from oldest transactions, work to newer
     return [f(t) for t in reversed(activity)]
+
+
+class SchwabAccount(AccountData):
+    _positions: Optional[Sequence[Position]] = None
+    _activity: Optional[Sequence[Activity]] = None
+
+    @classmethod
+    def fromSettings(cls, settings: Mapping[configuration.Settings, str],
+                     lenient: bool) -> 'SchwabAccount':
+        positions = settings.get(Settings.POSITIONS)
+        transactions = settings.get(Settings.TRANSACTIONS)
+
+        return cls(positions=Path(positions) if positions else None,
+                   transactions=Path(transactions) if transactions else None,
+                   lenient=lenient)
+
+    def __init__(self,
+                 positions: Optional[Path] = None,
+                 transactions: Optional[Path] = None,
+                 lenient: bool = False):
+        self._positionsPath = positions
+        self._transactionsPath = transactions
+        self._lenient = lenient
+        super().__init__()
+
+    def positions(self) -> Iterable[Position]:
+        if not self._positionsPath:
+            return []
+
+        if not self._positions:
+            self._positions = _parsePositions(self._positionsPath,
+                                             lenient=self._lenient)
+
+        return self._positions
+
+    def activity(self) -> Iterable[Activity]:
+        if not self._transactionsPath:
+            return []
+
+        if not self._activity:
+            self._activity = _parseTransactions(self._transactionsPath,
+                                               lenient=self._lenient)
+
+        return self._activity

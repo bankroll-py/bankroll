@@ -1,88 +1,48 @@
+from itertools import chain
+from typing import Dict, Iterable, Mapping, Optional, Sequence
+
 from bankroll.analysis import deduplicatePositions
 from bankroll.brokers import *
-from bankroll.model import Activity, Position, MarketDataProvider
 from bankroll.configuration import Configuration, Settings
-from itertools import chain
-from pathlib import Path
-from typing import Dict, List, Mapping, Optional, Sequence
+from bankroll.model import AccountData, Activity, MarketDataProvider, Position
 
 
-class DataAggregator:
-    _positions: List[Position]
-    _activity: List[Activity]
-    _dataProvider: Optional[MarketDataProvider]
-
+class AccountAggregator(AccountData):
     @classmethod
     def allSettings(cls, config: Configuration = Configuration()
                     ) -> Dict[Settings, str]:
         return dict(
-            chain(
-                config.section(ibkr.Settings).items(),
-                config.section(fidelity.Settings).items(),
-                config.section(schwab.Settings).items(),
-                config.section(vanguard.Settings).items()))
+            chain.from_iterable(
+                (config.section(settingsCls).items()
+                 for settingsCls in Settings.__subclasses__())))
 
-    def __init__(self, settings: Mapping[Settings, str]):
-        self._settings = dict(settings)
-        self._positions = []
-        self._activity = []
-        self._dataProvider = None
+    @classmethod
+    def fromSettings(cls, settings: Mapping[Settings, str],
+                     lenient: bool) -> 'AccountAggregator':
+        return AccountAggregator(
+            accounts=(accountCls.fromSettings(settings, lenient=lenient)
+                      for accountCls in AccountData.__subclasses__()
+                      if not issubclass(accountCls, AccountAggregator)),
+            lenient=lenient)
+
+    def __init__(self, accounts: Iterable[AccountData], lenient: bool):
+        self._accounts = list(accounts)
+        self._lenient = lenient
         super().__init__()
 
-    def loadData(self, lenient: bool) -> 'DataAggregator':
-        fidelityPositions = self._settings.get(fidelity.Settings.POSITIONS)
-        if fidelityPositions:
-            self._positions += fidelity.parsePositions(Path(fidelityPositions),
-                                                       lenient=lenient)
+    def positions(self) -> Iterable[Position]:
+        # TODO: Memoize the result of deduplication?
+        return deduplicatePositions(
+            chain.from_iterable(
+                (account.positions() for account in self._accounts)))
 
-        fidelityTransactions = self._settings.get(
-            fidelity.Settings.TRANSACTIONS)
-        if fidelityTransactions:
-            self._activity += fidelity.parseTransactions(
-                Path(fidelityTransactions), lenient=lenient)
-
-        schwabPositions = self._settings.get(schwab.Settings.POSITIONS)
-        if schwabPositions:
-            self._positions += schwab.parsePositions(Path(schwabPositions),
-                                                     lenient=lenient)
-
-        schwabTransactions = self._settings.get(schwab.Settings.TRANSACTIONS)
-        if schwabTransactions:
-            self._activity += schwab.parseTransactions(
-                Path(schwabTransactions), lenient=lenient)
-
-        vanguardStatement = self._settings.get(vanguard.Settings.STATEMENT)
-        if vanguardStatement:
-            positionsAndActivity = vanguard.parsePositionsAndActivity(
-                Path(vanguardStatement), lenient=lenient)
-            self._positions += positionsAndActivity.positions
-            self._activity += positionsAndActivity.activity
-
-        ibSettings = {
-            k: v
-            for k, v in self._settings.items() if isinstance(k, ibkr.Settings)
-        }
-
-        (ibPositions, ibActivity,
-         ib) = ibkr.loadPositionsAndActivity(ibSettings, lenient=lenient)
-
-        self._positions += ibPositions
-        self._activity += ibActivity
-
-        if ib and not self._dataProvider:
-            self._dataProvider = ibkr.IBDataProvider(ib)
-
-        self._positions = list(deduplicatePositions(self._positions))
-        return self
+    def activity(self) -> Iterable[Activity]:
+        return chain.from_iterable(
+            (account.activity() for account in self._accounts))
 
     @property
-    def positions(self) -> Sequence[Position]:
-        return self._positions
-
-    @property
-    def activity(self) -> Sequence[Activity]:
-        return self._activity
-
-    @property
-    def dataProvider(self) -> Optional[MarketDataProvider]:
-        return self._dataProvider
+    def marketDataProvider(self) -> Optional[MarketDataProvider]:
+        # Don't retrieve data providers twice to check for None, in case
+        # they're expensive to construct.
+        return next((p for p in (account.marketDataProvider
+                                 for account in self._accounts) if p), None)

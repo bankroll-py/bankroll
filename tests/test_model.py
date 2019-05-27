@@ -1,4 +1,5 @@
-from bankroll.model import Cash, Currency, Instrument, Bond, Stock, Option, OptionType, FutureOption, Future, Position, Quote, Trade
+from bankroll.brokers import ibkr
+from bankroll.model import AccountData, Cash, Currency, Instrument, Bond, Stock, Option, OptionType, FutureOption, Future, Position, Quote, Trade
 from datetime import date
 from decimal import Decimal, ROUND_UP
 from hypothesis import assume, given, reproduce_failure
@@ -151,7 +152,7 @@ class TestPosition(unittest.TestCase):
         assume(a.instrument != b.instrument)
 
         with self.assertRaises(ValueError):
-            a.combine(b)
+            a + b
 
     @given(from_type(Instrument))
     def test_combineIncreasesBasis(self, i: Instrument) -> None:
@@ -164,7 +165,7 @@ class TestPosition(unittest.TestCase):
                      costBasis=Cash(currency=i.currency,
                                     quantity=Decimal('20')))
 
-        combined = a.combine(b)
+        combined = a + b
         self.assertEqual(combined.instrument, i)
         self.assertEqual(combined.quantity, Decimal('400'))
         self.assertEqual(combined.costBasis,
@@ -184,7 +185,7 @@ class TestPosition(unittest.TestCase):
         b = Position(instrument=i,
                      quantity=bQty,
                      costBasis=Cash(currency=i.currency, quantity=bPrice))
-        self.assertEqual(a.combine(b), b.combine(a))
+        self.assertEqual(a + b, b + a)
 
     @given(from_type(Position))
     def test_combineToZero(self, p: Position) -> None:
@@ -192,7 +193,7 @@ class TestPosition(unittest.TestCase):
                             quantity=-p.quantity,
                             costBasis=-p.costBasis)
 
-        combined = p.combine(opposite)
+        combined = p + opposite
         self.assertEqual(combined.quantity, Decimal(0))
         self.assertEqual(combined.costBasis, Decimal(0))
 
@@ -292,6 +293,25 @@ class TestTrade(unittest.TestCase):
                     0,
                     msg='Sell transaction for loss should have a negative price'
                 )
+
+
+class TestAccountData(unittest.TestCase):
+    @given(from_type(AccountData))
+    def test_positionsLoad(self, account: AccountData) -> None:
+        # IB position loading requires a live data connection, which we won't
+        # have in test.
+        assume(not isinstance(account, ibkr.IBAccount))
+
+        self.assertNotEqual(list(account.positions()), [])
+
+    @given(from_type(AccountData))
+    def test_activityLoads(self, account: AccountData) -> None:
+        self.assertNotEqual(list(account.activity()), [])
+
+    @given(from_type(AccountData))
+    def test_dataLoadingIsIdempotent(self, account: AccountData) -> None:
+        self.assertEqual(list(account.positions()), list(account.positions()))
+        self.assertEqual(list(account.activity()), list(account.activity()))
 
 
 if __name__ == '__main__':

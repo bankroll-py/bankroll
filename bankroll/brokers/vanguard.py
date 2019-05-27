@@ -1,5 +1,5 @@
 from bankroll.analysis import realizedBasisForSymbol
-from bankroll.model import Activity, Bond, Cash, Currency, Instrument, Position, Stock, DividendPayment, Trade, TradeFlags
+from bankroll.model import AccountData, Activity, Bond, Cash, Currency, Instrument, Position, Stock, CashPayment, Trade, TradeFlags
 from bankroll.csvsectionslicer import parseSectionsForCSV, CSVSectionCriterion, CSVSectionResult
 from bankroll.parsetools import lenientParse
 from collections import namedtuple
@@ -7,7 +7,7 @@ from datetime import datetime
 from decimal import Decimal
 from enum import unique
 from pathlib import Path
-from typing import Dict, List, NamedTuple, Optional, Set, Tuple
+from typing import Dict, Iterable, List, Mapping, NamedTuple, Optional, Sequence, Set, Tuple
 
 import bankroll.configuration as configuration
 import csv
@@ -107,8 +107,8 @@ def _parsePositions(path: Path,
                          lenient=lenient))
 
 
-def parsePositionsAndActivity(path: Path,
-                              lenient: bool = False) -> PositionsAndActivity:
+def _parsePositionsAndActivity(path: Path,
+                               lenient: bool = False) -> PositionsAndActivity:
     activity = _parseTransactions(path, lenient=lenient)
     positions = _parsePositions(path, activity=activity, lenient=lenient)
     return PositionsAndActivity(positions, activity)
@@ -161,12 +161,12 @@ def _forceParseVanguardTransaction(t: _VanguardTransaction,
 
 def _parseVanguardTransaction(t: _VanguardTransaction) -> Optional[Activity]:
     if t.transactionType == 'Dividend':
-        return DividendPayment(date=_parseVanguardTransactionDate(t.tradeDate),
-                               stock=Stock(
-                                   t.symbol if t.symbol else t.investmentName,
-                                   currency=Currency.USD),
-                               proceeds=Cash(currency=Currency.USD,
-                                             quantity=Decimal(t.netAmount)))
+        return CashPayment(date=_parseVanguardTransactionDate(t.tradeDate),
+                           instrument=Stock(
+                               t.symbol if t.symbol else t.investmentName,
+                               currency=Currency.USD),
+                           proceeds=Cash(currency=Currency.USD,
+                                         quantity=Decimal(t.netAmount)))
 
     validTransactionTypes = set([
         'Buy', 'Sell', 'Reinvestment', 'Corp Action (Redemption)',
@@ -208,3 +208,39 @@ def _parseTransactions(path: Path, lenient: bool = False) -> List[Activity]:
                     (_VanguardTransaction._make(r) for r in sections[0].rows),
                     transform=_parseVanguardTransaction,
                     lenient=lenient)))
+
+
+class VanguardAccount(AccountData):
+    _positionsAndActivity: Optional[PositionsAndActivity] = None
+
+    @classmethod
+    def fromSettings(cls, settings: Mapping[configuration.Settings, str],
+                     lenient: bool) -> 'VanguardAccount':
+        statement = settings.get(Settings.STATEMENT)
+
+        return cls(statement=Path(statement) if statement else None,
+                   lenient=lenient)
+
+    def __init__(self, statement: Optional[Path] = None,
+                 lenient: bool = False):
+        self._statement = statement
+        self._lenient = lenient
+        super().__init__()
+
+    def positionsAndActivity(self) -> Optional[PositionsAndActivity]:
+        if not self._statement:
+            return None
+
+        if not self._positionsAndActivity:
+            self._positionsAndActivity = _parsePositionsAndActivity(
+                self._statement, lenient=self._lenient)
+
+        return self._positionsAndActivity
+
+    def positions(self) -> Iterable[Position]:
+        paa = self.positionsAndActivity()
+        return paa.positions if paa else []
+
+    def activity(self) -> Iterable[Activity]:
+        paa = self.positionsAndActivity()
+        return paa.activity if paa else []
