@@ -1,6 +1,6 @@
 from functools import reduce
 from itertools import groupby
-from .model import Activity, Cash, CashPayment, Trade, Instrument, Option, MarketDataProvider, Quote, Position
+from .model import Activity, Cash, CashPayment, Currency, Trade, Instrument, Option, MarketDataProvider, Quote, Position, Forex
 from progress.bar import Bar
 from typing import Dict, Iterable, Optional, Tuple
 
@@ -82,3 +82,24 @@ def deduplicatePositions(positions: Iterable[Position]) -> Iterable[Position]:
     return (reduce(operator.add, ps)
             for i, ps in groupby(sorted(positions, key=lambda p: p.instrument),
                                  key=lambda p: p.instrument))
+
+
+# Looks up how much the `quoteCurrency` is currently worth in each of the other
+# currencies.
+#
+# Returns each of the other currencies (possibly out-of-order), along with a
+# cash price denominated in the `quoteCurrency`. If a quote is not available
+# for some reason, it is omitted from the results.
+def currencyConversionRates(
+        quoteCurrency: Currency,
+        otherCurrencies: Iterable[Currency],
+        dataProvider: MarketDataProvider,
+) -> Iterable[Tuple[Currency, Cash]]:
+    currenciesByInstrument: Dict[Instrument, Currency] = {
+        Forex(baseCurrency=currency, quoteCurrency=quoteCurrency): currency
+        for currency in otherCurrencies
+    }
+
+    return ((currenciesByInstrument[instrument], q.market) for instrument, q in
+            dataProvider.fetchQuotes(currenciesByInstrument.keys())
+            if q.market)
