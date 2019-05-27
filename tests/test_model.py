@@ -298,8 +298,8 @@ class TestTrade(unittest.TestCase):
 class TestAccountData(unittest.TestCase):
     @given(from_type(AccountData))
     def test_positionsLoad(self, account: AccountData) -> None:
-        # IB position loading requires a live data connection, which we won't
-        # have in test.
+        # IB position loading requires a live connection, which we won't have
+        # in test.
         assume(not isinstance(account, ibkr.IBAccount))
 
         self.assertNotEqual(list(account.positions()), [])
@@ -309,9 +309,21 @@ class TestAccountData(unittest.TestCase):
         self.assertNotEqual(list(account.activity()), [])
 
     @given(from_type(AccountData))
+    def test_balanceLoads(self, account: AccountData) -> None:
+        # IB balance loading requires a live connection, which we won't have in
+        # test.
+        assume(not isinstance(account, ibkr.IBAccount))
+
+        self.assertNotEqual(account.balance().cash, {})
+        self.assertEqual({c.currency
+                          for c in account.balance().cash.values()},
+                         set(account.balance().cash.keys()))
+
+    @given(from_type(AccountData))
     def test_dataLoadingIsIdempotent(self, account: AccountData) -> None:
         self.assertEqual(list(account.positions()), list(account.positions()))
         self.assertEqual(list(account.activity()), list(account.activity()))
+        self.assertEqual(account.balance(), account.balance())
 
 
 if __name__ == '__main__':

@@ -3,6 +3,7 @@ from bankroll.configuration import Settings
 from typing import Iterable, Mapping, Optional
 
 from .activity import Activity
+from .balance import AccountBalance
 from .marketdata import MarketDataProvider
 from .position import Position
 
@@ -37,6 +38,13 @@ class AccountData(ABC):
     # Subclasses are encouraged to memoize this result.
     @abstractmethod
     def activity(self) -> Iterable[Activity]:
+        pass
+
+    # Returns the cash balances in the account, fetching them if necessary.
+    #
+    # Subclasses are encouraged to memoize this result.
+    @abstractmethod
+    def balance(self) -> AccountBalance:
         pass
 
     @property
