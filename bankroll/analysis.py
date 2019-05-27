@@ -85,8 +85,8 @@ def deduplicatePositions(positions: Iterable[Position]) -> Iterable[Position]:
                                  key=lambda p: p.instrument))
 
 
-# Looks up how much the `quoteCurrency` is currently worth in each of the other
-# currencies.
+# Looks up how much each of the `otherCurrencies` cost in terms of
+# `quoteCurrency`.
 #
 # Returns each of the other currencies (possibly out-of-order), along with a
 # cash price denominated in the `quoteCurrency`. If a quote is not available
@@ -96,24 +96,35 @@ def currencyConversionRates(
         otherCurrencies: Iterable[Currency],
         dataProvider: MarketDataProvider,
 ) -> Iterable[Tuple[Currency, Cash]]:
-    currenciesByInstrument: Dict[Instrument, Currency] = {
-        Forex(baseCurrency=currency, quoteCurrency=quoteCurrency): currency
-        for currency in otherCurrencies
-    }
+    instruments = (Forex(baseCurrency=min(currency, quoteCurrency),
+                         quoteCurrency=max(currency, quoteCurrency))
+                   for currency in otherCurrencies)
 
-    return ((currenciesByInstrument[instrument], q.market) for instrument, q in
-            dataProvider.fetchQuotes(currenciesByInstrument.keys())
-            if q.market)
+    return (
+        (instrument.baseCurrency,
+         quote.market) if instrument.quoteCurrency == quoteCurrency else
+        (
+            instrument.quoteCurrency,
+            Cash(
+                currency=instrument.baseCurrency,
+                # FIXME: This unfortunately does not retain much precision when
+                # dividing by JPY in particular (where the integral portion can
+                # be quite large).
+                # See https://github.com/jspahrsummers/bankroll/issues/37.
+                quantity=Decimal(1) / quote.market.quantity))
+        for instrument, quote in dataProvider.fetchQuotes(instruments)
+        if quote.market and isinstance(instrument, Forex))
 
 
 # Converts the given cash values into `quoteCurrency` using forex market quotes.
 def convertCashToCurrency(quoteCurrency: Currency, cash: Sequence[Cash],
                           dataProvider: MarketDataProvider) -> Cash:
     currencyRates = dict(
-        currencyConversionRates(quoteCurrency=quoteCurrency,
-                                otherCurrencies=(c.currency for c in cash
-                                                 if c != quoteCurrency),
-                                dataProvider=dataProvider))
+        currencyConversionRates(
+            quoteCurrency=quoteCurrency,
+            otherCurrencies=(c.currency for c in cash
+                             if c.currency != quoteCurrency),
+            dataProvider=dataProvider))
     currencyRates[quoteCurrency] = Cash(currency=quoteCurrency,
                                         quantity=Decimal(1))
 
