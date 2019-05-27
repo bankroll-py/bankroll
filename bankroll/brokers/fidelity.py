@@ -1,9 +1,10 @@
 from bankroll.csvsectionslicer import parseSectionsForCSV, CSVSectionCriterion, CSVSectionResult
-from bankroll.model import AccountData, Activity, Cash, Currency, Instrument, Stock, Bond, Option, OptionType, Position, CashPayment, Trade, TradeFlags
+from bankroll.model import AccountBalance, AccountData, Activity, Cash, Currency, Instrument, Stock, Bond, Option, OptionType, Position, CashPayment, Trade, TradeFlags
 from bankroll.parsetools import lenientParse
 from datetime import date, datetime
 from decimal import Decimal
 from enum import IntEnum, unique
+from functools import reduce
 from pathlib import Path
 from sys import stderr
 from typing import Callable, Dict, Iterable, List, Mapping, NamedTuple, Optional, Sequence, Set
@@ -11,6 +12,7 @@ from warnings import warn
 
 import bankroll.configuration as configuration
 import csv
+import operator
 import re
 
 
@@ -126,6 +128,30 @@ def _parsePositions(path: Path, lenient: bool = False) -> List[Position]:
                 positions.append(pos)
 
         return positions
+
+
+def _parseCash(p: _FidelityPosition) -> Cash:
+    return Cash(currency=Currency.USD, quantity=Decimal(p.price))
+
+
+def _parseBalance(path: Path, lenient: bool = False) -> AccountBalance:
+    with open(path, newline='') as csvfile:
+        reader = csv.reader(csvfile)
+
+        fieldLen = len(_FidelityPosition._fields)
+        positions = (_FidelityPosition._make(r[0:fieldLen]) for r in reader
+                     if len(r) >= fieldLen)
+
+        return AccountBalance(
+            cash={
+                Currency.USD:
+                reduce(
+                    operator.add,
+                    lenientParse((p for p in positions if p.symbol == 'CASH'),
+                                 transform=_parseCash,
+                                 lenient=lenient),
+                    Cash(currency=Currency.USD, quantity=Decimal(0)))
+            })
 
 
 class _FidelityTransaction(NamedTuple):
@@ -252,6 +278,7 @@ def _parseTransactions(path: Path, lenient: bool = False) -> List[Activity]:
 class FidelityAccount(AccountData):
     _positions: Optional[Sequence[Position]] = None
     _activity: Optional[Sequence[Activity]] = None
+    _balance: Optional[AccountBalance] = None
 
     @classmethod
     def fromSettings(cls, settings: Mapping[configuration.Settings, str],
@@ -291,3 +318,13 @@ class FidelityAccount(AccountData):
                                                 lenient=self._lenient)
 
         return self._activity
+
+    def balance(self) -> AccountBalance:
+        if not self._positionsPath:
+            return AccountBalance(cash={})
+
+        if not self._balance:
+            self._balance = _parseBalance(self._positionsPath,
+                                          lenient=self._lenient)
+
+        return self._balance

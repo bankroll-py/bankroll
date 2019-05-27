@@ -1,4 +1,4 @@
-from bankroll import Cash, Currency, Stock, Bond, Option, OptionType, Position, CashPayment, Trade, TradeFlags
+from bankroll import AccountBalance, Cash, Currency, Stock, Bond, Option, OptionType, Position, CashPayment, Trade, TradeFlags
 from bankroll.brokers import fidelity
 from datetime import date
 from decimal import Decimal
@@ -184,6 +184,16 @@ class TestFidelityTransactions(unittest.TestCase):
     def test_securityTransferSale(self) -> None:
         # TODO: Test security transfer trades
         pass
+
+
+class TestFidelityBalance(unittest.TestCase):
+    def setUp(self) -> None:
+        self.balance = fidelity.FidelityAccount(
+            positions=Path('tests/fidelity_positions.csv')).balance()
+
+    def testUSDBalance(self) -> None:
+        self.assertEqual(self.balance.cash,
+                         {Currency.USD: helpers.cashUSD(Decimal('21087.65'))})
 
 
 if __name__ == '__main__':
