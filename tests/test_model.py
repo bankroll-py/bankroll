@@ -1,4 +1,4 @@
-from bankroll.brokers import ibkr
+from bankroll.brokers import ibkr, vanguard
 from bankroll.model import AccountBalance, AccountData, Cash, Currency, Instrument, Bond, Stock, Option, OptionType, FutureOption, Future, Position, Quote, Trade
 from datetime import date
 from decimal import Decimal, ROUND_UP
@@ -314,6 +314,9 @@ class TestAccountData(unittest.TestCase):
         # test.
         assume(not isinstance(account, ibkr.IBAccount))
 
+        # Vanguard balance is always zero.
+        assume(not isinstance(account, vanguard.VanguardAccount))
+
         self.assertNotEqual(account.balance().cash, {})
         self.assertEqual({c.currency
                           for c in account.balance().cash.values()},
@@ -353,7 +356,8 @@ class TestAccountBalance(unittest.TestCase):
             hash(balance)
 
     @given(from_type(AccountBalance), from_type(AccountBalance))
-    def test_additionAndSubtraction(self, first: AccountBalance, second: AccountBalance) -> None:
+    def test_additionAndSubtraction(self, first: AccountBalance,
+                                    second: AccountBalance) -> None:
         self.assertEqual(first + second - second, first)
         self.assertEqual(first - second + second, first)
 
