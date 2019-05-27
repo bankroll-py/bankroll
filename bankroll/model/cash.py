@@ -6,15 +6,22 @@ from typing import Any, ClassVar, TypeVar
 
 
 @unique
+@total_ordering
 class Currency(Enum):
-    USD = "USD"
-    GBP = "GBP"
-    AUD = "AUD"
-    EUR = "EUR"
-    JPY = "JPY"
-    CAD = "CAD"
-    CHF = "CHF"
-    NZD = "NZD"
+    EUR = 1
+    GBP = 2
+    AUD = 3
+    NZD = 4
+    USD = 5
+    CAD = 6
+    CHF = 7
+    JPY = 8
+
+    def __lt__(self, other: Any) -> bool:
+        if isinstance(other, Currency):
+            return bool(self.value < other.value)
+        else:
+            return NotImplemented
 
     def format(self, quantity: Decimal) -> str:
         return self.formatWithPadding(quantity, 0)

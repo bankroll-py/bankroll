@@ -365,13 +365,16 @@ def _parseTradeConfirm(trade: _IBTradeConfirm) -> Trade:
             else:
                 flags |= TradeFlags.CLOSE
 
+        if trade.commissionCurrency not in Currency.__members__:
+            raise ValueError(f'Unrecognized currency in trade: {trade}')
+
         return Trade(date=_parseIBDate(trade.tradeDate),
                      instrument=instrument,
                      quantity=_parseFiniteDecimal(trade.quantity),
-                     amount=Cash(currency=Currency(trade.currency),
+                     amount=Cash(currency=Currency[trade.currency],
                                  quantity=_parseFiniteDecimal(trade.proceeds)),
                      fees=Cash(
-                         currency=Currency(trade.commissionCurrency),
+                         currency=Currency[trade.commissionCurrency],
                          quantity=-(_parseFiniteDecimal(trade.commission) +
                                     _parseFiniteDecimal(trade.tax))),
                      flags=flags)
@@ -400,7 +403,7 @@ def _parseChangeInDividendAccrual(entry: _IBChangeInDividendAccrual
         return None
 
     # IB "reverses" dividend postings when they're paid out, so they all appear as debits.
-    proceeds = Cash(currency=Currency(entry.currency),
+    proceeds = Cash(currency=Currency[entry.currency],
                     quantity=-Decimal(entry.netAmount))
 
     return CashPayment(date=_parseIBDate(entry.payDate),
@@ -512,13 +515,13 @@ def _downloadBalance(ib: IB.IB, lenient: bool) -> AccountBalance:
 def _stockContract(stock: Stock) -> IB.Contract:
     return IB.Stock(symbol=stock.symbol,
                     exchange='SMART',
-                    currency=stock.currency.value)
+                    currency=stock.currency.name)
 
 
 def _bondContract(bond: Bond) -> IB.Contract:
     return IB.Bond(symbol=bond.symbol,
                    exchange='SMART',
-                   currency=bond.currency.value)
+                   currency=bond.currency.name)
 
 
 def _optionContract(option: Option,
@@ -527,7 +530,7 @@ def _optionContract(option: Option,
 
     return cls(localSymbol=option.symbol,
                exchange='SMART',
-               currency=option.currency.value,
+               currency=option.currency.name,
                lastTradeDateOrContractMonth=lastTradeDate,
                right=option.optionType.value,
                strike=float(option.strike),
@@ -539,13 +542,13 @@ def _futuresContract(future: Future) -> IB.Contract:
 
     return IB.Future(symbol=future.symbol,
                      exchange='SMART',
-                     currency=future.currency.value,
+                     currency=future.currency.name,
                      multiplier=str(future.multiplier),
                      lastTradeDateOrContractMonth=lastTradeDate)
 
 
 def _forexContract(forex: Forex) -> IB.Contract:
-    return IB.Forex(pair=forex.symbol, currency=forex.currency.value)
+    return IB.Forex(pair=forex.symbol, currency=forex.currency.name)
 
 
 def _contract(instrument: Instrument) -> IB.Contract:

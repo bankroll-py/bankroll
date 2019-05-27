@@ -153,9 +153,8 @@ def _forceParseVanguardTransaction(t: _VanguardTransaction,
     return Trade(date=_parseVanguardTransactionDate(t.tradeDate),
                  instrument=instrument,
                  quantity=shares,
-                 amount=Cash(currency=Currency(Currency.USD), quantity=amount),
-                 fees=Cash(currency=Currency(Currency.USD),
-                           quantity=totalFees),
+                 amount=Cash(currency=Currency.USD, quantity=amount),
+                 fees=Cash(currency=Currency.USD, quantity=totalFees),
                  flags=flags)
 
 

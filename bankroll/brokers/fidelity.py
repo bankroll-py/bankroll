@@ -221,7 +221,7 @@ def _forceParseFidelityTransaction(t: _FidelityTransaction,
     if t.amount:
         amount = Decimal(t.amount) + totalFees
 
-    currency = Currency(t.currency)
+    currency = Currency[t.currency]
     return Trade(date=_parseFidelityTransactionDate(t.date),
                  instrument=_guessInstrumentFromSymbol(t.symbol, currency),
                  quantity=quantity,
@@ -234,8 +234,8 @@ def _parseFidelityTransaction(t: _FidelityTransaction) -> Optional[Activity]:
     if t.action == 'DIVIDEND RECEIVED':
         return CashPayment(date=_parseFidelityTransactionDate(t.date),
                            instrument=Stock(t.symbol,
-                                            currency=Currency(t.currency)),
-                           proceeds=Cash(currency=Currency(t.currency),
+                                            currency=Currency[t.currency]),
+                           proceeds=Cash(currency=Currency[t.currency],
                                          quantity=Decimal(t.amount)))
 
     flags = None
