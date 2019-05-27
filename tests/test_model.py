@@ -352,6 +352,11 @@ class TestAccountBalance(unittest.TestCase):
         with self.assertRaises(TypeError):
             hash(balance)
 
+    @given(from_type(AccountBalance), from_type(AccountBalance))
+    def test_additionAndSubtraction(self, first: AccountBalance, second: AccountBalance) -> None:
+        self.assertEqual(first + second - second, first)
+        self.assertEqual(first - second + second, first)
+
 
 if __name__ == '__main__':
     unittest.main()
