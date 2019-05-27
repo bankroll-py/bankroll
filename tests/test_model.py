@@ -1,10 +1,10 @@
 from bankroll.brokers import ibkr
-from bankroll.model import AccountData, Cash, Currency, Instrument, Bond, Stock, Option, OptionType, FutureOption, Future, Position, Quote, Trade
+from bankroll.model import AccountBalance, AccountData, Cash, Currency, Instrument, Bond, Stock, Option, OptionType, FutureOption, Future, Position, Quote, Trade
 from datetime import date
 from decimal import Decimal, ROUND_UP
 from hypothesis import assume, given, reproduce_failure
 from hypothesis.strategies import dates, decimals, from_type, integers, lists, one_of, sampled_from, text
-from typing import List, Optional, TypeVar
+from typing import List, Optional, Tuple, TypeVar
 
 import helpers
 import unittest
@@ -324,6 +324,33 @@ class TestAccountData(unittest.TestCase):
         self.assertEqual(list(account.positions()), list(account.positions()))
         self.assertEqual(list(account.activity()), list(account.activity()))
         self.assertEqual(account.balance(), account.balance())
+
+
+class TestAccountBalance(unittest.TestCase):
+    @given(
+        from_type(Currency).flatmap(lambda cx: helpers.accountBalances(
+            currencies=sampled_from([
+                cy for cy in Currency.__members__.values() if cy != cx
+            ])).map(lambda balance: (cx, balance))))
+    def test_zeroEntriesIgnoredForEquality(self,
+                                           t: Tuple[Currency, AccountBalance]
+                                           ) -> None:
+        zeroCurrency, balance = t
+
+        cashWithZero = balance.cash.copy()
+        cashWithZero[zeroCurrency] = Cash(currency=zeroCurrency,
+                                          quantity=Decimal(0))
+        balanceWithZero = AccountBalance(cash=cashWithZero)
+
+        self.assertEqual(balance, balanceWithZero,
+                         f'Expected <{balance}> to equal <{balanceWithZero}>')
+
+    @given(from_type(AccountBalance))
+    def test_unhashable(self, balance: AccountBalance) -> None:
+        # Account balances are not hashable at the moment. If they ever become
+        # so, we should verify that object equality implies hash equality.
+        with self.assertRaises(TypeError):
+            hash(balance)
 
 
 if __name__ == '__main__':

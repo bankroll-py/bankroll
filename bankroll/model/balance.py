@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Dict
 
 from .cash import Cash, Currency
@@ -14,6 +15,13 @@ class AccountBalance:
     cash: Dict[Currency, Cash]
 
     def __post_init__(self) -> None:
+        super().__setattr__(
+            'cash', {
+                currency: cash
+                for currency, cash in self.cash.items()
+                if cash.quantity != Decimal(0)
+            })
+
         for currency, cash in self.cash.items():
             if currency != cash.currency:
                 raise ValueError(

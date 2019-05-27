@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
-from hypothesis.strategies import builds, dates, datetimes, decimals, from_regex, from_type, just, lists, integers, none, one_of, register_type_strategy, sampled_from, text, SearchStrategy
-from bankroll import AccountData, Activity, Cash, Currency, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, CashPayment, Trade, TradeFlags, Quote
+from hypothesis.strategies import builds, dates, datetimes, decimals, from_regex, from_type, just, lists, integers, none, one_of, register_type_strategy, sampled_from, sets, text, SearchStrategy
+from bankroll import AccountBalance, AccountData, Activity, Cash, Currency, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, CashPayment, Trade, TradeFlags, Quote
 from bankroll.brokers import *
 from bankroll.configuration import Settings
 from typing import List, Optional, TypeVar
@@ -204,6 +204,19 @@ def uniformCurrencyQuotes(
         grow_ask=grow_ask))
 
 
+def accountBalances(currencies: SearchStrategy[Currency] = from_type(Currency),
+                    quantities: SearchStrategy[Decimal] = cashAmounts()
+                    ) -> SearchStrategy[AccountBalance]:
+    # Generate a unique set of currencies, then a list of cash amounts to match.
+    return builds(AccountBalance,
+                  cash=sets(currencies).flatmap(lambda keys: lists(
+                      quantities, min_size=len(keys), max_size=len(keys)).map(
+                          lambda values: {
+                              currency: Cash(currency=currency, quantity=qty)
+                              for currency, qty in zip(keys, values)
+                          })))
+
+
 register_type_strategy(Cash, cash())
 register_type_strategy(Bond, bonds())
 register_type_strategy(Stock, stocks())
@@ -264,6 +277,8 @@ register_type_strategy(
     AccountData,
     sampled_from(AccountData.__subclasses__()).map(
         lambda cls: cls.fromSettings(fixtureSettings, lenient=False)))
+
+register_type_strategy(AccountBalance, accountBalances())
 
 
 def cashUSD(amount: Decimal) -> Cash:
