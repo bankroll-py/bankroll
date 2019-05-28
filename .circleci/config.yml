@@ -11,6 +11,28 @@ defaults: &defaults
 
   working_directory: ~/repo
 
+default-steps: &default-steps
+  - checkout
+
+  # Note that race conditions between workflows are possible here:
+  # https://circleci.com/docs/2.0/caching/#writing-to-the-cache-in-workflows
+  #
+  # As long as the caching is deterministic, this _should_ be OK.
+  - restore_cache:
+      keys:
+        # When requirements change, use increasingly general patterns to restore cache.
+        - v2-dependencies-{{ checksum "requirements.txt" }}
+        - v2-dependencies-
+
+  - run:
+      name: install dependencies
+      command: script/bootstrap
+
+  - save_cache:
+      paths:
+        - ./venv
+      key: v2-dependencies-{{ checksum "requirements.txt" }}
+
 jobs:
   shellcheck:
     docker:
@@ -25,35 +47,11 @@ jobs:
     <<: *defaults
 
     steps:
-      - checkout
-
-      - restore_cache:
-          keys:
-            # when requirements change, use increasingly general patterns to restore cache
-            - test-v1-dependencies-{{ checksum "requirements.txt" }}
-            - test-v1-dependencies-
-
-      - run:
-          name: install dependencies
-          command: script/bootstrap
-
-      - save_cache:
-          paths:
-            - ./venv
-          key: test-v1-dependencies-{{ checksum "requirements.txt" }}
-
-      - run:
-          name: typecheck
-          command: script/typecheck
+      <<: *default-steps
 
       - run:
           name: run tests
           command: script/test
-      
-      - run:
-          name: check formatting
-          when: always
-          command: script/reformat --diff
 
   test installing:
     <<: *defaults
@@ -63,6 +61,21 @@ jobs:
       
       - run:
           command: script/test_install
+  
+  contribution guidelines:
+    <<: *defaults
+
+    steps:
+      <<: *default-steps
+
+      - run:
+          name: typecheck
+          command: script/typecheck
+      
+      - run:
+          name: check formatting
+          when: always
+          command: script/reformat --diff
 
 workflows:
   version: 2
@@ -71,3 +84,4 @@ workflows:
       - shellcheck
       - test
       - test installing
+      - contribution guidelines
