@@ -102,19 +102,24 @@ workflows:
   workflow:
     jobs:
       - shellcheck:
-          <<: *versiontags
+          filters:
+            <<: *versiontags
       - test:
-          <<: *versiontags
+          filters:
+            <<: *versiontags
       - test installing:
-          <<: *versiontags
+          filters:
+            <<: *versiontags
       - contribution guidelines:
-          <<: *versiontags
+          filters:
+            <<: *versiontags
       - deploy:
           requires:
             - shellcheck
             - test
             - test installing
             - contribution guidelines
-          <<: *versiontags
-          branches:
-            ignore: /.*/
+          filters:
+            <<: *versiontags
+            branches:
+              ignore: /.*/
