@@ -31,17 +31,17 @@ jobs:
       # https://circleci.com/docs/2.0/caching/#writing-to-the-cache-in-workflows
       #
       # As long as the caching is deterministic, this _should_ be OK.
-      restore_cache: &default_restore_cache
+      - restore_cache: &default_restore_cache
           keys:
             # When requirements change, use increasingly general patterns to restore cache.
             - v2-dependencies-{{ checksum "requirements.txt" }}
             - v2-dependencies-
 
-      run: &bootstrap
+      - run: &bootstrap
           name: install dependencies
           command: script/bootstrap
 
-      save_cache: &default_save_cache
+      - save_cache: &default_save_cache
           paths:
             - ./venv
           key: v2-dependencies-{{ checksum "requirements.txt" }}
