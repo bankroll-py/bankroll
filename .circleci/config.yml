@@ -65,9 +65,9 @@ jobs:
     steps:
       - checkout
 
-      - *default_restore_cache
-      - *bootstrap
-      - *default_save_cache
+      - restore_cache: *default_restore_cache
+      - run: *bootstrap
+      - save_cache: *default_save_cache
 
       - run:
           name: typecheck
