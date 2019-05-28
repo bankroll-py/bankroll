@@ -5,7 +5,7 @@ from enum import unique
 from hypothesis import given
 from hypothesis.strategies import from_type, sampled_from, text
 
-import helpers
+from tests import helpers
 import unittest
 
 

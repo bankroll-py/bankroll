@@ -3,7 +3,7 @@ from pathlib import Path
 from bankroll.csvsectionslicer import parseSectionsForCSV, CSVSectionCriterion, CSVSectionResult
 
 import unittest
-import helpers
+from tests import helpers
 
 
 class TestFidelityPositionSections(unittest.TestCase):
