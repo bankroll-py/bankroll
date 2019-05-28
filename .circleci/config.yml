@@ -3,6 +3,14 @@
 # Check https://circleci.com/docs/2.0/language-python/ for more details
 #
 version: 2
+
+defaults: &defaults
+  docker:
+    # https://circleci.com/docs/2.0/circleci-images/
+    - image: circleci/python:3.7.2-stretch
+
+  working_directory: ~/repo
+
 jobs:
   shellcheck:
     docker:
@@ -13,22 +21,17 @@ jobs:
           name: Check Scripts
           command: shellcheck --external-sources script/*
 
-  build:
-    docker:
-      # https://circleci.com/docs/2.0/circleci-images/
-      - image: circleci/python:3.7.2-stretch
-
-    working_directory: ~/repo
+  test:
+    <<: *defaults
 
     steps:
       - checkout
 
-      # Download and cache dependencies
       - restore_cache:
           keys:
-            - v1-dependencies-{{ checksum "requirements.txt" }}
-            # fallback to using the latest cache if no exact match is found
-            - v1-dependencies-
+            # when requirements change, use increasingly general patterns to restore cache
+            - test-v1-dependencies-{{ checksum "requirements.txt" }}
+            - test-v1-dependencies-
 
       - run:
           name: install dependencies
@@ -37,7 +40,7 @@ jobs:
       - save_cache:
           paths:
             - ./venv
-          key: v1-dependencies-{{ checksum "requirements.txt" }}
+          key: test-v1-dependencies-{{ checksum "requirements.txt" }}
 
       - run:
           name: typecheck
@@ -51,16 +54,22 @@ jobs:
           name: check formatting
           when: always
           command: script/reformat --diff
+
+  try installing:
+    <<: *defaults
+
+    steps:
+      - checkout
       
       - run:
-          name: try installing
-          command: script/test_install --skip-license
+          command: script/test_install
 
 workflows:
   version: 2
   workflow:
     jobs:
       - shellcheck
-      - build:
+      - test:
           requires:
             - shellcheck
+      - try installing
