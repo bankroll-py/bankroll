@@ -55,7 +55,7 @@ jobs:
           when: always
           command: script/reformat --diff
 
-  try installing:
+  test installing:
     <<: *defaults
 
     steps:
@@ -72,4 +72,4 @@ workflows:
       - test:
           requires:
             - shellcheck
-      - try installing
+      - test installing
