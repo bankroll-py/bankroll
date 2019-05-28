@@ -10,6 +10,7 @@ export HYPOTHESIS_PROFILE=ci
 
 if [ "$CIRCLECI" ]
 then
+    # shellcheck disable=SC2046
     python -m unittest -v -- $(circleci tests glob "tests/test_*.py" | circleci tests split --split-by=timings)
 else
     python -m unittest -v -- tests/test_*.py
