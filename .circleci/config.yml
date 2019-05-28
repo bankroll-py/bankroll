@@ -112,7 +112,6 @@ workflows:
             <<: *versiontags
       - deploy:
           requires:
-            - shellcheck
             - test
             - test installing
             - contribution guidelines
