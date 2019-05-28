@@ -3,17 +3,14 @@
 set -o errexit
 set -o pipefail
 
-if [ ! "$CIRCLECI" ]
-then
-    echo " => Creating Python virtual environment"
-    python3 -m venv venv
+echo " => Creating Python virtual environment"
+python3 -m venv venv
 
-    # shellcheck disable=SC1091
-    . venv/bin/activate
+# shellcheck disable=SC1091
+. venv/bin/activate
 
-    echo " => Uninstalling development dependencies"
-    pip uninstall -q -r requirements.txt --yes
-fi
+echo " => Uninstalling development dependencies"
+pip uninstall -q -r requirements.txt --yes
 
 echo
 echo " => Installing bankroll"
