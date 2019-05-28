@@ -85,9 +85,6 @@ jobs:
 
     steps:
       - checkout
-
-      - restore_cache: *default_restore_cache
-      - run: *bootstrap
     
       - run:
           name: deploy
