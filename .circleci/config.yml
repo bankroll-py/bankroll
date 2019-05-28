@@ -69,7 +69,5 @@ workflows:
   workflow:
     jobs:
       - shellcheck
-      - test:
-          requires:
-            - shellcheck
+      - test
       - test installing
