@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from hypothesis import settings
 from hypothesis.strategies import builds, dates, datetimes, decimals, from_regex, from_type, just, lists, integers, none, one_of, register_type_strategy, sampled_from, text, SearchStrategy
@@ -9,8 +9,8 @@ from typing import List, Optional, TypeVar
 
 import os
 
-settings.register_profile("ci", max_examples=1000)
-settings.register_profile("dev", max_examples=10)
+settings.register_profile("ci", max_examples=1000, deadline=100)
+settings.register_profile("dev", max_examples=10, deadline=50)
 settings.load_profile(os.getenv(u'HYPOTHESIS_PROFILE', default='dev'))
 
 T = TypeVar('T')
