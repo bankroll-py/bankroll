@@ -6,4 +6,5 @@ set -o pipefail
 # shellcheck disable=SC1091
 . venv/bin/activate
 
+export HYPOTHESIS_PROFILE=ci
 python -m unittest discover -s tests -v
