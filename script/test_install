@@ -7,12 +7,12 @@ set -o pipefail
 . venv/bin/activate
 
 echo " => Uninstalling development dependencies"
-pip uninstall -r requirements.txt --yes
+pip uninstall -q -r requirements.txt --yes
 
 echo
 echo " => Installing bankroll"
 
-pip install -U .
+pip install -q -U .
 
 echo
 echo " => Testing bankroll --help"
