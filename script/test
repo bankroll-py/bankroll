@@ -7,4 +7,11 @@ set -o pipefail
 . venv/bin/activate
 
 export HYPOTHESIS_PROFILE=ci
-python -m unittest discover -s tests -v
+
+if [ "$CIRCLECI" ]
+then
+    TEST_FILES=$(circleci tests glob "tests/*.py" | circleci tests split --split-by=timings)
+    python -m unittest -v -- ${TEST_FILES}
+else
+    python -m unittest -v -- tests/*.py
+fi
