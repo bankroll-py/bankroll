@@ -79,12 +79,42 @@ jobs:
           name: check formatting
           when: always
           command: script/reformat --diff
+  
+  deploy:
+    <<: *defaults
+
+    steps:
+      - checkout
+
+      - restore_cache: *default_restore_cache
+      - run: *bootstrap
+    
+      - run:
+          name: deploy
+          command: script/deploy
+  
+versiontags: &versiontags
+  tags:
+    only: /^v.*/
 
 workflows:
   version: 2
   workflow:
     jobs:
       - shellcheck
+          <<: *versiontags
       - test
+          <<: *versiontags
       - test installing
+          <<: *versiontags
       - contribution guidelines
+          <<: *versiontags
+      - deploy:
+          requires:
+            - shellcheck
+            - test
+            - test installing
+            - contribution guidelines
+          <<: *versiontags
+          branches:
+            ignore: /.*/
