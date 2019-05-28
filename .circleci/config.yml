@@ -38,7 +38,7 @@ jobs:
 
       - run:
           name: install dependencies
-          command: script/bootstrap --skip-license
+          command: script/bootstrap
 
       - save_cache:
           paths:
