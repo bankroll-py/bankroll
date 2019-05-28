@@ -98,23 +98,23 @@ workflows:
   version: 2
   workflow:
     jobs:
-      - shellcheck:
-          filters:
-            <<: *versiontags
-      - test:
-          filters:
-            <<: *versiontags
-      - test installing:
-          filters:
-            <<: *versiontags
-      - contribution guidelines:
-          filters:
-            <<: *versiontags
+      #- shellcheck:
+      #    filters:
+      #      <<: *versiontags
+      #- test:
+      #    filters:
+      #      <<: *versiontags
+      #- test installing:
+      #    filters:
+      #      <<: *versiontags
+      #- contribution guidelines:
+      #    filters:
+      #      <<: *versiontags
       - deploy:
-          requires:
-            - test
-            - test installing
-            - contribution guidelines
+          #requires:
+          #  - test
+          #  - test installing
+          #  - contribution guidelines
           filters:
             <<: *versiontags
             branches:
