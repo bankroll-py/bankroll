@@ -101,13 +101,13 @@ workflows:
   version: 2
   workflow:
     jobs:
-      - shellcheck
+      - shellcheck:
           <<: *versiontags
-      - test
+      - test:
           <<: *versiontags
-      - test installing
+      - test installing:
           <<: *versiontags
-      - contribution guidelines
+      - contribution guidelines:
           <<: *versiontags
       - deploy:
           requires:
