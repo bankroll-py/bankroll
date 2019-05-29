@@ -6,12 +6,14 @@ set -o pipefail
 # shellcheck disable=SC1091
 . venv/bin/activate
 
-export HYPOTHESIS_PROFILE=ci
+export HYPOTHESIS_PROFILE="${HYPOTHESIS_PROFILE:-ci}"
 
 if [ "$CIRCLECI" ]
 then
     # shellcheck disable=SC2046
-    python -m unittest -v -- $(circleci tests glob "tests/test_*.py" | circleci tests split --split-by=timings)
+    coverage run --source bankroll/ -m unittest -v -- $(circleci tests glob "tests/test_*.py" | circleci tests split --split-by=timings)
 else
-    python -m unittest -v -- tests/test_*.py
+    coverage run --source bankroll/ -m unittest -v -- tests/test_*.py
 fi
+
+coveralls
