@@ -7,7 +7,7 @@ from hypothesis.strategies import builds, dates, decimals, from_regex, from_type
 from itertools import groupby
 from pathlib import Path
 
-import helpers
+from tests import helpers
 import ib_insync as IB
 import logging
 import unittest

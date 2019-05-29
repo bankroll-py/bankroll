@@ -7,7 +7,7 @@ from hypothesis.strategies import builds, composite, dates, datetimes, decimals,
 from itertools import chain
 from typing import Any, Dict, Iterable, List, Tuple, no_type_check
 
-import helpers
+from tests import helpers
 import unittest
 
 
@@ -193,7 +193,11 @@ class TestAnalysis(unittest.TestCase):
         if realizedBasis:
             self.assertEqual(realizedBasis.quantity, -summed)
 
-    @given(lists(positionAndQuote(), min_size=1, max_size=3))
+    # Filter for positions and quotes where the instruments are all unique.
+    @given(
+        lists(positionAndQuote(), min_size=1,
+              max_size=3).filter(lambda l: len({p.instrument
+                                                for p, q in l}) == len(l)))
     def test_liveValuesForPositions(self,
                                     i: List[Tuple[Position, Quote]]) -> None:
         quotesByInstrument = {p.instrument: q for (p, q) in i}

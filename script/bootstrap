@@ -12,4 +12,4 @@ python3 -m venv venv
 echo
 echo " => Installing Python dependencies"
 
-pip install -U -r requirements.txt
+pip install -q -U -r requirements.txt
