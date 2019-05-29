@@ -16,5 +16,4 @@ else
     coverage run --source bankroll/ -m unittest -v -- tests/test_*.py
 fi
 
-coverage report
-coverage html
+coveralls
