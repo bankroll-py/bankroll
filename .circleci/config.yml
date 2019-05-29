@@ -52,9 +52,6 @@ jobs:
           name: run tests
           command: script/test
 
-      - store_artifacts:
-          path: htmlcov
-
   test installing:
     <<: *defaults
 
