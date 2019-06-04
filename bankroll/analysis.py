@@ -62,8 +62,14 @@ def liveValuesForPositions(
 
     result = {}
 
-    # TODO: Check uniqueness of instruments
-    positionsByInstrument = {p.instrument: p for p in positions}
+    positionsByInstrument: Dict[Instrument, Position] = {}
+    for p in positions:
+        if p.instrument in positionsByInstrument:
+            raise ValueError(
+                f'Expected unique instruments (i.e., deduplicated positions), but saw {p.instrument} multiple times'
+            )
+
+        positionsByInstrument[p.instrument] = p
 
     quotes = dataProvider.fetchQuotes(positionsByInstrument.keys())
     it = progressBar.iter(quotes) if progressBar else quotes
