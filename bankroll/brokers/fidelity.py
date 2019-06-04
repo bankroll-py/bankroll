@@ -131,7 +131,7 @@ def _parsePositions(path: Path, lenient: bool = False) -> List[Position]:
 
 
 def _parseCash(p: _FidelityPosition) -> Cash:
-    return Cash(currency=Currency.USD, quantity=Decimal(p.price))
+    return Cash(currency=Currency.USD, quantity=Decimal(p.beginningValue))
 
 
 def _parseBalance(path: Path, lenient: bool = False) -> AccountBalance:

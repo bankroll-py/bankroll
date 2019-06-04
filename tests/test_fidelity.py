@@ -193,7 +193,7 @@ class TestFidelityBalance(unittest.TestCase):
 
     def testUSDBalance(self) -> None:
         self.assertEqual(self.balance.cash,
-                         {Currency.USD: helpers.cashUSD(Decimal('21087.65'))})
+                         {Currency.USD: helpers.cashUSD(Decimal('15678.89'))})
 
 
 if __name__ == '__main__':
