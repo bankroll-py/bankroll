@@ -1,6 +1,11 @@
 <FlexQueryResponse queryName="Activity" type="AF">
 <FlexStatements count="1">
 <FlexStatement accountId="U5555555" fromDate="20190101" toDate="20190301" period="Last365CalendarDays" whenGenerated="20190301;011111">
+<InterestAccruals>
+<InterestAccrualsCurrency accountId="U5555555" acctAlias="" model="" currency="BASE_SUMMARY" fromDate="20190101" toDate="20190301" startingAccrualBalance="0" interestAccrued="54.0925586" accrualReversal="-2.6811356" fxTranslation="0.3127715" endingAccrualBalance="51.7165443" />
+<InterestAccrualsCurrency accountId="U5555555" acctAlias="" model="" currency="AUD" fromDate="20190101" toDate="20190301" startingAccrualBalance="0" interestAccrued="-7.36" accrualReversal="4.29" fxTranslation="0" endingAccrualBalance="-3.07" />
+<InterestAccrualsCurrency accountId="U5555555" acctAlias="" model="" currency="USD" fromDate="20190101" toDate="20190301" startingAccrualBalance="0" interestAccrued="61.95" accrualReversal="-2.26" fxTranslation="0" endingAccrualBalance="59.69" />
+</InterestAccruals>
 <ChangeInDividendAccruals>
 <ChangeInDividendAccrual accountId="U5555555" acctAlias="" model="" currency="USD" fxRateToBase="1" assetCategory="BOND" symbol="BA 3 3/4 02/17/19" description="BA 3 3/4 11/18/19" conid="173569703" securityID="" securityIDType="" cusip="" isin="" listingExchange="" underlyingConid="" underlyingSymbol="" underlyingSecurityID="" underlyingListingExchange="" issuer="" multiplier="1" strike="" expiry="" putCall="" principalAdjustFactor="1" reportDate="20190115" date="20190114" exDate="20190115" payDate="20190117" quantity="1000" tax="0" fee="0" grossRate="0.01875" grossAmount="18.75" netAmount="18.75" code="Po" fromAcct="" toAcct="" />
 <ChangeInDividendAccrual accountId="U5555555" acctAlias="" model="" currency="USD" fxRateToBase="1" assetCategory="BOND" symbol="BA 3 3/4 02/17/19" description="BA 3 3/4 11/18/19" conid="173569703" securityID="" securityIDType="" cusip="" isin="" listingExchange="" underlyingConid="" underlyingSymbol="" underlyingSecurityID="" underlyingListingExchange="" issuer="" multiplier="1" strike="" expiry="" putCall="" principalAdjustFactor="1" reportDate="20190115" date="20190114" exDate="20190115" payDate="20190117" quantity="1000" tax="0" fee="0" grossRate="0.01875" grossAmount="-18.75" netAmount="-18.75" code="Re" fromAcct="" toAcct="" />
