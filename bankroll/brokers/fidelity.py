@@ -136,7 +136,7 @@ def _parseCash(p: _FidelityPosition) -> Cash:
     # make this forward-compatible, let's just use it as-is and throw if it
     # changes in the future (at which point, we would expect `endingValue` or
     # `quantity` to be the correct fields to use).
-    if int(p.quantity) != 1 or int(p.price) == 1:
+    if Decimal(p.quantity) != Decimal(1) or Decimal(p.price) == Decimal(1):
         raise ValueError(f'Fidelity cash position format has changed to: {p}')
 
     return Cash(currency=Currency.USD, quantity=Decimal(p.beginningValue))
