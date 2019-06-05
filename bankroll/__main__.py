@@ -104,9 +104,14 @@ def printActivity(accounts: AccountAggregator, args: Namespace) -> None:
         print(t)
 
 
+def printBalances(accounts: AccountAggregator, args: Namespace) -> None:
+    print(accounts.balance())
+
+
 commands = {
     'positions': printPositions,
     'activity': printActivity,
+    'balances': printBalances,
 }
 
 subparsers = parser.add_subparsers(dest='command', help='What to inspect')
@@ -127,6 +132,9 @@ positionsParser.add_argument(
 
 activityParser = subparsers.add_parser(
     'activity', help='Operations upon imported portfolio activity')
+
+balancesParser = subparsers.add_parser(
+    'balances', help='Operations upon imported portfolio cash balances')
 
 
 def main() -> None:

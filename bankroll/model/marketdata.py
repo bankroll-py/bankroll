@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from decimal import Decimal
 from itertools import permutations
 from typing import Any, Iterable, Optional, Tuple, TypeVar
 
@@ -37,6 +38,17 @@ class Quote:
             raise ValueError(
                 f'Currencies in a quote should match: {[self.bid, self.ask, self.last, self.close]}'
             )
+
+    @property
+    def midpoint(self) -> Optional[Cash]:
+        if self.bid and self.ask:
+            return (self.bid + self.ask) / Decimal(2)
+        else:
+            return self.bid or self.ask
+
+    @property
+    def market(self) -> Optional[Cash]:
+        return self.midpoint or self.last or self.close
 
 
 class MarketDataProvider(ABC):

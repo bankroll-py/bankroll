@@ -155,14 +155,21 @@ class Future(Instrument):
 
 @dataclass(unsafe_hash=True, init=False)
 class Forex(Instrument):
+    baseCurrency: Currency
+
     def __init__(self, baseCurrency: Currency, quoteCurrency: Currency):
         if baseCurrency == quoteCurrency:
             raise ValueError(
                 f'Forex pair must be composed of different currencies, got {baseCurrency!r} and {quoteCurrency!r}'
             )
 
-        self._baseCurrency = baseCurrency
+        self.baseCurrency = baseCurrency
+
         symbol = f'{baseCurrency.name}{quoteCurrency.name}'
         super().__init__(symbol=symbol,
                          currency=quoteCurrency,
                          multiplier=Decimal(1))
+
+    @property
+    def quoteCurrency(self) -> Currency:
+        return self.currency

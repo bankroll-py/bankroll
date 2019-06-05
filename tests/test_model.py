@@ -1,10 +1,10 @@
-from bankroll.brokers import ibkr
-from bankroll.model import AccountData, Cash, Currency, Instrument, Bond, Stock, Option, OptionType, FutureOption, Future, Position, Quote, Trade
+from bankroll.brokers import ibkr, vanguard
+from bankroll.model import AccountBalance, AccountData, Cash, Currency, Instrument, Bond, Stock, Option, OptionType, FutureOption, Future, Position, Quote, Trade
 from datetime import date
 from decimal import Decimal, ROUND_UP
 from hypothesis import assume, given, reproduce_failure
 from hypothesis.strategies import dates, decimals, from_type, integers, lists, one_of, sampled_from, text
-from typing import List, Optional, TypeVar
+from typing import List, Optional, Tuple, TypeVar
 
 from tests import helpers
 import unittest
@@ -298,8 +298,8 @@ class TestTrade(unittest.TestCase):
 class TestAccountData(unittest.TestCase):
     @given(from_type(AccountData))
     def test_positionsLoad(self, account: AccountData) -> None:
-        # IB position loading requires a live data connection, which we won't
-        # have in test.
+        # IB position loading requires a live connection, which we won't have
+        # in test.
         assume(not isinstance(account, ibkr.IBAccount))
 
         self.assertNotEqual(list(account.positions()), [])
@@ -309,9 +309,57 @@ class TestAccountData(unittest.TestCase):
         self.assertNotEqual(list(account.activity()), [])
 
     @given(from_type(AccountData))
+    def test_balanceLoads(self, account: AccountData) -> None:
+        # IB balance loading requires a live connection, which we won't have in
+        # test.
+        assume(not isinstance(account, ibkr.IBAccount))
+
+        # Vanguard balance is always zero.
+        assume(not isinstance(account, vanguard.VanguardAccount))
+
+        self.assertNotEqual(account.balance().cash, {})
+        self.assertEqual({c.currency
+                          for c in account.balance().cash.values()},
+                         set(account.balance().cash.keys()))
+
+    @given(from_type(AccountData))
     def test_dataLoadingIsIdempotent(self, account: AccountData) -> None:
         self.assertEqual(list(account.positions()), list(account.positions()))
         self.assertEqual(list(account.activity()), list(account.activity()))
+        self.assertEqual(account.balance(), account.balance())
+
+
+class TestAccountBalance(unittest.TestCase):
+    @given(
+        from_type(Currency).flatmap(lambda cx: helpers.accountBalances(
+            currencies=sampled_from([
+                cy for cy in Currency.__members__.values() if cy != cx
+            ])).map(lambda balance: (cx, balance))))
+    def test_zeroEntriesIgnoredForEquality(self,
+                                           t: Tuple[Currency, AccountBalance]
+                                           ) -> None:
+        zeroCurrency, balance = t
+
+        cashWithZero = balance.cash.copy()
+        cashWithZero[zeroCurrency] = Cash(currency=zeroCurrency,
+                                          quantity=Decimal(0))
+        balanceWithZero = AccountBalance(cash=cashWithZero)
+
+        self.assertEqual(balance, balanceWithZero,
+                         f'Expected <{balance}> to equal <{balanceWithZero}>')
+
+    @given(from_type(AccountBalance))
+    def test_unhashable(self, balance: AccountBalance) -> None:
+        # Account balances are not hashable at the moment. If they ever become
+        # so, we should verify that object equality implies hash equality.
+        with self.assertRaises(TypeError):
+            hash(balance)
+
+    @given(from_type(AccountBalance), from_type(AccountBalance))
+    def test_additionAndSubtraction(self, first: AccountBalance,
+                                    second: AccountBalance) -> None:
+        self.assertEqual(first + second - second, first)
+        self.assertEqual(first - second + second, first)
 
 
 if __name__ == '__main__':

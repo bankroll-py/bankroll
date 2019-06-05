@@ -1,8 +1,9 @@
+from decimal import Decimal
 from functools import reduce
 from itertools import groupby
-from .model import Activity, Cash, CashPayment, Trade, Instrument, Option, MarketDataProvider, Quote, Position
+from .model import Activity, Cash, CashPayment, Currency, Trade, Instrument, Option, MarketDataProvider, Quote, Position, Forex
 from progress.bar import Bar
-from typing import Dict, Iterable, Optional, Tuple
+from typing import Dict, Iterable, Optional, Sequence, Tuple
 
 import operator
 import re
@@ -88,3 +89,59 @@ def deduplicatePositions(positions: Iterable[Position]) -> Iterable[Position]:
     return (reduce(operator.add, ps)
             for i, ps in groupby(sorted(positions, key=lambda p: p.instrument),
                                  key=lambda p: p.instrument))
+
+
+# Looks up how much each of the `otherCurrencies` cost in terms of
+# `quoteCurrency`.
+#
+# Returns each of the other currencies (possibly out-of-order), along with a
+# cash price denominated in the `quoteCurrency`. If a quote is not available
+# for some reason, it is omitted from the results.
+def currencyConversionRates(
+        quoteCurrency: Currency,
+        otherCurrencies: Iterable[Currency],
+        dataProvider: MarketDataProvider,
+) -> Iterable[Tuple[Currency, Cash]]:
+    instruments = (Forex(baseCurrency=min(currency, quoteCurrency),
+                         quoteCurrency=max(currency, quoteCurrency))
+                   for currency in otherCurrencies)
+
+    return (
+        (instrument.baseCurrency,
+         quote.market) if instrument.quoteCurrency == quoteCurrency else
+        (
+            instrument.quoteCurrency,
+            Cash(
+                currency=instrument.baseCurrency,
+                # FIXME: This unfortunately does not retain much precision when
+                # dividing by JPY in particular (where the integral portion can
+                # be quite large).
+                # See https://github.com/jspahrsummers/bankroll/issues/37.
+                quantity=Decimal(1) / quote.market.quantity))
+        for instrument, quote in dataProvider.fetchQuotes(instruments)
+        if quote.market and isinstance(instrument, Forex))
+
+
+# Converts the given cash values into `quoteCurrency` using forex market quotes.
+def convertCashToCurrency(quoteCurrency: Currency, cash: Sequence[Cash],
+                          dataProvider: MarketDataProvider) -> Cash:
+    currencyRates = dict(
+        currencyConversionRates(
+            quoteCurrency=quoteCurrency,
+            otherCurrencies=(c.currency for c in cash
+                             if c.currency != quoteCurrency),
+            dataProvider=dataProvider))
+    currencyRates[quoteCurrency] = Cash(currency=quoteCurrency,
+                                        quantity=Decimal(1))
+
+    for c in cash:
+        if not c.currency in currencyRates:
+            raise RuntimeError(
+                f'Unable to fetch currency rate for {c.currency} to convert {c}'
+            )
+
+    return reduce(
+        operator.add,
+        (Cash(currency=quoteCurrency,
+              quantity=c.quantity * currencyRates[c.currency].quantity)
+         for c in cash), Cash(currency=quoteCurrency, quantity=Decimal(0)))

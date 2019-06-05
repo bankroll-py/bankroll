@@ -1,5 +1,5 @@
-from bankroll import Cash, Currency, Instrument, Stock, Option, OptionType, Quote, Trade, TradeFlags, MarketDataProvider, Position, Activity, CashPayment
-from bankroll.analysis import _normalizeSymbol, realizedBasisForSymbol, liveValuesForPositions, deduplicatePositions
+from bankroll import Cash, Currency, Instrument, Stock, Option, OptionType, Quote, Trade, TradeFlags, MarketDataProvider, Position, Activity, CashPayment, Forex
+from bankroll.analysis import _normalizeSymbol, realizedBasisForSymbol, liveValuesForPositions, deduplicatePositions, currencyConversionRates, convertCashToCurrency
 from datetime import datetime, date
 from decimal import Decimal
 from hypothesis import given, reproduce_failure, seed, settings, HealthCheck
@@ -245,3 +245,69 @@ class TestAnalysis(unittest.TestCase):
                         Decimal(0))
             posC = next((p.quantity for p in result if p.instrument == i))
             self.assertEqual(posC, Position.quantizeQuantity(posA + posB))
+
+    forexQuotes: Dict[Instrument, Quote] = {
+        # EURGBP
+        Forex(baseCurrency=Currency.EUR, quoteCurrency=Currency.GBP):
+        Quote(bid=Cash(currency=Currency.GBP, quantity=Decimal('0.86')),
+              ask=Cash(currency=Currency.GBP, quantity=Decimal('0.90'))),
+
+        # GBPUSD
+        Forex(baseCurrency=Currency.GBP, quoteCurrency=Currency.USD):
+        Quote(bid=helpers.cashUSD(Decimal('1.25')),
+              ask=helpers.cashUSD(Decimal('1.29'))),
+
+        # USDJPY
+        Forex(baseCurrency=Currency.USD, quoteCurrency=Currency.JPY):
+        Quote(bid=Cash(currency=Currency.JPY, quantity=Decimal('109')),
+              ask=Cash(currency=Currency.JPY, quantity=Decimal('110'))),
+    }
+
+    def test_currencyConversionRatesGBP(self) -> None:
+        dataProvider = StubDataProvider(self.forexQuotes)
+        rates = dict(
+            currencyConversionRates(
+                quoteCurrency=Currency.GBP,
+                otherCurrencies=[Currency.EUR, Currency.USD],
+                dataProvider=dataProvider))
+
+        self.assertEqual(rates[Currency.EUR],
+                         Cash(currency=Currency.GBP, quantity=Decimal('0.88')))
+        self.assertEqual(
+            rates[Currency.USD],
+            Cash(currency=Currency.GBP, quantity=Decimal(1) / Decimal('1.27')))
+        self.assertNotIn(Currency.GBP, rates)
+
+    def test_currencyConversionRatesUSD(self) -> None:
+        dataProvider = StubDataProvider(self.forexQuotes)
+        rates = dict(
+            currencyConversionRates(
+                quoteCurrency=Currency.USD,
+                otherCurrencies=[Currency.GBP, Currency.JPY],
+                dataProvider=dataProvider))
+
+        self.assertEqual(rates[Currency.GBP],
+                         Cash(currency=Currency.USD, quantity=Decimal('1.27')))
+        self.assertEqual(
+            rates[Currency.JPY],
+            Cash(currency=Currency.USD,
+                 quantity=Decimal(1) / Decimal('109.5')))
+        self.assertNotIn(Currency.USD, rates)
+
+    def test_convertCash(self) -> None:
+        dataProvider = StubDataProvider(self.forexQuotes)
+        cash = convertCashToCurrency(quoteCurrency=Currency.USD,
+                                     cash=[
+                                         helpers.cashUSD(Decimal(1000)),
+                                         Cash(currency=Currency.GBP,
+                                              quantity=Decimal(100)),
+                                         Cash(currency=Currency.JPY,
+                                              quantity=Decimal(30000)),
+                                     ],
+                                     dataProvider=dataProvider)
+
+        # FIXME: This is roughly what it _should_ be, but due to exchange rate
+        # truncation, we get the one below.
+        # See https://github.com/jspahrsummers/bankroll/issues/37.
+        #self.assertEqual(cash, helpers.cashUSD(Decimal('1400.9726')))
+        self.assertEqual(cash, helpers.cashUSD(Decimal('1400')))

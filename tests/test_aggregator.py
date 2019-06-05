@@ -1,7 +1,7 @@
 from bankroll.aggregator import AccountAggregator
 from bankroll.brokers import *
 from bankroll.configuration import Settings
-from bankroll.model import AccountData
+from bankroll.model import AccountBalance, AccountData
 from pathlib import Path
 from typing import List
 
@@ -39,12 +39,15 @@ class TestAccountAggregator(unittest.TestCase):
                 f'Expected to find {subclass} in TestAccountAggregator (to fix this error, instantiate an example {subclass} in the setUp method)'
             )
 
-    def testLoadData(self) -> None:
+    def testDataAddsUp(self) -> None:
         aggregator = AccountAggregator.fromSettings(helpers.fixtureSettings,
                                                     lenient=False)
         instruments = set((p.instrument for p in aggregator.positions()))
 
+        balance = AccountBalance(cash={})
         for account in self.accounts:
+            balance += account.balance()
+
             for p in account.positions():
                 self.assertIn(
                     p.instrument,
@@ -60,3 +63,5 @@ class TestAccountAggregator(unittest.TestCase):
                     msg=
                     f'Expected {a} from {account} to show up in aggregated data'
                 )
+
+        self.assertEqual(aggregator.balance(), balance)

@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Context, Decimal, DivisionByZero, Overflow, InvalidOperation, localcontext
 from enum import Enum, IntEnum, unique
 from itertools import count
-from bankroll.model import AccountData, Currency, Cash, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, TradeFlags, Trade, MarketDataProvider, Quote, Activity, CashPayment
+from bankroll.model import AccountBalance, AccountData, Currency, Cash, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, TradeFlags, Trade, MarketDataProvider, Quote, Activity, CashPayment
 from bankroll.parsetools import lenientParse
 from pathlib import Path
 from progress.spinner import Spinner
@@ -365,13 +365,16 @@ def _parseTradeConfirm(trade: _IBTradeConfirm) -> Trade:
             else:
                 flags |= TradeFlags.CLOSE
 
+        if trade.commissionCurrency not in Currency.__members__:
+            raise ValueError(f'Unrecognized currency in trade: {trade}')
+
         return Trade(date=_parseIBDate(trade.tradeDate),
                      instrument=instrument,
                      quantity=_parseFiniteDecimal(trade.quantity),
-                     amount=Cash(currency=Currency(trade.currency),
+                     amount=Cash(currency=Currency[trade.currency],
                                  quantity=_parseFiniteDecimal(trade.proceeds)),
                      fees=Cash(
-                         currency=Currency(trade.commissionCurrency),
+                         currency=Currency[trade.commissionCurrency],
                          quantity=-(_parseFiniteDecimal(trade.commission) +
                                     _parseFiniteDecimal(trade.tax))),
                      flags=flags)
@@ -400,7 +403,7 @@ def _parseChangeInDividendAccrual(entry: _IBChangeInDividendAccrual
         return None
 
     # IB "reverses" dividend postings when they're paid out, so they all appear as debits.
-    proceeds = Cash(currency=Currency(entry.currency),
+    proceeds = Cash(currency=Currency[entry.currency],
                     quantity=-Decimal(entry.netAmount))
 
     return CashPayment(date=_parseIBDate(entry.payDate),
@@ -484,16 +487,41 @@ def _downloadNonTradeActivity(token: str, queryID: int,
                                lenient=lenient)
 
 
+def _extractCash(val: IB.AccountValue) -> Cash:
+    if val.currency not in Currency.__members__:
+        raise ValueError(f'Unrecognized currency in account value: {val}')
+
+    return Cash(currency=Currency[val.currency],
+                quantity=_parseFiniteDecimal(val.value))
+
+
+def _downloadBalance(ib: IB.IB, lenient: bool) -> AccountBalance:
+    accountValues = (val for val in ib.accountSummary()
+                     if val.account == 'All' and val.tag == 'TotalCashBalance'
+                     and val.currency != 'BASE')
+
+    cashByCurrency: Dict[Currency, Cash] = {}
+
+    for cash in lenientParse(accountValues,
+                             transform=_extractCash,
+                             lenient=lenient):
+        cashByCurrency[cash.currency] = cashByCurrency.get(
+            cash.currency, Cash(currency=cash.currency,
+                                quantity=Decimal(0))) + cash
+
+    return AccountBalance(cash=cashByCurrency)
+
+
 def _stockContract(stock: Stock) -> IB.Contract:
     return IB.Stock(symbol=stock.symbol,
                     exchange='SMART',
-                    currency=stock.currency.value)
+                    currency=stock.currency.name)
 
 
 def _bondContract(bond: Bond) -> IB.Contract:
     return IB.Bond(symbol=bond.symbol,
                    exchange='SMART',
-                   currency=bond.currency.value)
+                   currency=bond.currency.name)
 
 
 def _optionContract(option: Option,
@@ -502,7 +530,7 @@ def _optionContract(option: Option,
 
     return cls(localSymbol=option.symbol,
                exchange='SMART',
-               currency=option.currency.value,
+               currency=option.currency.name,
                lastTradeDateOrContractMonth=lastTradeDate,
                right=option.optionType.value,
                strike=float(option.strike),
@@ -514,13 +542,13 @@ def _futuresContract(future: Future) -> IB.Contract:
 
     return IB.Future(symbol=future.symbol,
                      exchange='SMART',
-                     currency=future.currency.value,
+                     currency=future.currency.name,
                      multiplier=str(future.multiplier),
                      lastTradeDateOrContractMonth=lastTradeDate)
 
 
 def _forexContract(forex: Forex) -> IB.Contract:
-    return IB.Forex(pair=forex.symbol, currency=forex.currency.value)
+    return IB.Forex(pair=forex.symbol, currency=forex.currency.name)
 
 
 def _contract(instrument: Instrument) -> IB.Contract:
@@ -687,10 +715,10 @@ class IBAccount(AccountData):
         return self._client
 
     def positions(self) -> Iterable[Position]:
-        if not self._client:
+        if not self.client:
             return []
 
-        return _downloadPositions(self._client, self._lenient)
+        return _downloadPositions(self.client, self._lenient)
 
     def activity(self) -> Iterable[Activity]:
         if self._cachedActivity:
@@ -726,6 +754,12 @@ class IBAccount(AccountData):
                 lenient=self._lenient)
 
         return self._cachedActivity
+
+    def balance(self) -> AccountBalance:
+        if not self.client:
+            return AccountBalance(cash={})
+
+        return _downloadBalance(self.client, self._lenient)
 
     @property
     def marketDataProvider(self) -> Optional[MarketDataProvider]:
