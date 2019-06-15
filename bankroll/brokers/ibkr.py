@@ -505,15 +505,16 @@ def _parseStockLoanFee(entry: _IBSLBFee) -> Optional[Activity]:
                        proceeds=proceeds)
 
 
-_NT = TypeVar('_NT', bound=NamedTuple)
+_NT = TypeVar('_NT', _IBChangeInDividendAccrual, _IBSLBFee,
+              _IBInterestAccrualsCurrency)
 
 
-def _parseActivityType(report: IB.FlexReport, name: str, type: Type[_NT],
+def _parseActivityType(report: IB.FlexReport, name: str, t: Type[_NT],
                        transform: Callable[[_NT], Optional[Activity]],
                        lenient: bool) -> Iterable[Activity]:
     return filter(
         None,
-        lenientParse((type(**x.__dict__)
+        lenientParse((t(**x.__dict__)
                       for x in report.extract(name, parseNumbers=False)),
                      transform=transform,
                      lenient=lenient))
