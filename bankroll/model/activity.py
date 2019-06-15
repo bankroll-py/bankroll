@@ -23,7 +23,7 @@ class CashPayment(Activity):
     proceeds: Cash
 
     def __str__(self) -> str:
-        return f'{self.date.date()} Cash payment   {self.instrument:21} {self.proceeds.paddedString(padding=10)}'
+        return f'{self.date.date()} Cash payment   {self.instrument or "":21} {self.proceeds.paddedString(padding=10)}'
 
 
 class TradeFlags(Flag):
