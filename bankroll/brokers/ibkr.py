@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Context, Decimal, DivisionByZero, Overflow, InvalidOperation, localcontext
 from enum import Enum, IntEnum, unique
-from itertools import count
+from itertools import chain, count
 from bankroll.model import AccountBalance, AccountData, Currency, Cash, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, TradeFlags, Trade, MarketDataProvider, Quote, Activity, CashPayment
 from bankroll.parsetools import lenientParse
 from pathlib import Path
@@ -271,6 +271,20 @@ class _IBChangeInDividendAccrual(NamedTuple):
     toAcct: str
 
 
+class _IBInterestAccrualsCurrency(NamedTuple):
+    accountId: str
+    acctAlias: str
+    model: str
+    currency: str
+    fromDate: str
+    toDate: str
+    startingAccrualBalance: str
+    interestAccrued: str
+    accrualReversal: str
+    fxTranslation: str
+    endingAccrualBalance: str
+
+
 def _parseIBDate(datestr: str) -> datetime:
     return datetime.strptime(datestr, '%Y%m%d')
 
@@ -411,6 +425,26 @@ def _parseChangeInDividendAccrual(entry: _IBChangeInDividendAccrual
                        proceeds=proceeds)
 
 
+def _parseCurrencyInterestAccrual(entry: _IBInterestAccrualsCurrency
+                                  ) -> Optional[Activity]:
+    # This entry includes forex translation, which we don't want.
+    if entry.currency == 'BASE_SUMMARY':
+        return None
+
+    # An accrual gets "reversed" when it is credited/debited. Because the
+    # reversal refers to the balance of interest, accrual reversal > 0 means
+    # that the cash account was debited, while accrual reversal < 0 means the
+    # cash account was credited with the interest.
+    proceeds = Cash(currency=Currency[entry.currency],
+                    quantity=-Decimal(entry.accrualReversal))
+
+    # Using `toDate` here since there are no dates attached to the actual
+    # accruals.
+    return CashPayment(date=_parseIBDate(entry.toDate),
+                       instrument=None,
+                       proceeds=proceeds)
+
+
 _NT = TypeVar('_NT', bound=NamedTuple)
 
 
@@ -428,11 +462,17 @@ def _parseActivityType(report: IB.FlexReport, name: str, type: Type[_NT],
 def _activityFromReport(report: IB.FlexReport,
                         lenient: bool) -> List[Activity]:
     return list(
-        _parseActivityType(report,
-                           'ChangeInDividendAccrual',
-                           _IBChangeInDividendAccrual,
-                           transform=_parseChangeInDividendAccrual,
-                           lenient=lenient))
+        chain(
+            _parseActivityType(report,
+                               'ChangeInDividendAccrual',
+                               _IBChangeInDividendAccrual,
+                               transform=_parseChangeInDividendAccrual,
+                               lenient=lenient),
+            _parseActivityType(report,
+                               'InterestAccrualsCurrency',
+                               _IBInterestAccrualsCurrency,
+                               transform=_parseCurrencyInterestAccrual,
+                               lenient=lenient)))
 
 
 # TODO: This should eventually be unified with trade parsing.
