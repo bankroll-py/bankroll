@@ -285,13 +285,60 @@ class _IBInterestAccrualsCurrency(NamedTuple):
     endingAccrualBalance: str
 
 
+class _IBSLBFee(NamedTuple):
+    accountId: str
+    acctAlias: str
+    model: str
+    currency: str
+    fxRateToBase: str
+    assetCategory: str
+    symbol: str
+    description: str
+    conid: str
+    securityID: str
+    securityIDType: str
+    cusip: str
+    isin: str
+    listingExchange: str
+    underlyingConid: str
+    underlyingSymbol: str
+    underlyingSecurityID: str
+    underlyingListingExchange: str
+    issuer: str
+    multiplier: str
+    strike: str
+    expiry: str
+    putCall: str
+    principalAdjustFactor: str
+    valueDate: str
+    startDate: str
+    type: str
+    exchange: str
+    quantity: str
+    collateralAmount: str
+    feeRate: str
+    fee: str
+    carryCharge: str
+    ticketCharge: str
+    totalCharges: str
+    marketFeeRate: str
+    grossLendFee: str
+    netLendFeeRate: str
+    netLendFee: str
+    code: str
+    fromAcct: str
+    toAcct: str
+
+
 def _parseIBDate(datestr: str) -> datetime:
     return datetime.strptime(datestr, '%Y%m%d')
 
 
-def _parseFutureOption(
-        entry: Union[_IBTradeConfirm, _IBChangeInDividendAccrual]
-) -> Instrument:
+_instrumentEntryTypes = Union[_IBTradeConfirm, _IBChangeInDividendAccrual,
+                              _IBSLBFee]
+
+
+def _parseFutureOption(entry: _instrumentEntryTypes) -> Instrument:
     if entry.putCall == 'C':
         optionType = OptionType.CALL
     elif entry.putCall == 'P':
@@ -308,8 +355,7 @@ def _parseFutureOption(
                         multiplier=_parseFiniteDecimal(entry.multiplier))
 
 
-def _parseInstrument(entry: Union[_IBTradeConfirm, _IBChangeInDividendAccrual]
-                     ) -> Instrument:
+def _parseInstrument(entry: _instrumentEntryTypes) -> Instrument:
     symbol = entry.symbol
     if not symbol:
         raise ValueError(f'Missing symbol in entry: {entry}')
@@ -445,6 +491,20 @@ def _parseCurrencyInterestAccrual(entry: _IBInterestAccrualsCurrency
                        proceeds=proceeds)
 
 
+def _parseStockLoanFee(entry: _IBSLBFee) -> Optional[Activity]:
+    # We don't see accrual reversals here, because it rolls up into total interest accounting, so use the accrual postings instead.
+    codes = entry.code.split(';')
+    if 'Po' not in codes:
+        return None
+
+    proceeds = Cash(currency=Currency[entry.currency],
+                    quantity=Decimal(entry.netLendFee))
+
+    return CashPayment(date=_parseIBDate(entry.valueDate),
+                       instrument=_parseInstrument(entry),
+                       proceeds=proceeds)
+
+
 _NT = TypeVar('_NT', bound=NamedTuple)
 
 
@@ -467,6 +527,11 @@ def _activityFromReport(report: IB.FlexReport,
                                'ChangeInDividendAccrual',
                                _IBChangeInDividendAccrual,
                                transform=_parseChangeInDividendAccrual,
+                               lenient=lenient),
+            _parseActivityType(report,
+                               'SLBFee',
+                               _IBSLBFee,
+                               transform=_parseStockLoanFee,
                                lenient=lenient),
             _parseActivityType(report,
                                'InterestAccrualsCurrency',

@@ -270,6 +270,15 @@ class TestIBKRActivity(unittest.TestCase):
                         proceeds=Cash(currency=Currency.USD,
                                       quantity=Decimal('2.26'))))
 
+    def test_stockLoanInterest(self) -> None:
+        ts = self.activityByDate[date(2019, 1, 1)]
+        self.assertEqual(len(ts), 1)
+        self.assertEqual(
+            ts[0],
+            CashPayment(date=ts[0].date,
+                        instrument=Stock('TSLA', Currency.USD),
+                        proceeds=helpers.cashUSD(Decimal('0.01'))))
+
 
 class TestIBKRParsing(unittest.TestCase):
     validSymbols = text(min_size=1)
