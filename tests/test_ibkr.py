@@ -248,6 +248,28 @@ class TestIBKRActivity(unittest.TestCase):
         self.assertNotIn(date(2019, 1, 15), self.activityByDate)
         self.assertNotIn(date(2019, 1, 14), self.activityByDate)
 
+    def test_currencyInterest(self) -> None:
+        # IBKR interest accruals don't have dates associated with them, so
+        # they'll be tagged with the last day in the period being looked at.
+        ts = self.activityByDate[date(2019, 3, 1)]
+
+        # BASE_SUMMARY should be excluded
+        self.assertEqual(len(ts), 2)
+
+        self.assertEqual(
+            ts[0],
+            CashPayment(date=ts[0].date,
+                        instrument=None,
+                        proceeds=Cash(currency=Currency.AUD,
+                                      quantity=Decimal('-4.29'))))
+
+        self.assertEqual(
+            ts[1],
+            CashPayment(date=ts[1].date,
+                        instrument=None,
+                        proceeds=Cash(currency=Currency.USD,
+                                      quantity=Decimal('2.26'))))
+
 
 class TestIBKRParsing(unittest.TestCase):
     validSymbols = text(min_size=1)
