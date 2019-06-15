@@ -219,6 +219,7 @@ def _parseSchwabTransaction(
     dividendActions = [
         'Cash Dividend',
         'Reinvest Dividend',
+        'Non-Qualified Div',
     ]
 
     if t.action in dividendActions:
