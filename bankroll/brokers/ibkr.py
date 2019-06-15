@@ -7,7 +7,7 @@ from bankroll.parsetools import lenientParse
 from pathlib import Path
 from progress.spinner import Spinner
 from random import randint
-from typing import Any, Awaitable, Callable, Dict, Iterable, List, Mapping, NamedTuple, Optional, Sequence, Tuple, Type, Union, no_type_check
+from typing import Any, Awaitable, Callable, Dict, Iterable, List, Mapping, NamedTuple, Optional, Sequence, Tuple, Type, TypeVar, Union, no_type_check
 import pandas as pd
 
 import backoff
@@ -411,16 +411,28 @@ def _parseChangeInDividendAccrual(entry: _IBChangeInDividendAccrual
                        proceeds=proceeds)
 
 
+_NT = TypeVar('_NT', bound=NamedTuple)
+
+
+def _parseActivityType(report: IB.FlexReport, name: str, type: Type[_NT],
+                       transform: Callable[[_NT], Optional[Activity]],
+                       lenient: bool) -> Iterable[Activity]:
+    return filter(
+        None,
+        lenientParse((type(**x.__dict__)
+                      for x in report.extract(name, parseNumbers=False)),
+                     transform=transform,
+                     lenient=lenient))
+
+
 def _activityFromReport(report: IB.FlexReport,
                         lenient: bool) -> List[Activity]:
     return list(
-        filter(
-            None,
-            lenientParse((_IBChangeInDividendAccrual(**x.__dict__)
-                          for x in report.extract('ChangeInDividendAccrual',
-                                                  parseNumbers=False)),
-                         transform=_parseChangeInDividendAccrual,
-                         lenient=lenient)))
+        _parseActivityType(report,
+                           'ChangeInDividendAccrual',
+                           _IBChangeInDividendAccrual,
+                           transform=_parseChangeInDividendAccrual,
+                           lenient=lenient))
 
 
 # TODO: This should eventually be unified with trade parsing.
