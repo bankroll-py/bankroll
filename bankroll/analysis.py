@@ -20,7 +20,8 @@ def _activityAffectsSymbol(activity: Activity, symbol: str) -> bool:
     normalized = _normalizeSymbol(symbol)
 
     if isinstance(activity, CashPayment):
-        return _normalizeSymbol(activity.instrument.symbol) == normalized
+        return activity.instrument is not None and _normalizeSymbol(
+            activity.instrument.symbol) == normalized
     elif isinstance(activity, Trade):
         return (isinstance(activity.instrument, Option) and _normalizeSymbol(
             activity.instrument.underlying) == normalized) or _normalizeSymbol(

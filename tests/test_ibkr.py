@@ -69,7 +69,7 @@ class TestIBKRTrades(unittest.TestCase):
         self.assertEqual(ts[0].quantity, Decimal('2000'))
         self.assertEqual(
             ts[0].amount,
-            Cash(currency=Currency.USD, quantity=Decimal('-2009.50')))
+            Cash(currency=Currency.USD, quantity=Decimal('-2035.13')))
         self.assertEqual(ts[0].fees,
                          Cash(currency=Currency.USD, quantity=Decimal('2')))
         self.assertEqual(ts[0].flags, TradeFlags.OPEN)
@@ -247,6 +247,37 @@ class TestIBKRActivity(unittest.TestCase):
 
         self.assertNotIn(date(2019, 1, 15), self.activityByDate)
         self.assertNotIn(date(2019, 1, 14), self.activityByDate)
+
+    def test_currencyInterest(self) -> None:
+        # IBKR interest accruals don't have dates associated with them, so
+        # they'll be tagged with the last day in the period being looked at.
+        ts = self.activityByDate[date(2019, 3, 1)]
+
+        # BASE_SUMMARY should be excluded
+        self.assertEqual(len(ts), 2)
+
+        self.assertEqual(
+            ts[0],
+            CashPayment(date=ts[0].date,
+                        instrument=None,
+                        proceeds=Cash(currency=Currency.AUD,
+                                      quantity=Decimal('-4.29'))))
+
+        self.assertEqual(
+            ts[1],
+            CashPayment(date=ts[1].date,
+                        instrument=None,
+                        proceeds=Cash(currency=Currency.USD,
+                                      quantity=Decimal('2.26'))))
+
+    def test_stockLoanInterest(self) -> None:
+        ts = self.activityByDate[date(2019, 1, 1)]
+        self.assertEqual(len(ts), 1)
+        self.assertEqual(
+            ts[0],
+            CashPayment(date=ts[0].date,
+                        instrument=Stock('TSLA', Currency.USD),
+                        proceeds=helpers.cashUSD(Decimal('0.01'))))
 
 
 class TestIBKRParsing(unittest.TestCase):

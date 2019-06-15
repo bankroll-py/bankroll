@@ -1,13 +1,13 @@
 from datetime import datetime
 from decimal import Context, Decimal, DivisionByZero, Overflow, InvalidOperation, localcontext
 from enum import Enum, IntEnum, unique
-from itertools import count
+from itertools import chain, count
 from bankroll.model import AccountBalance, AccountData, Currency, Cash, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, TradeFlags, Trade, MarketDataProvider, Quote, Activity, CashPayment
 from bankroll.parsetools import lenientParse
 from pathlib import Path
 from progress.spinner import Spinner
 from random import randint
-from typing import Any, Awaitable, Callable, Dict, Iterable, List, Mapping, NamedTuple, Optional, Sequence, Tuple, Type, Union, no_type_check
+from typing import Any, Awaitable, Callable, Dict, Iterable, List, Mapping, NamedTuple, Optional, Sequence, Tuple, Type, TypeVar, Union, no_type_check
 import pandas as pd
 
 import backoff
@@ -271,13 +271,74 @@ class _IBChangeInDividendAccrual(NamedTuple):
     toAcct: str
 
 
+class _IBInterestAccrualsCurrency(NamedTuple):
+    accountId: str
+    acctAlias: str
+    model: str
+    currency: str
+    fromDate: str
+    toDate: str
+    startingAccrualBalance: str
+    interestAccrued: str
+    accrualReversal: str
+    fxTranslation: str
+    endingAccrualBalance: str
+
+
+class _IBSLBFee(NamedTuple):
+    accountId: str
+    acctAlias: str
+    model: str
+    currency: str
+    fxRateToBase: str
+    assetCategory: str
+    symbol: str
+    description: str
+    conid: str
+    securityID: str
+    securityIDType: str
+    cusip: str
+    isin: str
+    listingExchange: str
+    underlyingConid: str
+    underlyingSymbol: str
+    underlyingSecurityID: str
+    underlyingListingExchange: str
+    issuer: str
+    multiplier: str
+    strike: str
+    expiry: str
+    putCall: str
+    principalAdjustFactor: str
+    valueDate: str
+    startDate: str
+    type: str
+    exchange: str
+    quantity: str
+    collateralAmount: str
+    feeRate: str
+    fee: str
+    carryCharge: str
+    ticketCharge: str
+    totalCharges: str
+    marketFeeRate: str
+    grossLendFee: str
+    netLendFeeRate: str
+    netLendFee: str
+    code: str
+    fromAcct: str
+    toAcct: str
+
+
 def _parseIBDate(datestr: str) -> datetime:
     return datetime.strptime(datestr, '%Y%m%d')
 
 
-def _parseFutureOption(
-        entry: Union[_IBTradeConfirm, _IBChangeInDividendAccrual]
-) -> Instrument:
+_instrumentEntryTypes = Union[_IBTradeConfirm, _IBChangeInDividendAccrual,
+                              _IBSLBFee]
+
+
+def _parseFutureOption(entry: _instrumentEntryTypes) -> Instrument:
     if entry.putCall == 'C':
         optionType = OptionType.CALL
     elif entry.putCall == 'P':
@@ -294,8 +355,7 @@ def _parseFutureOption(
                         multiplier=_parseFiniteDecimal(entry.multiplier))
 
 
-def _parseInstrument(entry: Union[_IBTradeConfirm, _IBChangeInDividendAccrual]
-                     ) -> Instrument:
+def _parseInstrument(entry: _instrumentEntryTypes) -> Instrument:
     symbol = entry.symbol
     if not symbol:
         raise ValueError(f'Missing symbol in entry: {entry}')
@@ -368,11 +428,17 @@ def _parseTradeConfirm(trade: _IBTradeConfirm) -> Trade:
         if trade.commissionCurrency not in Currency.__members__:
             raise ValueError(f'Unrecognized currency in trade: {trade}')
 
+        # We could choose to account for accrued interest payments as part of
+        # the trade price or as a separate cash payment; the former seems
+        # marginally cleaner and more sensible for a trade log.
+        proceeds = Cash(currency=Currency[trade.currency],
+                        quantity=_parseFiniteDecimal(trade.proceeds) +
+                        _parseFiniteDecimal(trade.accruedInt))
+
         return Trade(date=_parseIBDate(trade.tradeDate),
                      instrument=instrument,
                      quantity=_parseFiniteDecimal(trade.quantity),
-                     amount=Cash(currency=Currency[trade.currency],
-                                 quantity=_parseFiniteDecimal(trade.proceeds)),
+                     amount=proceeds,
                      fees=Cash(
                          currency=Currency[trade.commissionCurrency],
                          quantity=-(_parseFiniteDecimal(trade.commission) +
@@ -411,16 +477,74 @@ def _parseChangeInDividendAccrual(entry: _IBChangeInDividendAccrual
                        proceeds=proceeds)
 
 
+def _parseCurrencyInterestAccrual(entry: _IBInterestAccrualsCurrency
+                                  ) -> Optional[Activity]:
+    # This entry includes forex translation, which we don't want.
+    if entry.currency == 'BASE_SUMMARY':
+        return None
+
+    # An accrual gets "reversed" when it is credited/debited. Because the
+    # reversal refers to the balance of interest, accrual reversal > 0 means
+    # that the cash account was debited, while accrual reversal < 0 means the
+    # cash account was credited with the interest.
+    proceeds = Cash(currency=Currency[entry.currency],
+                    quantity=-Decimal(entry.accrualReversal))
+
+    # Using `toDate` here since there are no dates attached to the actual
+    # accruals.
+    return CashPayment(date=_parseIBDate(entry.toDate),
+                       instrument=None,
+                       proceeds=proceeds)
+
+
+def _parseStockLoanFee(entry: _IBSLBFee) -> Optional[Activity]:
+    # We don't see accrual reversals here, because it rolls up into total interest accounting, so use the accrual postings instead.
+    codes = entry.code.split(';')
+    if 'Po' not in codes:
+        return None
+
+    proceeds = Cash(currency=Currency[entry.currency],
+                    quantity=Decimal(entry.netLendFee))
+
+    return CashPayment(date=_parseIBDate(entry.valueDate),
+                       instrument=_parseInstrument(entry),
+                       proceeds=proceeds)
+
+
+_NT = TypeVar('_NT', _IBChangeInDividendAccrual, _IBSLBFee,
+              _IBInterestAccrualsCurrency)
+
+
+def _parseActivityType(report: IB.FlexReport, name: str, t: Type[_NT],
+                       transform: Callable[[_NT], Optional[Activity]],
+                       lenient: bool) -> Iterable[Activity]:
+    return filter(
+        None,
+        lenientParse((t(**x.__dict__)
+                      for x in report.extract(name, parseNumbers=False)),
+                     transform=transform,
+                     lenient=lenient))
+
+
 def _activityFromReport(report: IB.FlexReport,
                         lenient: bool) -> List[Activity]:
     return list(
-        filter(
-            None,
-            lenientParse((_IBChangeInDividendAccrual(**x.__dict__)
-                          for x in report.extract('ChangeInDividendAccrual',
-                                                  parseNumbers=False)),
-                         transform=_parseChangeInDividendAccrual,
-                         lenient=lenient)))
+        chain(
+            _parseActivityType(report,
+                               'ChangeInDividendAccrual',
+                               _IBChangeInDividendAccrual,
+                               transform=_parseChangeInDividendAccrual,
+                               lenient=lenient),
+            _parseActivityType(report,
+                               'SLBFee',
+                               _IBSLBFee,
+                               transform=_parseStockLoanFee,
+                               lenient=lenient),
+            _parseActivityType(report,
+                               'InterestAccrualsCurrency',
+                               _IBInterestAccrualsCurrency,
+                               transform=_parseCurrencyInterestAccrual,
+                               lenient=lenient)))
 
 
 # TODO: This should eventually be unified with trade parsing.
