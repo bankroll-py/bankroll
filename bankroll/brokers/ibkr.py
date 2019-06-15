@@ -428,11 +428,17 @@ def _parseTradeConfirm(trade: _IBTradeConfirm) -> Trade:
         if trade.commissionCurrency not in Currency.__members__:
             raise ValueError(f'Unrecognized currency in trade: {trade}')
 
+        # We could choose to account for accrued interest payments as part of
+        # the trade price or as a separate cash payment; the former seems
+        # marginally cleaner and more sensible for a trade log.
+        proceeds = Cash(currency=Currency[trade.currency],
+                        quantity=_parseFiniteDecimal(trade.proceeds) +
+                        _parseFiniteDecimal(trade.accruedInt))
+
         return Trade(date=_parseIBDate(trade.tradeDate),
                      instrument=instrument,
                      quantity=_parseFiniteDecimal(trade.quantity),
-                     amount=Cash(currency=Currency[trade.currency],
-                                 quantity=_parseFiniteDecimal(trade.proceeds)),
+                     amount=proceeds,
                      fees=Cash(
                          currency=Currency[trade.commissionCurrency],
                          quantity=-(_parseFiniteDecimal(trade.commission) +
