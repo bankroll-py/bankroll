@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 from enum import Flag, auto
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from .cash import Cash
 from .instrument import Instrument, Stock
@@ -19,7 +19,7 @@ class Activity(ABC):
 # or not it was cashed out or reinvested.
 @dataclass(frozen=True)
 class CashPayment(Activity):
-    instrument: Instrument
+    instrument: Optional[Instrument]
     proceeds: Cash
 
     def __str__(self) -> str:
