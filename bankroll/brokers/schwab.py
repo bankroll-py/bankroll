@@ -296,6 +296,10 @@ def _parseSchwabTransaction(
         'Expired': TradeFlags.CLOSE | TradeFlags.EXPIRED,
     }
 
+    if not t.action in flagsByAction:
+        raise ValueError(
+            f'Unexpected Schwab action "{t.action}" in transaction {t}')
+
     return _forceParseSchwabTransaction(t, flags=flagsByAction[t.action])
 
 
