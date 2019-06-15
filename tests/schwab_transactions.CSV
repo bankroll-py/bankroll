@@ -1,6 +1,7 @@
 "Transactions  for account Trading XXXX-YYYY as of 01/01/2019 07:00:00 ET"
 "Date","Action","Symbol","Description","Quantity","Price","Fees & Comm","Amount",
 "12/28/2018","Long Term Cap Gain Reinvest","BND","VANGUARD TOTAL BOND MARKET ETF","","","","$2.80",
+"12/26/2018","Non-Qualified Div","BND","VANGUARD TOTAL BOND MARKET ETF","","","","$2.80",
 "12/12/2018","Sell to Open","MAR 12/28/2018 112.00 C","CALL MARRIOTT INTL INC $112 EXP 12/28/18","1","$1.90","$5.60","$184.40",
 "12/12/2018","Buy to Close","MAR 12/28/2018 116.00 C","CALL MARRIOTT INTL INC $116 EXP 12/28/18","1","$0.70","$5.60","-$75.60",
 "12/03/2018","Wire Funds","","WIRED FUNDS DISBURSED","","","","-$1000.00",
