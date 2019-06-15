@@ -219,6 +219,7 @@ def _parseSchwabTransaction(
     dividendActions = [
         'Cash Dividend',
         'Reinvest Dividend',
+        'Non-Qualified Div',
     ]
 
     if t.action in dividendActions:
@@ -295,6 +296,10 @@ def _parseSchwabTransaction(
         TradeFlags.CLOSE | TradeFlags.ASSIGNED_OR_EXERCISED,
         'Expired': TradeFlags.CLOSE | TradeFlags.EXPIRED,
     }
+
+    if not t.action in flagsByAction:
+        raise ValueError(
+            f'Unexpected Schwab action "{t.action}" in transaction {t}')
 
     return _forceParseSchwabTransaction(t, flags=flagsByAction[t.action])
 
