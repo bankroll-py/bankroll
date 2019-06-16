@@ -51,7 +51,7 @@ jobs:
       - run:
           name: run tests
           command: script/test
-      
+
       - store_test_results:
           path: test_results
 
