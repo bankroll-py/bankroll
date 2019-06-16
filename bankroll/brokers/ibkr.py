@@ -584,6 +584,7 @@ def _downloadFlexReport(name: str, token: str, queryID: int) -> IB.FlexReport:
     with Spinner(f'Downloading {name} report ') as spinner:
         handler = _SpinnerOnLogHandler(spinner)
         logger = logging.getLogger('ib_insync.flexreport')
+        logger.setLevel(logging.INFO)
         logger.addHandler(handler)
 
         try:
