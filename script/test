@@ -10,6 +10,9 @@ export HYPOTHESIS_PROFILE="${HYPOTHESIS_PROFILE:-ci}"
 
 if [ "$CIRCLECI" ]
 then
+    # Used for CircleCI timings data
+    mkdir -p test_results
+
     # shellcheck disable=SC2046
     coverage run --source bankroll/ -m unittest -v -- $(circleci tests glob "tests/test_*.py" | circleci tests split --split-by=timings)
 else
