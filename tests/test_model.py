@@ -190,6 +190,8 @@ class TestPosition(unittest.TestCase):
         self.assertEqual(a + b, b + a)
 
     @given(from_type(Position))
+    @reproduce_failure('4.14.6', b'AXicY2BAAGZGRgYUwAInQIARAAEuAA8=')
+    @reproduce_failure('4.14.6', b'AXicY2BABYxAzMzIiCrIAiYAANIADw==')
     def test_combineToZero(self, p: Position) -> None:
         # Extend precision a bit beyond that of the example values, to make sure this is lossless.
         with localcontext() as ctx:
