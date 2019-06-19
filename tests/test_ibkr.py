@@ -443,6 +443,7 @@ class TestIBKRParsing(unittest.TestCase):
                              position.contract.lastTradeDateOrContractMonth)
 
     @given(allPositions)
+    @reproduce_failure('4.14.6', b'AXicY2DAAIzIHDYgn9EPIowiwQgAB68AWw==')
     def test_fuzzPosition(self, position: IB.Position) -> None:
         try:
             parsedPosition = ibkr._extractPosition(position)

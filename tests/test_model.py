@@ -120,6 +120,8 @@ class TestCash(unittest.TestCase):
         helpers.cashAmounts(),
         helpers.cashAmounts().map(abs),
     )
+    @reproduce_failure('4.14.6',
+                       b'AAMBAAAABpf/8PAAAAD65f/o9fr6AAAAAAAAAAAAAA==')
     def test_cashComparison(self, cur: Currency, a: Decimal,
                             b: Decimal) -> None:
         cashA = Cash(currency=cur, quantity=a)
@@ -188,6 +190,7 @@ class TestPosition(unittest.TestCase):
         self.assertEqual(a + b, b + a)
 
     @given(from_type(Position))
+    @reproduce_failure('4.14.6', b'AXicY2DAApgZGf6DGV9gImy1DAy/ASTYA3Y=')
     def test_combineToZero(self, p: Position) -> None:
         opposite = Position(instrument=p.instrument,
                             quantity=-p.quantity,
@@ -356,6 +359,7 @@ class TestAccountBalance(unittest.TestCase):
             hash(balance)
 
     @given(from_type(AccountBalance), from_type(AccountBalance))
+    @reproduce_failure('4.14.6', b'AAABAAADAS9GJAAAAAAAAAEBASL+w/k=')
     def test_additionAndSubtraction(self, first: AccountBalance,
                                     second: AccountBalance) -> None:
         self.assertEqual(first + second - second, first)
