@@ -67,6 +67,9 @@ class Cash:
     def paddedString(self, padding: int = 0) -> str:
         return self.currency.formatWithPadding(self.quantity, padding)
 
+    def quantize(self, q: Decimal) -> 'Cash':
+        return Cash(currency=self.currency, quantity=self.quantity.quantize(q))
+
     def __str__(self) -> str:
         return self.currency.format(self.quantity)
 
