@@ -190,13 +190,16 @@ class TestPosition(unittest.TestCase):
         self.assertEqual(a + b, b + a)
 
     @given(from_type(Position))
-    @reproduce_failure('4.14.6', b'AXicY2DAApgZGf6DGV9gImy1DAy/ASTYA3Y=')
     def test_combineToZero(self, p: Position) -> None:
-        opposite = Position(instrument=p.instrument,
-                            quantity=-p.quantity,
-                            costBasis=-p.costBasis)
+        # Extend precision a bit beyond that of the example values, to make sure this is lossless.
+        with localcontext() as ctx:
+            ctx.prec += 2
+            opposite = Position(instrument=p.instrument,
+                                quantity=-p.quantity,
+                                costBasis=-p.costBasis)
 
-        combined = p + opposite
+            combined = p + opposite
+
         self.assertEqual(combined.quantity, Decimal(0))
         self.assertEqual(combined.costBasis, Decimal(0))
 
