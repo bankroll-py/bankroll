@@ -10,6 +10,7 @@ from typing import List, Optional, TypeVar
 import os
 
 settings.register_profile("ci", max_examples=1000, deadline=100)
+settings.register_profile("debug", max_examples=100, deadline=50)
 settings.register_profile("dev", max_examples=10, deadline=50)
 settings.load_profile(os.getenv(u'HYPOTHESIS_PROFILE', default='dev'))
 
