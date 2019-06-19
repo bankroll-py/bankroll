@@ -8,16 +8,9 @@ from .instrument import Instrument
 
 @dataclass(frozen=True)
 class Position:
-    quantityQuantization: ClassVar[Decimal] = Decimal('0.0001')
-
     instrument: Instrument
     quantity: Decimal
     costBasis: Cash
-
-    @classmethod
-    def quantizeQuantity(cls, quantity: Decimal) -> Decimal:
-        return quantity.quantize(cls.quantityQuantization,
-                                 rounding=ROUND_HALF_EVEN)
 
     @property
     def averagePrice(self) -> Cash:
@@ -36,8 +29,6 @@ class Position:
         if not self.quantity.is_finite():
             raise ValueError(
                 f'Position quantity {self.quantity} is not a finite number')
-
-        super().__setattr__('quantity', self.quantizeQuantity(self.quantity))
 
         if self.quantity == 0 and self.costBasis != 0:
             raise ValueError(

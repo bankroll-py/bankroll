@@ -26,7 +26,7 @@ def cashAmounts(min_value: Decimal = Decimal('-1000000000'),
     return decimals(allow_nan=False,
                     allow_infinity=False,
                     min_value=min_value,
-                    max_value=max_value).map(Cash.quantize)
+                    max_value=max_value)
 
 
 def positionQuantities(min_value: Decimal = Decimal('-1000000000'),
@@ -35,7 +35,7 @@ def positionQuantities(min_value: Decimal = Decimal('-1000000000'),
     s = decimals(allow_nan=False,
                  allow_infinity=False,
                  min_value=min_value,
-                 max_value=max_value).map(Position.quantizeQuantity)
+                 max_value=max_value)
 
     if not allow_zero:
         s = s.filter(lambda x: x != 0)
@@ -49,7 +49,7 @@ def multipliers(min_value: Decimal = Decimal('1'),
     return decimals(allow_nan=False,
                     allow_infinity=False,
                     min_value=min_value,
-                    max_value=max_value).map(Instrument.quantizeMultiplier)
+                    max_value=max_value)
 
 
 def strikes(min_value: Decimal = Decimal('1'),
@@ -57,7 +57,7 @@ def strikes(min_value: Decimal = Decimal('1'),
     return decimals(allow_nan=False,
                     allow_infinity=False,
                     min_value=min_value,
-                    max_value=max_value).map(Option.quantizeStrike)
+                    max_value=max_value)
 
 
 def cash(currency: SearchStrategy[Currency] = from_type(Currency),

@@ -395,16 +395,13 @@ class TestIBKRParsing(unittest.TestCase):
         self.assertEqual(contract.currency, tradeConfirm.currency)
 
         if isinstance(instrument, Option):
-            self.assertEqual(
-                Option.quantizeStrike(Decimal(contract.strike)),
-                Option.quantizeStrike(Decimal(tradeConfirm.strike)))
+            self.assertEqual(Decimal(contract.strike),
+                             Decimal(tradeConfirm.strike))
             self.assertEqual(contract.right, tradeConfirm.putCall)
 
         if isinstance(instrument, Option) or isinstance(instrument, Future):
-            self.assertEqual(
-                Instrument.quantizeMultiplier(Decimal(contract.multiplier)),
-                Instrument.quantizeMultiplier(Decimal(
-                    tradeConfirm.multiplier)))
+            self.assertEqual(Decimal(contract.multiplier),
+                             Decimal(tradeConfirm.multiplier))
             self.assertEqual(contract.lastTradeDateOrContractMonth,
                              tradeConfirm.expiry)
 
@@ -435,16 +432,13 @@ class TestIBKRParsing(unittest.TestCase):
         self.assertEqual(contract.currency, position.contract.currency)
 
         if isinstance(instrument, Option):
-            self.assertEqual(
-                Option.quantizeStrike(Decimal(contract.strike)),
-                Option.quantizeStrike(Decimal(position.contract.strike)))
+            self.assertEqual(Decimal(contract.strike),
+                             Decimal(position.contract.strike))
             self.assertEqual(contract.right, position.contract.right)
 
         if isinstance(instrument, Option) or isinstance(instrument, Future):
-            self.assertEqual(
-                Instrument.quantizeMultiplier(Decimal(contract.multiplier)),
-                Instrument.quantizeMultiplier(
-                    Decimal(position.contract.multiplier)))
+            self.assertEqual(Decimal(contract.multiplier),
+                             Decimal(position.contract.multiplier))
             self.assertEqual(contract.lastTradeDateOrContractMonth,
                              position.contract.lastTradeDateOrContractMonth)
 
@@ -455,8 +449,7 @@ class TestIBKRParsing(unittest.TestCase):
         except ValueError:
             return
 
-        self.assertEqual(parsedPosition.quantity,
-                         Position.quantizeQuantity(Decimal(position.position)))
+        self.assertEqual(parsedPosition.quantity, Decimal(position.position))
         self.validatePositionContract(position, parsedPosition.instrument)
 
     @unittest.skip('Exists to validate test data only')
@@ -464,8 +457,7 @@ class TestIBKRParsing(unittest.TestCase):
     def test_parsedPositionConvertsToContract(self,
                                               position: IB.Position) -> None:
         parsedPosition = ibkr._extractPosition(position)
-        self.assertEqual(parsedPosition.quantity,
-                         Position.quantizeQuantity(Decimal(position.position)))
+        self.assertEqual(parsedPosition.quantity, Decimal(position.position))
         self.validatePositionContract(position, parsedPosition.instrument)
 
 

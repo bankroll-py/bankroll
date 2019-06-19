@@ -45,10 +45,6 @@ class Trade(Activity):
     fees: Cash
     flags: TradeFlags
 
-    @classmethod
-    def quantizeQuantity(cls, quantity: Decimal) -> Decimal:
-        return Position.quantizeQuantity(quantity)
-
     def __post_init__(self) -> None:
         if not self.quantity.is_finite():
             raise ValueError(
@@ -62,8 +58,6 @@ class Trade(Activity):
                 TradeFlags.CLOSE | TradeFlags.ASSIGNED_OR_EXERCISED
         ]:
             raise ValueError(f'Invalid combination of flags: {self.flags}')
-
-        super().__setattr__('quantity', self.quantizeQuantity(self.quantity))
 
     @property
     def price(self) -> Cash:

@@ -24,7 +24,7 @@ class TestCash(unittest.TestCase):
 
         cashC = cashA + cashB
         self.assertEqual(cashC.currency, cur)
-        self.assertEqual(cashC.quantity, Cash.quantize(a + b))
+        self.assertEqual(cashC.quantity, a + b)
 
     @given(
         sampled_from(Currency),
@@ -37,7 +37,7 @@ class TestCash(unittest.TestCase):
 
         cashC = cashA - cashB
         self.assertEqual(cashC.currency, cur)
-        self.assertEqual(cashC.quantity, Cash.quantize(a - b))
+        self.assertEqual(cashC.quantity, a - b)
 
     @given(
         lists(sampled_from(Currency), min_size=2, max_size=2, unique=True),
@@ -74,7 +74,7 @@ class TestCash(unittest.TestCase):
     def test_multiplyCash(self, cashA: Cash, b: T) -> None:
         cashC = cashA * b
         self.assertEqual(cashC.currency, cashA.currency)
-        self.assertEqual(cashC.quantity, Cash.quantize(cashA.quantity * b))
+        self.assertEqual(cashC.quantity, cashA.quantity * b)
 
     @given(
         from_type(Cash),
@@ -85,7 +85,7 @@ class TestCash(unittest.TestCase):
     def test_divideCash(self, cashA: Cash, b: T) -> None:
         cashC = cashA / b
         self.assertEqual(cashC.currency, cashA.currency)
-        self.assertEqual(cashC.quantity, Cash.quantize(cashA.quantity / b))
+        self.assertEqual(cashC.quantity, cashA.quantity / b)
 
     @given(from_type(Cash))
     def test_cashEqualsSelf(self, cashA: Cash) -> None:

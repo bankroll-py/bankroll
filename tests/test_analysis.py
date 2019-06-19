@@ -244,7 +244,7 @@ class TestAnalysis(unittest.TestCase):
             posB = next((p.quantity for p in b if p.instrument == i),
                         Decimal(0))
             posC = next((p.quantity for p in result if p.instrument == i))
-            self.assertEqual(posC, Position.quantizeQuantity(posA + posB))
+            self.assertEqual(posC, posA + posB)
 
     forexQuotes: Dict[Instrument, Quote] = {
         # EURGBP

@@ -14,16 +14,9 @@ import re
 @dataclass(unsafe_hash=True)
 @total_ordering
 class Instrument(ABC):
-    multiplierQuantization: ClassVar[Decimal] = Decimal('0.1')
-
     symbol: str
     currency: Currency
     multiplier: Decimal
-
-    @classmethod
-    def quantizeMultiplier(cls, multiplier: Decimal) -> Decimal:
-        return multiplier.quantize(cls.multiplierQuantization,
-                                   rounding=ROUND_HALF_EVEN)
 
     def __post_init__(self) -> None:
         if not self.symbol:
@@ -33,8 +26,6 @@ class Instrument(ABC):
         if not self.multiplier.is_finite() or self.multiplier <= 0:
             raise ValueError(
                 f'Expected positive multiplier: {self.multiplier}')
-
-        self.multiplier = self.quantizeMultiplier(self.multiplier)
 
     def __lt__(self, other: 'Instrument') -> bool:
         return self.symbol < other.symbol
@@ -83,19 +74,11 @@ class OptionType(Enum):
 
 @dataclass(unsafe_hash=True, init=False)
 class Option(Instrument):
-    # Matches the multiplicative factor in OCC options symbology.
-    strikeQuantization: ClassVar[Decimal] = Decimal('0.001')
-
     underlying: str
     currency: Currency
     optionType: OptionType
     expiration: date
     strike: Decimal
-
-    @classmethod
-    def quantizeStrike(cls, strike: Decimal) -> Decimal:
-        return strike.quantize(cls.strikeQuantization,
-                               rounding=ROUND_HALF_EVEN)
 
     def __init__(self,
                  underlying: str,
@@ -115,7 +98,7 @@ class Option(Instrument):
         self.underlying = underlying
         self.optionType = optionType
         self.expiration = expiration
-        self.strike = self.quantizeStrike(strike)
+        self.strike = strike
 
         if symbol is None:
             # https://en.wikipedia.org/wiki/Option_symbol#The_OCC_Option_Symbol
