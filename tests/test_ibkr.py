@@ -395,13 +395,13 @@ class TestIBKRParsing(unittest.TestCase):
         self.assertEqual(contract.currency, tradeConfirm.currency)
 
         if isinstance(instrument, Option):
-            self.assertEqual(Decimal(contract.strike),
-                             Decimal(tradeConfirm.strike))
+            self.assertAlmostEqual(float(contract.strike),
+                                   float(tradeConfirm.strike))
             self.assertEqual(contract.right, tradeConfirm.putCall)
 
         if isinstance(instrument, Option) or isinstance(instrument, Future):
-            self.assertEqual(Decimal(contract.multiplier),
-                             Decimal(tradeConfirm.multiplier))
+            self.assertAlmostEqual(float(contract.multiplier),
+                                   float(tradeConfirm.multiplier))
             self.assertEqual(contract.lastTradeDateOrContractMonth,
                              tradeConfirm.expiry)
 
@@ -432,18 +432,17 @@ class TestIBKRParsing(unittest.TestCase):
         self.assertEqual(contract.currency, position.contract.currency)
 
         if isinstance(instrument, Option):
-            self.assertEqual(Decimal(contract.strike),
-                             Decimal(position.contract.strike))
+            self.assertAlmostEqual(float(contract.strike),
+                                   float(position.contract.strike))
             self.assertEqual(contract.right, position.contract.right)
 
         if isinstance(instrument, Option) or isinstance(instrument, Future):
-            self.assertEqual(Decimal(contract.multiplier),
-                             Decimal(position.contract.multiplier))
+            self.assertAlmostEqual(float(contract.multiplier),
+                                   float(position.contract.multiplier))
             self.assertEqual(contract.lastTradeDateOrContractMonth,
                              position.contract.lastTradeDateOrContractMonth)
 
     @given(allPositions)
-    @reproduce_failure('4.14.6', b'AXicY2DAAIzIHDYgn9EPIowiwQgAB68AWw==')
     def test_fuzzPosition(self, position: IB.Position) -> None:
         try:
             parsedPosition = ibkr._extractPosition(position)
