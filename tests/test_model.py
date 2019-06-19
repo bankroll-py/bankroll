@@ -1,7 +1,7 @@
 from bankroll.brokers import ibkr, vanguard
 from bankroll.model import AccountBalance, AccountData, Cash, Currency, Instrument, Bond, Stock, Option, OptionType, FutureOption, Future, Position, Quote, Trade
 from datetime import date
-from decimal import Decimal, ROUND_UP
+from decimal import Decimal, ROUND_UP, localcontext
 from hypothesis import assume, given, reproduce_failure
 from hypothesis.strategies import dates, decimals, from_type, integers, lists, one_of, sampled_from, text
 from typing import List, Optional, Tuple, TypeVar
@@ -359,11 +359,16 @@ class TestAccountBalance(unittest.TestCase):
             hash(balance)
 
     @given(from_type(AccountBalance), from_type(AccountBalance))
-    @reproduce_failure('4.14.6', b'AAABAAADAS9GJAAAAAAAAAEBASL+w/k=')
     def test_additionAndSubtraction(self, first: AccountBalance,
                                     second: AccountBalance) -> None:
-        self.assertEqual(first + second - second, first)
-        self.assertEqual(first - second + second, first)
+        # Extend precision a bit beyond that of the example values, to make sure this is lossless.
+        with localcontext() as ctx:
+            ctx.prec += 2
+            plusMinus = first + second - second
+            minusPlus = first - second + second
+
+        self.assertEqual(plusMinus, first)
+        self.assertEqual(minusPlus, first)
 
 
 if __name__ == '__main__':
