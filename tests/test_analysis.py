@@ -180,9 +180,6 @@ class TestAnalysis(unittest.TestCase):
         lists(helpers.cashAmounts(), min_size=1,
               max_size=20).flatmap(lambda ds: tradesForAmounts(
                   amounts=ds, symbol='SPY').map(lambda ts: (ds, ts))))
-    @reproduce_failure(
-        '4.14.6',
-        b'AXicY2RgqGFkYDjvv2wOIzOjKQMTEDIwMjCyMAJFwaC+4dITBuyAEZcwAHzgBdw=')
     def test_realizedBasisAddsUp(self,
                                  args: Tuple[List[Decimal], Iterable[Trade]]
                                  ) -> None:
