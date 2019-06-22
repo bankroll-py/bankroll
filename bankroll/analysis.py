@@ -1,38 +1,66 @@
+import operator
+import re
+from dataclasses import dataclass, replace
+from datetime import datetime
 from decimal import Decimal
 from functools import reduce
 from itertools import groupby
-from .model import Activity, Cash, CashPayment, Currency, Trade, Instrument, Option, MarketDataProvider, Quote, Position, Forex
-from progress.bar import Bar
 from typing import Dict, Iterable, Optional, Sequence, Tuple
 
-import operator
-import re
+from progress.bar import Bar
+
+from .model import (Activity, Cash, CashPayment, Currency, Forex, Instrument,
+                    MarketDataProvider, Option, Position, Quote, Stock, Trade)
 
 
-# Different brokers represent "identical" symbols differently, and they can all be valid.
-# This function normalizes them so they can be compared across time and space.
-def _normalizeSymbol(symbol: str) -> str:
+# Different brokers represent "identical" symbols differently, and they can all
+# be valid. This function normalizes them so they can be compared across time
+# and space.
+def normalizeSymbol(symbol: str) -> str:
     # These issues mostly show up with separators for multi-class shares (like BRK A and B)
     return re.sub(r'[\.\s/]', '', symbol)
 
 
-def _activityAffectsSymbol(activity: Activity, symbol: str) -> bool:
-    normalized = _normalizeSymbol(symbol)
+# Performs a similar operation to normalizeSymbol(), but lifted over
+# Instruments (where it makes sense).
+def normalizeInstrument(instrument: Instrument) -> Instrument:
+    if isinstance(instrument, Stock):
+        return Stock(symbol=normalizeSymbol(instrument.symbol),
+                     currency=instrument.currency)
+    elif isinstance(instrument, Option):
+        # Handles the FutureOption subclass correctly as well.
+        return replace(instrument,
+                       underlying=normalizeSymbol(instrument.underlying))
+    else:
+        return instrument
+
+
+# Attempts to determine whether the given Activity concerns the provided
+# symbol, after normalizing to a form that should permit comparison across
+# brokers.
+def activityAffectsSymbol(activity: Activity, symbol: str) -> bool:
+    normalized = normalizeSymbol(symbol)
 
     if isinstance(activity, CashPayment):
-        return activity.instrument is not None and _normalizeSymbol(
+        return activity.instrument is not None and normalizeSymbol(
             activity.instrument.symbol) == normalized
     elif isinstance(activity, Trade):
-        return (isinstance(activity.instrument, Option) and _normalizeSymbol(
-            activity.instrument.underlying) == normalized) or _normalizeSymbol(
+        return (isinstance(activity.instrument, Option) and normalizeSymbol(
+            activity.instrument.underlying) == normalized) or normalizeSymbol(
                 activity.instrument.symbol) == normalized
     else:
         return False
 
 
-# Calculates the "realized" basis for a particular symbol, given a trade history. This refers to the actual amounts paid in and out, including dividend payments, as well as money gained or lost on derivatives related to that symbol (e.g., short puts, covered calls).
+# Calculates the "realized" basis for a particular symbol, given a trade
+# history. This refers to the actual amounts paid in and out, including
+# dividend payments, as well as money gained or lost on derivatives related to
+# that symbol (e.g., short puts, covered calls).
 #
-# The principle here is that we want to treat dividends and options premium as "gains," where cost basis gets reduced over time as proceeds are paid out. This is not how the tax accounting works, of course, but it provides a different view into the return/profitability of an investment.
+# The principle here is that we want to treat dividends and options premium as
+# "gains," where cost basis gets reduced over time as proceeds are paid out.
+# This is not how the tax accounting works, of course, but it provides a
+# different view into the return/profitability of an investment.
 def realizedBasisForSymbol(symbol: str,
                            activity: Iterable[Activity]) -> Optional[Cash]:
     def f(basis: Optional[Cash], activity: Activity) -> Optional[Cash]:
@@ -43,9 +71,58 @@ def realizedBasisForSymbol(symbol: str,
         else:
             raise ValueError(f'Unexpected type of activity: {activity}')
 
-    return reduce(f,
-                  (t for t in activity if _activityAffectsSymbol(t, symbol)),
+    return reduce(f, (t for t in activity if activityAffectsSymbol(t, symbol)),
                   None)
+
+
+@dataclass(frozen=True)
+class TimelineEntry:
+    date: datetime
+    positions: Dict[Instrument, Decimal]
+    realizedProfit: Cash
+
+    def __str__(self) -> str:
+        strPositions = (
+            f'\n\t{instrument:21} {self.positions[instrument].normalize():>14,f}'
+            for instrument in sorted(self.positions.keys()))
+
+        return reduce(operator.add, strPositions,
+                      f'As of {self.date.date()}: {self.realizedProfit}')
+
+
+# Traces position sizing and profit/loss of a particular symbol over a period
+# of activity. Yields a TimelineEntry corresponding to each action that
+# occurred to the given symbol, starting from the oldest and ending with the
+# most recent.
+def timelineForSymbol(symbol: str,
+                      a: Iterable[Activity]) -> Iterable[TimelineEntry]:
+    realizedProfit: Optional[Cash] = None
+    positions: Dict[Instrument, Decimal] = {}
+
+    for t in sorted((t for t in a if activityAffectsSymbol(t, symbol)),
+                    key=lambda t: t.date):
+        if isinstance(t, CashPayment) or isinstance(t, Trade):
+            proceeds = t.proceeds
+        else:
+            raise ValueError(f'Unexpected type of activity: {t}')
+
+        if realizedProfit:
+            realizedProfit += proceeds
+        else:
+            realizedProfit = proceeds
+
+        if isinstance(t, Trade):
+            instrument = normalizeInstrument(t.instrument)
+
+            newPosition = positions.get(instrument, Decimal(0)) + t.quantity
+            if newPosition == Decimal(0):
+                del positions[instrument]
+            else:
+                positions[instrument] = newPosition
+
+        yield TimelineEntry(date=t.date,
+                            positions=positions.copy(),
+                            realizedProfit=realizedProfit)
 
 
 def liveValuesForPositions(
