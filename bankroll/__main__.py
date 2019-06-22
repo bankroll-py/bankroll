@@ -4,7 +4,7 @@ from bankroll import Activity, Instrument, Stock, Position, Trade, Cash, MarketD
 from bankroll.brokers import *
 from bankroll.configuration import Configuration, Settings, addSettingsToArgumentGroup
 from progress.bar import Bar
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Callable, Iterable, List, Optional
 
 import logging
 
@@ -108,10 +108,16 @@ def printBalances(accounts: AccountAggregator, args: Namespace) -> None:
     print(accounts.balance())
 
 
-commands = {
+def symbolTimeline(accounts: AccountAggregator, args: Namespace) -> None:
+    for entry in analysis.timelineForSymbol(args.symbol, accounts.activity()):
+        print(entry)
+
+
+commands: Dict[str, Callable[[AccountAggregator, Namespace], None]] = {
     'positions': printPositions,
     'activity': printActivity,
     'balances': printBalances,
+    'timeline': symbolTimeline,
 }
 
 subparsers = parser.add_subparsers(dest='command', help='What to inspect')
@@ -135,6 +141,14 @@ activityParser = subparsers.add_parser(
 
 balancesParser = subparsers.add_parser(
     'balances', help='Operations upon imported portfolio cash balances')
+
+timelineParser = subparsers.add_parser(
+    'timeline', help='Traces a position and P/L for a symbol over time')
+timelineParser.add_argument(
+    'symbol',
+    help=
+    'The symbol to look up (multi-part symbols like BRK.B will be normalized so they can be tracked across brokers)'
+)
 
 
 def main() -> None:
