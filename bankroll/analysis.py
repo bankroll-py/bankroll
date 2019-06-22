@@ -81,6 +81,14 @@ class TimelineEntry:
     positions: Dict[Instrument, Decimal]
     realizedProfit: Cash
 
+    def __str__(self) -> str:
+        strPositions = (
+            f'\n\t{instrument:21} {self.positions[instrument].normalize():>14,f}'
+            for instrument in sorted(self.positions.keys()))
+
+        return reduce(operator.add, strPositions,
+                      f'As of {self.date.date()}: {self.realizedProfit}')
+
 
 # Traces position sizing and profit/loss of a particular symbol over a period
 # of activity. Yields a TimelineEntry corresponding to each action that

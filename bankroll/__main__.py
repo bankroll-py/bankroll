@@ -109,7 +109,9 @@ def printBalances(accounts: AccountAggregator, args: Namespace) -> None:
 
 
 def symbolTimeline(accounts: AccountAggregator, args: Namespace) -> None:
-    for entry in analysis.timelineForSymbol(args.symbol, accounts.activity()):
+    for entry in reversed(
+            list(analysis.timelineForSymbol(args.symbol,
+                                            accounts.activity()))):
         print(entry)
 
 
