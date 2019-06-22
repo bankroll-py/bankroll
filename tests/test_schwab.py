@@ -282,6 +282,24 @@ class TestSchwabTransactions(unittest.TestCase):
                   fees=Cash(currency=Currency.USD, quantity=Decimal('13.65')),
                   flags=TradeFlags.CLOSE))
 
+    def test_cashInterest(self) -> None:
+        ts = self.activityByDate[date(2017, 2, 27)]
+        self.assertEqual(len(ts), 1)
+        self.assertEqual(
+            ts[0],
+            CashPayment(date=ts[0].date,
+                        instrument=None,
+                        proceeds=helpers.cashUSD(Decimal('0.05'))))
+
+    def test_marginInterest(self) -> None:
+        ts = self.activityByDate[date(2018, 3, 27)]
+        self.assertEqual(len(ts), 1)
+        self.assertEqual(
+            ts[0],
+            CashPayment(date=ts[0].date,
+                        instrument=None,
+                        proceeds=helpers.cashUSD(Decimal('-1.22'))))
+
 
 class TestSchwabBalance(unittest.TestCase):
     def setUp(self) -> None:

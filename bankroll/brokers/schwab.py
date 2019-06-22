@@ -216,15 +216,26 @@ def _parseSchwabTransaction(
         t: _SchwabTransaction,
         otherTransactionsThisDate: Iterable[_SchwabTransaction]
 ) -> Optional[Activity]:
-    dividendActions = [
+    dividendActions = {
         'Cash Dividend',
         'Reinvest Dividend',
         'Non-Qualified Div',
-    ]
+    }
 
     if t.action in dividendActions:
         return CashPayment(date=_parseSchwabTransactionDate(t.date),
                            instrument=Stock(t.symbol, currency=Currency.USD),
+                           proceeds=Cash(currency=Currency.USD,
+                                         quantity=_schwabDecimal(t.amount)))
+
+    interestActions = {
+        'Credit Interest',
+        'Margin Interest',
+    }
+
+    if t.action in interestActions:
+        return CashPayment(date=_parseSchwabTransactionDate(t.date),
+                           instrument=None,
                            proceeds=Cash(currency=Currency.USD,
                                          quantity=_schwabDecimal(t.amount)))
 
@@ -263,7 +274,7 @@ def _parseSchwabTransaction(
         # Will process on the adjustment entry
         return None
 
-    ignoredActions = [
+    ignoredActions = {
         'Wire Funds',
         'Wire Funds Received',
         'MoneyLink Transfer',
@@ -271,13 +282,11 @@ def _parseSchwabTransaction(
         'Long Term Cap Gain Reinvest',
         'ATM Withdrawal',
         'Schwab ATM Rebate',
-        'Credit Interest',
-        'Margin Interest',
         'Service Fee',
         'Journal',
         'Misc Cash Entry',
         'Security Transfer',
-    ]
+    }
 
     if t.action in ignoredActions:
         return None
