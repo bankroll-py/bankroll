@@ -245,6 +245,11 @@ def _parseFidelityTransaction(t: _FidelityTransaction) -> Optional[Activity]:
                                             currency=Currency[t.currency]),
                            proceeds=Cash(currency=Currency[t.currency],
                                          quantity=Decimal(t.amount)))
+    elif t.action == 'INTEREST EARNED':
+        return CashPayment(date=_parseFidelityTransactionDate(t.date),
+                           instrument=None,
+                           proceeds=Cash(currency=Currency[t.currency],
+                                         quantity=Decimal(t.amount)))
 
     flags = None
     # TODO: Handle 'OPENING TRANSACTION' and 'CLOSING TRANSACTION' text for options transactions

@@ -105,18 +105,18 @@ class TestFidelityTransactions(unittest.TestCase):
 
     def test_dividendPayment(self) -> None:
         ts = self.activityByDate[date(2017, 11, 9)]
-        self.assertEqual(len(ts), 4)
+        self.assertEqual(len(ts), 5)
         self.assertEqual(
-            ts[1],
-            CashPayment(date=ts[1].date,
+            ts[2],
+            CashPayment(date=ts[2].date,
                         instrument=Stock('ROBO', Currency.USD),
                         proceeds=helpers.cashUSD(Decimal('6.78'))))
 
     def test_reinvestShares(self) -> None:
         ts = self.activityByDate[date(2017, 11, 9)]
         self.assertEqual(
-            ts[2],
-            Trade(date=ts[2].date,
+            ts[3],
+            Trade(date=ts[3].date,
                   instrument=Stock('ROBO', Currency.USD),
                   quantity=Decimal('0.234'),
                   amount=Cash(currency=Currency.USD,
@@ -148,8 +148,8 @@ class TestFidelityTransactions(unittest.TestCase):
     def test_sellToCloseOption(self) -> None:
         ts = self.activityByDate[date(2017, 11, 9)]
         self.assertEqual(
-            ts[3],
-            Trade(date=ts[3].date,
+            ts[4],
+            Trade(date=ts[4].date,
                   instrument=Option(underlying='SPY',
                                     currency=Currency.USD,
                                     optionType=OptionType.CALL,
@@ -184,6 +184,15 @@ class TestFidelityTransactions(unittest.TestCase):
     def test_securityTransferSale(self) -> None:
         # TODO: Test security transfer trades
         pass
+
+    def test_cashInterest(self) -> None:
+        ts = self.activityByDate[date(2017, 8, 31)]
+        self.assertEqual(len(ts), 1)
+        self.assertEqual(
+            ts[0],
+            CashPayment(date=ts[0].date,
+                        instrument=None,
+                        proceeds=helpers.cashUSD(Decimal('0.02'))))
 
 
 class TestFidelityBalance(unittest.TestCase):
