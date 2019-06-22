@@ -7,10 +7,11 @@ from typing import Any, Dict, Iterable, List, Tuple, no_type_check
 from bankroll import (Activity, Cash, CashPayment, Currency, Forex,
                       FutureOption, Instrument, MarketDataProvider, Option,
                       OptionType, Position, Quote, Stock, Trade, TradeFlags)
-from bankroll.analysis import (convertCashToCurrency, currencyConversionRates,
-                               deduplicatePositions, liveValuesForPositions,
-                               normalizeInstrument, normalizeSymbol,
-                               realizedBasisForSymbol)
+from bankroll.analysis import (TimelineEntry, convertCashToCurrency,
+                               currencyConversionRates, deduplicatePositions,
+                               liveValuesForPositions, normalizeInstrument,
+                               normalizeSymbol, realizedBasisForSymbol,
+                               timelineForSymbol)
 from hypothesis import HealthCheck, given, reproduce_failure, seed, settings
 from hypothesis.strategies import (SearchStrategy, builds, composite, dates,
                                    datetimes, decimals, from_type, iterables,
@@ -347,3 +348,62 @@ class TestAnalysis(unittest.TestCase):
         # See https://github.com/jspahrsummers/bankroll/issues/37.
         #self.assertEqual(cash, helpers.cashUSD(Decimal('1400.9726')))
         self.assertEqual(cash, helpers.cashUSD(Decimal('1400')))
+
+    def test_timelineForSymbol(self) -> None:
+        option = Option(underlying='BRKB',
+                        currency=Currency.USD,
+                        optionType=OptionType.CALL,
+                        expiration=date(2015, 3, 1),
+                        strike=Decimal(160))
+
+        activity = [
+            Trade(date=datetime(2015, 1, 1),
+                  instrument=Stock(symbol='BRK B', currency=Currency.USD),
+                  quantity=Decimal(100),
+                  amount=helpers.cashUSD(Decimal('-10000')),
+                  fees=helpers.cashUSD(Decimal('5')),
+                  flags=TradeFlags.OPEN),
+            Trade(date=datetime(2015, 1, 2),
+                  instrument=option,
+                  quantity=Decimal(-1),
+                  amount=helpers.cashUSD(Decimal('215')),
+                  fees=helpers.cashUSD(Decimal('1')),
+                  flags=TradeFlags.OPEN),
+            Trade(date=datetime(2015, 1, 3),
+                  instrument=Stock(symbol='BRK/B', currency=Currency.USD),
+                  quantity=Decimal(-10),
+                  amount=helpers.cashUSD(Decimal('2100')),
+                  fees=helpers.cashUSD(Decimal('1')),
+                  flags=TradeFlags.CLOSE),
+            CashPayment(date=datetime(2015, 1, 3),
+                        instrument=Stock(symbol='BRK.B',
+                                         currency=Currency.USD),
+                        proceeds=helpers.cashUSD(Decimal('535'))),
+        ]
+
+        timeline = list(timelineForSymbol('BRKB', activity))
+        stock = Stock(symbol='BRKB', currency=Currency.USD)
+
+        self.assertEquals(timeline, [
+            TimelineEntry(date=datetime(2015, 1, 1),
+                          positions={stock: Decimal(100)},
+                          realizedProfit=helpers.cashUSD(Decimal('-10005'))),
+            TimelineEntry(date=datetime(2015, 1, 2),
+                          positions={
+                              stock: Decimal(100),
+                              option: Decimal(-1)
+                          },
+                          realizedProfit=helpers.cashUSD(Decimal('-9791'))),
+            TimelineEntry(date=datetime(2015, 1, 3),
+                          positions={
+                              stock: Decimal(90),
+                              option: Decimal(-1)
+                          },
+                          realizedProfit=helpers.cashUSD(Decimal('-7692'))),
+            TimelineEntry(date=datetime(2015, 1, 3),
+                          positions={
+                              stock: Decimal(90),
+                              option: Decimal(-1)
+                          },
+                          realizedProfit=helpers.cashUSD(Decimal('-7157'))),
+        ])

@@ -75,6 +75,48 @@ def realizedBasisForSymbol(symbol: str,
                   None)
 
 
+@dataclass(frozen=True)
+class TimelineEntry:
+    date: datetime
+    positions: Dict[Instrument, Decimal]
+    realizedProfit: Cash
+
+
+# Traces position sizing and profit/loss of a particular symbol over a period
+# of activity. Yields a TimelineEntry corresponding to each action that
+# occurred to the given symbol, starting from the oldest and ending with the
+# most recent.
+def timelineForSymbol(symbol: str,
+                      a: Iterable[Activity]) -> Iterable[TimelineEntry]:
+    realizedProfit: Optional[Cash] = None
+    positions: Dict[Instrument, Decimal] = {}
+
+    for t in sorted((t for t in a if activityAffectsSymbol(t, symbol)),
+                    key=lambda t: t.date):
+        if isinstance(t, CashPayment) or isinstance(t, Trade):
+            proceeds = t.proceeds
+        else:
+            raise ValueError(f'Unexpected type of activity: {t}')
+
+        if realizedProfit:
+            realizedProfit += proceeds
+        else:
+            realizedProfit = proceeds
+
+        if isinstance(t, Trade):
+            instrument = normalizeInstrument(t.instrument)
+
+            newPosition = positions.get(instrument, Decimal(0)) + t.quantity
+            if newPosition == Decimal(0):
+                del positions[instrument]
+            else:
+                positions[instrument] = newPosition
+
+        yield TimelineEntry(date=t.date,
+                            positions=positions.copy(),
+                            realizedProfit=realizedProfit)
+
+
 def liveValuesForPositions(
         positions: Iterable[Position],
         dataProvider: MarketDataProvider,
