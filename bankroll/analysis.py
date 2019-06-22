@@ -1,12 +1,16 @@
+import operator
+import re
+from dataclasses import dataclass, replace
+from datetime import datetime
 from decimal import Decimal
 from functools import reduce
 from itertools import groupby
-from .model import Activity, Cash, CashPayment, Currency, Trade, Instrument, Option, MarketDataProvider, Quote, Position, Forex
-from progress.bar import Bar
 from typing import Dict, Iterable, Optional, Sequence, Tuple
 
-import operator
-import re
+from progress.bar import Bar
+
+from .model import (Activity, Cash, CashPayment, Currency, Forex, Instrument,
+                    MarketDataProvider, Option, Position, Quote, Stock, Trade)
 
 
 # Different brokers represent "identical" symbols differently, and they can all
@@ -15,6 +19,20 @@ import re
 def normalizeSymbol(symbol: str) -> str:
     # These issues mostly show up with separators for multi-class shares (like BRK A and B)
     return re.sub(r'[\.\s/]', '', symbol)
+
+
+# Performs a similar operation to normalizeSymbol(), but lifted over
+# Instruments (where it makes sense).
+def normalizeInstrument(instrument: Instrument) -> Instrument:
+    if isinstance(instrument, Stock):
+        return Stock(symbol=normalizeSymbol(instrument.symbol),
+                     currency=instrument.currency)
+    elif isinstance(instrument, Option):
+        # Handles the FutureOption subclass correctly as well.
+        return replace(instrument,
+                       underlying=normalizeSymbol(instrument.underlying))
+    else:
+        return instrument
 
 
 # Attempts to determine whether the given Activity concerns the provided

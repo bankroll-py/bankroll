@@ -1,14 +1,22 @@
-from bankroll import Cash, Currency, Instrument, Stock, Option, OptionType, Quote, Trade, TradeFlags, MarketDataProvider, Position, Activity, CashPayment, Forex
-from bankroll.analysis import normalizeSymbol, realizedBasisForSymbol, liveValuesForPositions, deduplicatePositions, currencyConversionRates, convertCashToCurrency
-from datetime import datetime, date
+import unittest
+from datetime import date, datetime
 from decimal import Decimal
-from hypothesis import given, reproduce_failure, seed, settings, HealthCheck
-from hypothesis.strategies import builds, composite, dates, datetimes, decimals, from_type, iterables, just, lists, one_of, sampled_from, text, tuples, SearchStrategy
 from itertools import chain
 from typing import Any, Dict, Iterable, List, Tuple, no_type_check
 
+from bankroll import (Activity, Cash, CashPayment, Currency, Forex,
+                      FutureOption, Instrument, MarketDataProvider, Option,
+                      OptionType, Position, Quote, Stock, Trade, TradeFlags)
+from bankroll.analysis import (convertCashToCurrency, currencyConversionRates,
+                               deduplicatePositions, liveValuesForPositions,
+                               normalizeInstrument, normalizeSymbol,
+                               realizedBasisForSymbol)
+from hypothesis import HealthCheck, given, reproduce_failure, seed, settings
+from hypothesis.strategies import (SearchStrategy, builds, composite, dates,
+                                   datetimes, decimals, from_type, iterables,
+                                   just, lists, one_of, sampled_from, text,
+                                   tuples)
 from tests import helpers
-import unittest
 
 
 @composite
@@ -134,6 +142,34 @@ class TestAnalysis(unittest.TestCase):
     @given(sampled_from(separatedSymbols))
     def test_normalizeSymbol(self, symbol: str) -> None:
         self.assertEqual(normalizeSymbol(symbol), 'BRKB')
+
+    @given(helpers.stocks(symbol=sampled_from(separatedSymbols)))
+    def test_normalizeStockMatchesSymbolNormalization(self, instrument: Stock
+                                                      ) -> None:
+        normalized = normalizeInstrument(instrument)
+        self.assertEqual(normalized.symbol, normalizeSymbol(instrument.symbol))
+
+        symbolsMatch = (instrument.symbol == normalizeSymbol(
+            instrument.symbol))
+        instrumentsMatch = (instrument == normalized)
+        self.assertEqual(symbolsMatch, instrumentsMatch)
+
+    @given(
+        one_of(
+            helpers.options(underlying=sampled_from(separatedSymbols)),
+            helpers.futuresOptions(underlying=sampled_from(separatedSymbols))))
+    def test_normalizeOptionMatchesSymbolNormalization(self, instrument: Option
+                                                       ) -> None:
+        normalized = normalizeInstrument(instrument)
+        assert isinstance(normalized, Option)
+
+        self.assertEqual(normalized.underlying,
+                         normalizeSymbol(instrument.underlying))
+
+        underlyingMatch = (instrument.underlying == normalizeSymbol(
+            instrument.underlying))
+        instrumentsMatch = (instrument == normalized)
+        self.assertEqual(underlyingMatch, instrumentsMatch)
 
     @given(lists(sampled_from(separatedSymbols), min_size=3, max_size=3))
     def test_realizedBasisWithSeparatedSymbol(self,
