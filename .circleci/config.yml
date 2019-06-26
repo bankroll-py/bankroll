@@ -9,7 +9,7 @@ defaults: &defaults
     # https://circleci.com/docs/2.0/circleci-images/
     - image: circleci/python:3.7.2-stretch
 
-  working_directory: ~/repo
+  working_directory: ~/bankroll
 
 jobs:
   shellcheck:
