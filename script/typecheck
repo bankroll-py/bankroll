@@ -3,7 +3,9 @@
 set -o errexit
 set -o pipefail
 
+PROJECT_NAME=$(basename "$PWD")
+
 # shellcheck disable=SC1091
 . venv/bin/activate
 
-mypy --strict --ignore-missing-imports -p bankroll
+mypy --strict --ignore-missing-imports -p "$PROJECT_NAME"
