@@ -5,7 +5,7 @@ from hypothesis.strategies import builds, dates, datetimes, decimals, from_regex
 from bankroll import AccountBalance, AccountData, Activity, Cash, Currency, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, CashPayment, Trade, TradeFlags, Quote
 from bankroll.brokers import *
 from bankroll.configuration import Settings
-from typing import List, Optional, TypeVar
+from typing import List, Optional, TypeVar, Union
 
 import os
 
@@ -287,6 +287,8 @@ register_type_strategy(
 
 register_type_strategy(AccountBalance, accountBalances())
 
+def dataclassModels() -> SearchStrategy[Union[Activity, Cash, Instrument, Quote, Position]]:
+    return from_type(Union[Activity, Cash, Instrument, Quote, Position])
 
 def cashUSD(amount: Decimal) -> Cash:
     return Cash(currency=Currency.USD, quantity=amount)

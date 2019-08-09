@@ -18,4 +18,4 @@ if pd:
     # Converts a Pandas DataFrame into multiple dataclasses (models) of the same type.
     # Note that the type _must_ represent a dataclass, though this is not expressed statically.
     def fromDataFrame(cls: Type[_T], df: pd.DataFrame) -> Iterable[_T]:
-        return (cls(**t) for t in df.itertuples())
+        return (cls(**t._asdict()) for t in df.itertuples(index=False))
