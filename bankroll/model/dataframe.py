@@ -1,13 +1,27 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 from dataclasses import asdict
-from typing import Any, Iterable, Type, TypeVar
+from typing import Any, Dict, Iterable, Type, TypeVar
 
 try:
     import pandas as pd
 except ImportError:
     pd = None
 
-_T = TypeVar('_T', bound=Any)
+_DFC = TypeVar('_DFC', bound='DataFrameConvertible')
+
+
+class DataFrameConvertible(ABC):
+    @abstractmethod
+    def __init__(self: _DFC, **kwargs: Dict[str, Any]) -> None:
+        pass
+
+    @classmethod
+    def fromDataFrameDict(cls: Type[_DFC], d: Dict[str, Any]) -> _DFC:
+        return cls(**d)
+
+    def dataFrameDict(self) -> Dict[str, Any]:
+        return asdict(self)
+
 
 if pd:
     # Converts multiple dataclasses (models) of the same type into a Pandas DataFrame.
