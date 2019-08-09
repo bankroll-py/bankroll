@@ -35,6 +35,9 @@ setup(
         'backoff>=1.8',
         'pyfolio>=0.9.0',
     ],
+    extras_require={
+        'DataFrame': ['pandas>=2.8.0'],
+    },
     keywords=
     'trading investing finance portfolio ib ibkr tws schwab fidelity vanguard',
     entry_points={'console_scripts': ['bankroll = bankroll.__main__:main']})
