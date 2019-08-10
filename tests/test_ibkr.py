@@ -452,13 +452,6 @@ class TestIBKRParsing(unittest.TestCase):
 
         self.validateTradeContract(tradeConfirm, trade.instrument)
 
-    @unittest.skip('Exists to validate test data only')
-    @given(validTradeConfirms)
-    def test_parsedTradeConfirmConvertsToContract(
-            self, tradeConfirm: ibkr._IBTradeConfirm) -> None:
-        trade = ibkr._parseTradeConfirm(tradeConfirm)
-        self.validateTradeContract(tradeConfirm, trade.instrument)
-
     def validatePositionContract(self, position: IB.Position,
                                  instrument: Instrument) -> None:
         contract = ibkr._contract(instrument)
@@ -489,15 +482,6 @@ class TestIBKRParsing(unittest.TestCase):
         except ValueError:
             return
 
-        self.assertEqual(parsedPosition.quantity,
-                         Position.quantizeQuantity(Decimal(position.position)))
-        self.validatePositionContract(position, parsedPosition.instrument)
-
-    @unittest.skip('Exists to validate test data only')
-    @given(validPositions)
-    def test_parsedPositionConvertsToContract(self,
-                                              position: IB.Position) -> None:
-        parsedPosition = ibkr._extractPosition(position)
         self.assertEqual(parsedPosition.quantity,
                          Position.quantizeQuantity(Decimal(position.position)))
         self.validatePositionContract(position, parsedPosition.instrument)
