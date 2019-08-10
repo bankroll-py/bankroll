@@ -19,6 +19,7 @@ class Instrument(ABC):
     symbol: str
     currency: Currency
     multiplier: Decimal
+    exchange: Optional[str]
 
     @classmethod
     def quantizeMultiplier(cls, multiplier: Decimal) -> Decimal:
@@ -49,10 +50,14 @@ class Instrument(ABC):
 # Also used for ETFs.
 @dataclass(unsafe_hash=True, init=False)
 class Stock(Instrument):
-    def __init__(self, symbol: str, currency: Currency):
+    def __init__(self,
+                 symbol: str,
+                 currency: Currency,
+                 exchange: Optional[str] = None):
         super().__init__(symbol=symbol,
                          currency=currency,
-                         multiplier=Decimal(1))
+                         multiplier=Decimal(1),
+                         exchange=exchange)
 
 
 @dataclass(unsafe_hash=True, init=False)
@@ -66,13 +71,15 @@ class Bond(Instrument):
     def __init__(self,
                  symbol: str,
                  currency: Currency,
+                 exchange: Optional[str] = None,
                  validateSymbol: bool = True):
         if validateSymbol and not self.validBondSymbol(symbol):
             raise ValueError(f'Expected symbol to be a bond CUSIP: {symbol}')
 
         super().__init__(symbol=symbol,
                          currency=currency,
-                         multiplier=Decimal(1))
+                         multiplier=Decimal(1),
+                         exchange=exchange)
 
 
 @unique
@@ -104,6 +111,7 @@ class Option(Instrument):
                  expiration: date,
                  strike: Decimal,
                  multiplier: Decimal = Decimal(100),
+                 exchange: Optional[str] = None,
                  symbol: Optional[str] = None):
         if not underlying:
             raise ValueError('Expected non-empty underlying symbol for Option')
@@ -123,41 +131,57 @@ class Option(Instrument):
 
         super().__init__(symbol=symbol,
                          currency=currency,
-                         multiplier=multiplier)
+                         multiplier=multiplier,
+                         exchange=exchange)
 
 
 @dataclass(unsafe_hash=True, init=False)
 class FutureOption(Option):
-    def __init__(self, symbol: str, underlying: str, currency: Currency,
-                 optionType: OptionType, expiration: date, strike: Decimal,
-                 multiplier: Decimal):
+    def __init__(self,
+                 symbol: str,
+                 underlying: str,
+                 currency: Currency,
+                 optionType: OptionType,
+                 expiration: date,
+                 strike: Decimal,
+                 multiplier: Decimal,
+                 exchange: Optional[str] = None):
         super().__init__(underlying=underlying,
                          currency=currency,
                          optionType=optionType,
                          expiration=expiration,
                          strike=strike,
                          multiplier=multiplier,
-                         symbol=symbol)
+                         symbol=symbol,
+                         exchange=exchange)
 
 
 @dataclass(unsafe_hash=True, init=False)
 class Future(Instrument):
     expiration: date
 
-    def __init__(self, symbol: str, currency: Currency, multiplier: Decimal,
-                 expiration: date):
+    def __init__(self,
+                 symbol: str,
+                 currency: Currency,
+                 multiplier: Decimal,
+                 expiration: date,
+                 exchange: Optional[str] = None):
         self.expiration = expiration
 
         super().__init__(symbol=symbol,
                          currency=currency,
-                         multiplier=multiplier)
+                         multiplier=multiplier,
+                         exchange=exchange)
 
 
 @dataclass(unsafe_hash=True, init=False)
 class Forex(Instrument):
     baseCurrency: Currency
 
-    def __init__(self, baseCurrency: Currency, quoteCurrency: Currency):
+    def __init__(self,
+                 baseCurrency: Currency,
+                 quoteCurrency: Currency,
+                 exchange: Optional[str] = None):
         if baseCurrency == quoteCurrency:
             raise ValueError(
                 f'Forex pair must be composed of different currencies, got {baseCurrency!r} and {quoteCurrency!r}'
@@ -168,7 +192,8 @@ class Forex(Instrument):
         symbol = f'{baseCurrency.name}{quoteCurrency.name}'
         super().__init__(symbol=symbol,
                          currency=quoteCurrency,
-                         multiplier=Decimal(1))
+                         multiplier=Decimal(1),
+                         exchange=exchange)
 
     @property
     def quoteCurrency(self) -> Currency:
