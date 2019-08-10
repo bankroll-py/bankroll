@@ -84,6 +84,8 @@ class _SchwabPosition(NamedTuple):
     wk52Low: str
     wk52High: str
     volume: str
+    intrinsicValue: str
+    inTheMoney: str
     securityType: str
 
 
