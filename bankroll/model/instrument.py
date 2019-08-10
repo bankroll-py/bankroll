@@ -34,6 +34,9 @@ class Instrument(ABC):
         if not self.multiplier.is_finite() or self.multiplier <= 0:
             raise ValueError(
                 f'Expected positive multiplier: {self.multiplier}')
+        if self.exchange is not None and len(self.exchange) == 0:
+            raise ValueError(
+                f'If an exchange string is provided, it should be non-empty')
 
         self.multiplier = self.quantizeMultiplier(self.multiplier)
 

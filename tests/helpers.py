@@ -66,32 +66,43 @@ def cash(currency: SearchStrategy[Currency] = from_type(Currency),
     return builds(Cash, currency=currency, quantity=quantity)
 
 
-def bonds(symbol: SearchStrategy[str] = from_regex(Bond.regexCUSIP),
-          currency: SearchStrategy[Currency] = from_type(Currency)
-          ) -> SearchStrategy[Bond]:
-    return builds(Bond, symbol=symbol, currency=currency)
+def exchanges() -> SearchStrategy[str]:
+    return text(min_size=1)
 
 
-def stocks(symbol: SearchStrategy[str] = text(min_size=1),
-           currency: SearchStrategy[Currency] = from_type(Currency)
-           ) -> SearchStrategy[Stock]:
-    return builds(Stock, symbol=symbol, currency=currency)
+def bonds(
+        symbol: SearchStrategy[str] = from_regex(Bond.regexCUSIP),
+        currency: SearchStrategy[Currency] = from_type(Currency),
+        exchange: SearchStrategy[Optional[str]] = optionals(exchanges()),
+) -> SearchStrategy[Bond]:
+    return builds(Bond, symbol=symbol, currency=currency, exchange=exchange)
 
 
-def options(underlying: SearchStrategy[str] = text(min_size=1),
-            currency: SearchStrategy[Currency] = from_type(Currency),
-            optionType: SearchStrategy[OptionType] = from_type(OptionType),
-            expiration: SearchStrategy[date] = dates(),
-            strike: SearchStrategy[Decimal] = strikes(),
-            multiplier: SearchStrategy[Decimal] = multipliers()
-            ) -> SearchStrategy[Option]:
+def stocks(
+        symbol: SearchStrategy[str] = text(min_size=1),
+        currency: SearchStrategy[Currency] = from_type(Currency),
+        exchange: SearchStrategy[Optional[str]] = optionals(exchanges()),
+) -> SearchStrategy[Stock]:
+    return builds(Stock, symbol=symbol, currency=currency, exchange=exchange)
+
+
+def options(
+        underlying: SearchStrategy[str] = text(min_size=1),
+        currency: SearchStrategy[Currency] = from_type(Currency),
+        optionType: SearchStrategy[OptionType] = from_type(OptionType),
+        expiration: SearchStrategy[date] = dates(),
+        strike: SearchStrategy[Decimal] = strikes(),
+        multiplier: SearchStrategy[Decimal] = multipliers(),
+        exchange: SearchStrategy[Optional[str]] = optionals(exchanges()),
+) -> SearchStrategy[Option]:
     return builds(Option,
                   underlying=underlying,
                   currency=currency,
                   optionType=optionType,
                   expiration=expiration,
                   strike=strike,
-                  multiplier=multiplier)
+                  multiplier=multiplier,
+                  exchange=exchange)
 
 
 def futuresOptions(
@@ -101,7 +112,8 @@ def futuresOptions(
         optionType: SearchStrategy[OptionType] = from_type(OptionType),
         expiration: SearchStrategy[date] = dates(),
         strike: SearchStrategy[Decimal] = strikes(),
-        multiplier: SearchStrategy[Decimal] = multipliers()
+        multiplier: SearchStrategy[Decimal] = multipliers(),
+        exchange: SearchStrategy[Optional[str]] = optionals(exchanges()),
 ) -> SearchStrategy[FutureOption]:
     return builds(FutureOption,
                   symbol=symbol,
@@ -110,36 +122,48 @@ def futuresOptions(
                   optionType=optionType,
                   expiration=expiration,
                   strike=strike,
-                  multiplier=multiplier)
+                  multiplier=multiplier,
+                  exchange=exchange)
 
 
-def futures(symbol: SearchStrategy[str] = text(min_size=1),
-            currency: SearchStrategy[Currency] = from_type(Currency),
-            multiplier: SearchStrategy[Decimal] = multipliers()
-            ) -> SearchStrategy[Future]:
+def futures(
+        symbol: SearchStrategy[str] = text(min_size=1),
+        currency: SearchStrategy[Currency] = from_type(Currency),
+        multiplier: SearchStrategy[Decimal] = multipliers(),
+        exchange: SearchStrategy[Optional[str]] = optionals(exchanges()),
+) -> SearchStrategy[Future]:
     return builds(Future,
                   symbol=symbol,
                   currency=currency,
-                  multiplier=multiplier)
+                  multiplier=multiplier,
+                  exchange=exchange)
 
 
-def forex(baseCurrency: SearchStrategy[Currency] = from_type(Currency),
-          quoteCurrency: SearchStrategy[Currency] = from_type(Currency)
-          ) -> SearchStrategy[Forex]:
+def forex(
+        baseCurrency: SearchStrategy[Currency] = from_type(Currency),
+        quoteCurrency: SearchStrategy[Currency] = from_type(Currency),
+        exchange: SearchStrategy[Optional[str]] = optionals(exchanges()),
+) -> SearchStrategy[Forex]:
     return builds(Forex,
                   baseCurrency=baseCurrency,
-                  quoteCurrency=quoteCurrency)
+                  quoteCurrency=quoteCurrency,
+                  exchange=exchange)
 
 
-def instruments(currency: SearchStrategy[Currency] = from_type(Currency)
-                ) -> SearchStrategy[Instrument]:
+def instruments(
+        currency: SearchStrategy[Currency] = from_type(Currency),
+        exchange: SearchStrategy[Optional[str]] = optionals(exchanges()),
+) -> SearchStrategy[Instrument]:
     return one_of(
-        bonds(currency=currency), stocks(currency=currency),
-        options(currency=currency), futuresOptions(currency=currency),
-        futures(currency=currency),
+        bonds(currency=currency, exchange=exchange),
+        stocks(currency=currency, exchange=exchange),
+        options(currency=currency, exchange=exchange),
+        futuresOptions(currency=currency, exchange=exchange),
+        futures(currency=currency, exchange=exchange),
         currency.flatmap(lambda cur: forex(baseCurrency=from_type(Currency).
                                            filter(lambda cur2: cur2 != cur),
-                                           quoteCurrency=just(cur))))
+                                           quoteCurrency=just(cur),
+                                           exchange=exchange)))
 
 
 def positions(instrument: SearchStrategy[Instrument] = instruments(),
@@ -233,9 +257,10 @@ register_type_strategy(Future, futures())
 
 register_type_strategy(
     Forex,
-    lists(from_type(Currency), min_size=2, max_size=2,
-          unique=True).flatmap(lambda cx: forex(baseCurrency=just(cx[0]),
-                                                quoteCurrency=just(cx[1]))))
+    lists(from_type(Currency), min_size=2, max_size=2, unique=True).flatmap(
+        lambda cx: forex(baseCurrency=just(cx[0]),
+                         quoteCurrency=just(cx[1]),
+                         exchange=optionals(exchanges()))))
 
 register_type_strategy(Instrument, instruments())
 
