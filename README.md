@@ -1,4 +1,4 @@
-# bankroll [![CircleCI](https://circleci.com/gh/jspahrsummers/bankroll.svg?style=svg&circle-token=c2eceb857210b420215d7fdba4aa480e72c57fc3)](https://circleci.com/gh/jspahrsummers/bankroll) [![Coverage Status](https://coveralls.io/repos/github/jspahrsummers/bankroll/badge.svg)](https://coveralls.io/github/jspahrsummers/bankroll)
+# bankroll [![PyPI version](https://badge.fury.io/py/bankroll.svg)](https://badge.fury.io/py/bankroll) [![Coverage Status](https://coveralls.io/repos/github/jspahrsummers/bankroll/badge.svg)](https://coveralls.io/github/jspahrsummers/bankroll) [![CircleCI](https://circleci.com/gh/jspahrsummers/bankroll.svg?style=svg&circle-token=c2eceb857210b420215d7fdba4aa480e72c57fc3)](https://circleci.com/gh/jspahrsummers/bankroll)
 Ingest portfolio and other data from multiple brokerages, and analyze it.
 
 **Table of contents:**
