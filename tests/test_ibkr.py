@@ -3,7 +3,7 @@ from bankroll.brokers import ibkr
 from datetime import date
 from decimal import Decimal
 from hypothesis import given, reproduce_failure, settings, Verbosity
-from hypothesis.strategies import builds, dates, decimals, from_regex, from_type, lists, one_of, sampled_from, text
+from hypothesis.strategies import builds, dates, decimals, from_regex, from_type, just, lists, one_of, sampled_from, text
 from itertools import groupby
 from pathlib import Path
 
@@ -35,7 +35,8 @@ class TestIBKRTrades(unittest.TestCase):
         ts = self.tradesBySymbol[symbol]
         self.assertEqual(len(ts), 1)
         self.assertEqual(ts[0].date.date(), date(2019, 2, 12))
-        self.assertEqual(ts[0].instrument, Stock(symbol, Currency.GBP))
+        self.assertEqual(ts[0].instrument,
+                         Stock(symbol, Currency.GBP, exchange='LSE'))
         self.assertEqual(ts[0].quantity, Decimal('100'))
         self.assertEqual(
             ts[0].amount, Cash(currency=Currency.GBP,
@@ -49,7 +50,8 @@ class TestIBKRTrades(unittest.TestCase):
         ts = self.tradesBySymbol[symbol]
         self.assertEqual(len(ts), 1)
         self.assertEqual(ts[0].date.date(), date(2019, 2, 12))
-        self.assertEqual(ts[0].instrument, Stock(symbol, Currency.USD))
+        self.assertEqual(ts[0].instrument,
+                         Stock(symbol, Currency.USD, exchange='NASDAQ'))
         self.assertEqual(ts[0].quantity, Decimal('17'))
         self.assertEqual(
             ts[0].amount, Cash(currency=Currency.USD,
@@ -64,8 +66,12 @@ class TestIBKRTrades(unittest.TestCase):
         ts = self.tradesBySymbol[symbol]
         self.assertEqual(len(ts), 1)
         self.assertEqual(ts[0].date.date(), date(2019, 3, 19))
-        self.assertEqual(ts[0].instrument,
-                         Bond(symbol, Currency.USD, validateSymbol=False))
+        self.assertEqual(
+            ts[0].instrument,
+            Bond(symbol,
+                 Currency.USD,
+                 validateSymbol=False,
+                 exchange='UBSBOND'))
         self.assertEqual(ts[0].quantity, Decimal('2000'))
         self.assertEqual(
             ts[0].amount,
@@ -85,7 +91,8 @@ class TestIBKRTrades(unittest.TestCase):
                    currency=Currency.USD,
                    optionType=OptionType.PUT,
                    expiration=date(2019, 11, 15),
-                   strike=Decimal('87')))
+                   strike=Decimal('87'),
+                   exchange='PSE'))
         self.assertEqual(ts[0].quantity, Decimal('1'))
         self.assertEqual(ts[0].amount,
                          Cash(currency=Currency.USD, quantity=Decimal('-565')))
@@ -107,7 +114,8 @@ class TestIBKRTrades(unittest.TestCase):
                    currency=Currency.USD,
                    optionType=OptionType.PUT,
                    expiration=date(2019, 2, 15),
-                   strike=Decimal('45')))
+                   strike=Decimal('45'),
+                   exchange='CBOE2'))
         self.assertEqual(ts[0].quantity, Decimal('-1'))
         self.assertEqual(ts[0].amount,
                          Cash(currency=Currency.USD, quantity=Decimal('55')))
@@ -125,7 +133,9 @@ class TestIBKRTrades(unittest.TestCase):
         self.assertEqual(ts[0].date.date(), date(2019, 2, 12))
         self.assertEqual(
             ts[0].instrument,
-            Forex(baseCurrency=Currency.GBP, quoteCurrency=Currency.USD))
+            Forex(baseCurrency=Currency.GBP,
+                  quoteCurrency=Currency.USD,
+                  exchange='IDEALFX'))
         self.assertEqual(ts[0].quantity, Decimal('3060'))
         self.assertEqual(
             ts[0].amount,
@@ -135,7 +145,9 @@ class TestIBKRTrades(unittest.TestCase):
         self.assertEqual(ts[0].flags, TradeFlags.OPEN)
         self.assertEqual(
             ts[1].instrument,
-            Forex(baseCurrency=Currency.GBP, quoteCurrency=Currency.USD))
+            Forex(baseCurrency=Currency.GBP,
+                  quoteCurrency=Currency.USD,
+                  exchange='IDEALFX'))
         self.assertEqual(ts[1].quantity, Decimal('50'))
         self.assertEqual(
             ts[1].amount,
@@ -151,7 +163,9 @@ class TestIBKRTrades(unittest.TestCase):
         self.assertEqual(ts[0].date.date(), date(2019, 3, 25))
         self.assertEqual(
             ts[0].instrument,
-            Forex(baseCurrency=Currency.GBP, quoteCurrency=Currency.AUD))
+            Forex(baseCurrency=Currency.GBP,
+                  quoteCurrency=Currency.AUD,
+                  exchange='IDEALFX'))
         self.assertEqual(ts[0].quantity, Decimal('5000'))
         self.assertEqual(
             ts[0].amount,
@@ -170,7 +184,8 @@ class TestIBKRTrades(unittest.TestCase):
             Future(symbol=symbol,
                    currency=Currency.USD,
                    multiplier=Decimal(50),
-                   expiration=date(2019, 3, 15)))
+                   expiration=date(2019, 3, 15),
+                   exchange='GLOBEX'))
         self.assertEqual(ts[0].quantity, Decimal('1'))
         self.assertEqual(ts[0].amount, helpers.cashUSD(Decimal('-139687.5')))
         self.assertEqual(ts[0].fees, helpers.cashUSD(Decimal('2.05')))
@@ -192,7 +207,8 @@ class TestIBKRTrades(unittest.TestCase):
                          optionType=OptionType.CALL,
                          expiration=date(2019, 4, 5),
                          strike=Decimal('1.335'),
-                         multiplier=Decimal(62500)))
+                         multiplier=Decimal(62500),
+                         exchange='GLOBEX'))
         self.assertEqual(ts[0].quantity, Decimal('1'))
         self.assertEqual(ts[0].amount, helpers.cashUSD(Decimal('-918.75')))
         self.assertEqual(ts[0].fees, helpers.cashUSD(Decimal('2.47')))
@@ -223,7 +239,9 @@ class TestIBKRActivity(unittest.TestCase):
         self.assertEqual(
             ts[0],
             CashPayment(date=ts[0].date,
-                        instrument=Stock('AAPL', Currency.USD),
+                        instrument=Stock('AAPL',
+                                         Currency.USD,
+                                         exchange='NASDAQ'),
                         proceeds=helpers.cashUSD(Decimal('23.36'))))
 
         self.assertNotIn(date(2019, 2, 7), self.activityByDate)
@@ -303,47 +321,57 @@ class TestIBKRParsing(unittest.TestCase):
     validCashAmounts = helpers.cashAmounts().map(str)
     validStrikes = helpers.strikes().map(str)
     validPutCalls = sampled_from(['P', 'C'])
+    validExchanges = one_of(just(''), helpers.exchanges())
 
-    validTradeConfirms = builds(ibkr._IBTradeConfirm,
-                                symbol=validSymbols,
-                                underlyingSymbol=validSymbols,
-                                currency=validCurrencies,
-                                commissionCurrency=validCurrencies,
-                                assetCategory=validAssetCategories,
-                                tradeDate=validDates,
-                                expiry=validDates,
-                                quantity=validQuantities,
-                                multiplier=validMultipliers,
-                                proceeds=validCashAmounts,
-                                tax=validCashAmounts,
-                                commission=validCashAmounts,
-                                strike=validStrikes,
-                                putCall=validPutCalls,
-                                code=validCodes)
+    validTradeConfirms = builds(
+        ibkr._IBTradeConfirm,
+        symbol=validSymbols,
+        underlyingSymbol=validSymbols,
+        currency=validCurrencies,
+        commissionCurrency=validCurrencies,
+        assetCategory=validAssetCategories,
+        tradeDate=validDates,
+        expiry=validDates,
+        quantity=validQuantities,
+        multiplier=validMultipliers,
+        proceeds=validCashAmounts,
+        tax=validCashAmounts,
+        commission=validCashAmounts,
+        strike=validStrikes,
+        putCall=validPutCalls,
+        code=validCodes,
+        exchange=validExchanges,
+        listingExchange=validExchanges,
+        underlyingListingExchange=validExchanges,
+    )
 
-    allTradeConfirms = builds(ibkr._IBTradeConfirm,
-                              symbol=one_of(validSymbols, text()),
-                              underlyingSymbol=one_of(validSymbols, text()),
-                              currency=one_of(validCurrencies, text()),
-                              commissionCurrency=one_of(
-                                  validCurrencies, text()),
-                              assetCategory=one_of(allAssetCategories, text()),
-                              tradeDate=one_of(validDates, text()),
-                              expiry=one_of(validDates, text()),
-                              quantity=one_of(validQuantities,
-                                              decimals().map(str), text()),
-                              multiplier=one_of(validMultipliers,
-                                                decimals().map(str), text()),
-                              proceeds=one_of(validCashAmounts,
-                                              decimals().map(str), text()),
-                              tax=one_of(validCashAmounts,
-                                         decimals().map(str), text()),
-                              commission=one_of(validCashAmounts,
-                                                decimals().map(str), text()),
-                              strike=one_of(validStrikes,
-                                            decimals().map(str), text()),
-                              putCall=one_of(validPutCalls, text()),
-                              code=one_of(allCodes, text()))
+    allTradeConfirms = builds(
+        ibkr._IBTradeConfirm,
+        symbol=one_of(validSymbols, text()),
+        underlyingSymbol=one_of(validSymbols, text()),
+        currency=one_of(validCurrencies, text()),
+        commissionCurrency=one_of(validCurrencies, text()),
+        assetCategory=one_of(allAssetCategories, text()),
+        tradeDate=one_of(validDates, text()),
+        expiry=one_of(validDates, text()),
+        quantity=one_of(validQuantities,
+                        decimals().map(str), text()),
+        multiplier=one_of(validMultipliers,
+                          decimals().map(str), text()),
+        proceeds=one_of(validCashAmounts,
+                        decimals().map(str), text()),
+        tax=one_of(validCashAmounts,
+                   decimals().map(str), text()),
+        commission=one_of(validCashAmounts,
+                          decimals().map(str), text()),
+        strike=one_of(validStrikes,
+                      decimals().map(str), text()),
+        putCall=one_of(validPutCalls, text()),
+        code=one_of(allCodes, text()),
+        exchange=one_of(validExchanges, text()),
+        listingExchange=one_of(validExchanges, text()),
+        underlyingListingExchange=one_of(validExchanges, text()),
+    )
 
     validContracts = builds(
         IB.Contract,
@@ -355,6 +383,8 @@ class TestIBKRParsing(unittest.TestCase):
         multiplier=validMultipliers,
         currency=validCurrencies,
         localSymbol=validSymbols,
+        exchange=validExchanges,
+        primaryExchange=validExchanges,
     )
 
     validPositions = builds(IB.Position,
@@ -375,6 +405,8 @@ class TestIBKRParsing(unittest.TestCase):
                           decimals().map(str), text()),
         currency=one_of(validCurrencies, text()),
         localSymbol=one_of(validSymbols, text()),
+        exchange=one_of(validExchanges, text()),
+        primaryExchange=one_of(validExchanges, text()),
     )
 
     allPositions = builds(IB.Position,
