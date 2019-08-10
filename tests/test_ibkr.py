@@ -51,7 +51,7 @@ class TestIBKRTrades(unittest.TestCase):
         self.assertEqual(len(ts), 1)
         self.assertEqual(ts[0].date.date(), date(2019, 2, 12))
         self.assertEqual(ts[0].instrument,
-                         Stock(symbol, Currency.USD, exchange='NASDAQ'))
+                         Stock(symbol, Currency.USD, exchange='ISLAND'))
         self.assertEqual(ts[0].quantity, Decimal('17'))
         self.assertEqual(
             ts[0].amount, Cash(currency=Currency.USD,
@@ -294,7 +294,9 @@ class TestIBKRActivity(unittest.TestCase):
         self.assertEqual(
             ts[0],
             CashPayment(date=ts[0].date,
-                        instrument=Stock('TSLA', Currency.USD),
+                        instrument=Stock('TSLA',
+                                         Currency.USD,
+                                         exchange='NASDAQ'),
                         proceeds=helpers.cashUSD(Decimal('0.01'))))
 
 
