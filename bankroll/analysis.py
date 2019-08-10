@@ -26,7 +26,8 @@ def normalizeSymbol(symbol: str) -> str:
 def normalizeInstrument(instrument: Instrument) -> Instrument:
     if isinstance(instrument, Stock):
         return Stock(symbol=normalizeSymbol(instrument.symbol),
-                     currency=instrument.currency)
+                     currency=instrument.currency,
+                     exchange=instrument.exchange)
     elif isinstance(instrument, Option):
         # Handles the FutureOption subclass correctly as well.
         return replace(instrument,

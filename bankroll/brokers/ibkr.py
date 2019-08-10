@@ -55,6 +55,7 @@ def _parseFiniteDecimal(input: str) -> Decimal:
 def _parseOption(symbol: str,
                  currency: Currency,
                  multiplier: Decimal,
+                 exchange: Optional[str],
                  cls: Type[Option] = Option) -> Option:
     # https://en.wikipedia.org/wiki/Option_symbol#The_OCC_Option_Symbol
     match = re.match(
@@ -72,10 +73,12 @@ def _parseOption(symbol: str,
                currency=currency,
                optionType=optionType,
                expiration=datetime.strptime(match['date'], '%y%m%d').date(),
-               strike=_parseFiniteDecimal(match['strike']) / 1000)
+               strike=_parseFiniteDecimal(match['strike']) / 1000,
+               exchange=exchange)
 
 
-def _parseForex(symbol: str, currency: Currency) -> Forex:
+def _parseForex(symbol: str, currency: Currency,
+                exchange: Optional[str]) -> Forex:
     match = re.match(r'^(?P<base>[A-Z]{3})\.(?P<quote>[A-Z]{3})', symbol)
     if not match:
         raise ValueError(f'Could not parse IB cash symbol: {symbol}')
@@ -87,11 +90,13 @@ def _parseForex(symbol: str, currency: Currency) -> Forex:
             f'Expected quote currency {quoteCurrency} to match position currency {currency}'
         )
 
-    return Forex(baseCurrency=baseCurrency, quoteCurrency=quoteCurrency)
+    return Forex(baseCurrency=baseCurrency,
+                 quoteCurrency=quoteCurrency,
+                 exchange=exchange)
 
 
-def _parseFutureOptionContract(contract: IB.Contract,
-                               currency: Currency) -> Instrument:
+def _parseFutureOptionContract(contract: IB.Contract, currency: Currency,
+                               exchange: Optional[str]) -> Instrument:
     if contract.right.startswith('C'):
         optionType = OptionType.CALL
     elif contract.right.startswith('P'):
@@ -106,7 +111,8 @@ def _parseFutureOptionContract(contract: IB.Contract,
                         expiration=_parseIBDate(
                             contract.lastTradeDateOrContractMonth).date(),
                         strike=_parseFiniteDecimal(contract.strike),
-                        multiplier=_parseFiniteDecimal(contract.multiplier))
+                        multiplier=_parseFiniteDecimal(contract.multiplier),
+                        exchange=exchange)
 
 
 def _extractPosition(p: IB.Position) -> Position:
@@ -117,32 +123,41 @@ def _extractPosition(p: IB.Position) -> Position:
         raise ValueError(f'Unrecognized currency in position: {p}')
 
     currency = Currency[p.contract.currency]
+    exchange = p.contract.exchange or None
 
     try:
         instrument: Instrument
         if tag == 'STK':
-            instrument = Stock(symbol=symbol, currency=currency)
+            instrument = Stock(symbol=symbol,
+                               currency=currency,
+                               exchange=exchange)
         elif tag == 'BILL' or tag == 'BOND':
             instrument = Bond(symbol=symbol,
                               currency=currency,
-                              validateSymbol=False)
+                              validateSymbol=False,
+                              exchange=exchange)
         elif tag == 'OPT':
             instrument = _parseOption(symbol=symbol,
                                       currency=currency,
                                       multiplier=_parseFiniteDecimal(
-                                          p.contract.multiplier))
+                                          p.contract.multiplier),
+                                      exchange=exchange)
         elif tag == 'FUT':
             instrument = Future(
                 symbol=symbol,
                 currency=currency,
                 multiplier=_parseFiniteDecimal(p.contract.multiplier),
                 expiration=_parseIBDate(
-                    p.contract.lastTradeDateOrContractMonth).date())
+                    p.contract.lastTradeDateOrContractMonth).date(),
+                exchange=exchange)
         elif tag == 'FOP':
             instrument = _parseFutureOptionContract(p.contract,
-                                                    currency=currency)
+                                                    currency=currency,
+                                                    exchange=exchange)
         elif tag == 'CASH':
-            instrument = _parseForex(symbol=symbol, currency=currency)
+            instrument = _parseForex(symbol=symbol,
+                                     currency=currency,
+                                     exchange=exchange)
         else:
             raise ValueError(
                 f'Unrecognized/unsupported security type in position: {p}')
@@ -338,7 +353,8 @@ _instrumentEntryTypes = Union[_IBTradeConfirm, _IBChangeInDividendAccrual,
                               _IBSLBFee]
 
 
-def _parseFutureOption(entry: _instrumentEntryTypes) -> Instrument:
+def _parseFutureOption(entry: _instrumentEntryTypes,
+                       exchange: Optional[str]) -> Instrument:
     if entry.putCall == 'C':
         optionType = OptionType.CALL
     elif entry.putCall == 'P':
@@ -352,7 +368,8 @@ def _parseFutureOption(entry: _instrumentEntryTypes) -> Instrument:
                         optionType=optionType,
                         expiration=_parseIBDate(entry.expiry).date(),
                         strike=_parseFiniteDecimal(entry.strike),
-                        multiplier=_parseFiniteDecimal(entry.multiplier))
+                        multiplier=_parseFiniteDecimal(entry.multiplier),
+                        exchange=exchange)
 
 
 def _parseInstrument(entry: _instrumentEntryTypes) -> Instrument:
@@ -365,24 +382,36 @@ def _parseInstrument(entry: _instrumentEntryTypes) -> Instrument:
 
     currency = Currency[entry.currency]
 
+    if isinstance(entry, _IBChangeInDividendAccrual):
+        exchange = None
+    else:
+        exchange = entry.exchange
+
+    exchange = exchange or entry.listingExchange or None
+
     tag = entry.assetCategory
     if tag == 'STK':
-        return Stock(symbol=symbol, currency=currency)
+        return Stock(symbol=symbol, currency=currency, exchange=exchange)
     elif tag == 'BILL' or tag == 'BOND':
-        return Bond(symbol=symbol, currency=currency, validateSymbol=False)
+        return Bond(symbol=symbol,
+                    currency=currency,
+                    validateSymbol=False,
+                    exchange=exchange)
     elif tag == 'OPT':
         return _parseOption(symbol=symbol,
                             currency=currency,
-                            multiplier=_parseFiniteDecimal(entry.multiplier))
+                            multiplier=_parseFiniteDecimal(entry.multiplier),
+                            exchange=exchange)
     elif tag == 'FUT':
         return Future(symbol=symbol,
                       currency=currency,
                       multiplier=_parseFiniteDecimal(entry.multiplier),
-                      expiration=_parseIBDate(entry.expiry).date())
+                      expiration=_parseIBDate(entry.expiry).date(),
+                      exchange=exchange)
     elif tag == 'CASH':
-        return _parseForex(symbol=symbol, currency=currency)
+        return _parseForex(symbol=symbol, currency=currency, exchange=exchange)
     elif tag == 'FOP':
-        return _parseFutureOption(entry)
+        return _parseFutureOption(entry, exchange=exchange)
     else:
         raise ValueError(
             f'Unrecognized/unsupported security type in entry: {entry}')
@@ -638,23 +667,25 @@ def _downloadBalance(ib: IB.IB, lenient: bool) -> AccountBalance:
 
 
 def _stockContract(stock: Stock) -> IB.Contract:
-    return IB.Stock(symbol=stock.symbol,
-                    exchange='SMART',
-                    currency=stock.currency.name)
+    return IB.Stock(
+        symbol=stock.symbol,
+        exchange=f'SMART:{stock.exchange}' if stock.exchange else 'SMART',
+        currency=stock.currency.name)
 
 
 def _bondContract(bond: Bond) -> IB.Contract:
     return IB.Bond(symbol=bond.symbol,
-                   exchange='SMART',
+                   exchange=bond.exchange or 'SMART',
                    currency=bond.currency.name)
 
 
 def _optionContract(option: Option,
                     cls: Type[IB.Contract] = IB.Option) -> IB.Contract:
     lastTradeDate = option.expiration.strftime('%Y%m%d')
+    defaultExchange = '' if issubclass(cls, IB.FuturesOption) else 'SMART'
 
     return cls(localSymbol=option.symbol,
-               exchange='SMART',
+               exchange=option.exchange or defaultExchange,
                currency=option.currency.name,
                lastTradeDateOrContractMonth=lastTradeDate,
                right=option.optionType.value,
@@ -666,14 +697,16 @@ def _futuresContract(future: Future) -> IB.Contract:
     lastTradeDate = future.expiration.strftime('%Y%m%d')
 
     return IB.Future(symbol=future.symbol,
-                     exchange='SMART',
+                     exchange=future.exchange or '',
                      currency=future.currency.name,
                      multiplier=str(future.multiplier),
                      lastTradeDateOrContractMonth=lastTradeDate)
 
 
 def _forexContract(forex: Forex) -> IB.Contract:
-    return IB.Forex(pair=forex.symbol, currency=forex.currency.name)
+    return IB.Forex(pair=forex.symbol,
+                    currency=forex.currency.name,
+                    exchange=forex.exchange or 'SMART')
 
 
 def _contract(instrument: Instrument) -> IB.Contract:
