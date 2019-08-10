@@ -682,9 +682,10 @@ def _bondContract(bond: Bond) -> IB.Contract:
 def _optionContract(option: Option,
                     cls: Type[IB.Contract] = IB.Option) -> IB.Contract:
     lastTradeDate = option.expiration.strftime('%Y%m%d')
+    defaultExchange = '' if issubclass(cls, IB.FuturesOption) else 'SMART'
 
     return cls(localSymbol=option.symbol,
-               exchange=option.exchange or 'SMART',
+               exchange=option.exchange or defaultExchange,
                currency=option.currency.name,
                lastTradeDateOrContractMonth=lastTradeDate,
                right=option.optionType.value,
@@ -695,13 +696,11 @@ def _optionContract(option: Option,
 def _futuresContract(future: Future) -> IB.Contract:
     lastTradeDate = future.expiration.strftime('%Y%m%d')
 
-    return IB.Future(
-        symbol=future.symbol,
-        # I don't think futures even _have_ smart routing, but we can try...
-        exchange=future.exchange or 'SMART',
-        currency=future.currency.name,
-        multiplier=str(future.multiplier),
-        lastTradeDateOrContractMonth=lastTradeDate)
+    return IB.Future(symbol=future.symbol,
+                     exchange=future.exchange or '',
+                     currency=future.currency.name,
+                     multiplier=str(future.multiplier),
+                     lastTradeDateOrContractMonth=lastTradeDate)
 
 
 def _forexContract(forex: Forex) -> IB.Contract:
