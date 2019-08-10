@@ -638,14 +638,15 @@ def _downloadBalance(ib: IB.IB, lenient: bool) -> AccountBalance:
 
 
 def _stockContract(stock: Stock) -> IB.Contract:
-    return IB.Stock(symbol=stock.symbol,
-                    exchange='SMART',
-                    currency=stock.currency.name)
+    return IB.Stock(
+        symbol=stock.symbol,
+        exchange=f'SMART:{stock.exchange}' if stock.exchange else 'SMART',
+        currency=stock.currency.name)
 
 
 def _bondContract(bond: Bond) -> IB.Contract:
     return IB.Bond(symbol=bond.symbol,
-                   exchange='SMART',
+                   exchange=bond.exchange or 'SMART',
                    currency=bond.currency.name)
 
 
@@ -654,7 +655,7 @@ def _optionContract(option: Option,
     lastTradeDate = option.expiration.strftime('%Y%m%d')
 
     return cls(localSymbol=option.symbol,
-               exchange='SMART',
+               exchange=option.exchange or 'SMART',
                currency=option.currency.name,
                lastTradeDateOrContractMonth=lastTradeDate,
                right=option.optionType.value,
@@ -665,15 +666,19 @@ def _optionContract(option: Option,
 def _futuresContract(future: Future) -> IB.Contract:
     lastTradeDate = future.expiration.strftime('%Y%m%d')
 
-    return IB.Future(symbol=future.symbol,
-                     exchange='SMART',
-                     currency=future.currency.name,
-                     multiplier=str(future.multiplier),
-                     lastTradeDateOrContractMonth=lastTradeDate)
+    return IB.Future(
+        symbol=future.symbol,
+        # I don't think futures even _have_ smart routing, but we can try...
+        exchange=future.exchange or 'SMART',
+        currency=future.currency.name,
+        multiplier=str(future.multiplier),
+        lastTradeDateOrContractMonth=lastTradeDate)
 
 
 def _forexContract(forex: Forex) -> IB.Contract:
-    return IB.Forex(pair=forex.symbol, currency=forex.currency.name)
+    return IB.Forex(pair=forex.symbol,
+                    currency=forex.currency.name,
+                    exchange=forex.exchange or 'SMART')
 
 
 def _contract(instrument: Instrument) -> IB.Contract:
