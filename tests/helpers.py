@@ -10,7 +10,7 @@ from typing import List, Optional, TypeVar
 import os
 
 settings.register_profile("ci", max_examples=1000, deadline=100)
-settings.register_profile("dev", max_examples=10, deadline=50)
+settings.register_profile("dev", max_examples=10, deadline=100)
 settings.load_profile(os.getenv(u'HYPOTHESIS_PROFILE', default='dev'))
 
 T = TypeVar('T')
@@ -90,7 +90,7 @@ def options(
         underlying: SearchStrategy[str] = text(min_size=1),
         currency: SearchStrategy[Currency] = from_type(Currency),
         optionType: SearchStrategy[OptionType] = from_type(OptionType),
-        expiration: SearchStrategy[date] = dates(),
+        expiration: SearchStrategy[date] = dates(min_value=date(1900, 1, 1)),
         strike: SearchStrategy[Decimal] = strikes(),
         multiplier: SearchStrategy[Decimal] = multipliers(),
         exchange: SearchStrategy[Optional[str]] = optionals(exchanges()),
@@ -110,7 +110,7 @@ def futuresOptions(
         underlying: SearchStrategy[str] = text(min_size=1),
         currency: SearchStrategy[Currency] = from_type(Currency),
         optionType: SearchStrategy[OptionType] = from_type(OptionType),
-        expiration: SearchStrategy[date] = dates(),
+        expiration: SearchStrategy[date] = dates(min_value=date(1900, 1, 1)),
         strike: SearchStrategy[Decimal] = strikes(),
         multiplier: SearchStrategy[Decimal] = multipliers(),
         exchange: SearchStrategy[Optional[str]] = optionals(exchanges()),

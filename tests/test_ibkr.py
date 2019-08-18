@@ -311,7 +311,7 @@ class TestIBKRParsing(unittest.TestCase):
             ['IND', 'CFD', 'FUND', 'CMDTY', 'IOPT', 'BAG', 'NEWS', 'WAR']))
 
     # For some reason, %Y wasn't zero-padding the year to 4 digits on CI, so provide our own century
-    validDates = dates().map(lambda d: d.strftime('20%y%m%d'))
+    validDates = dates(min_value=date(2000, 1, 1), max_value=date(2099, 12, 31)).map(lambda d: d.strftime('20%y%m%d'))
     validQuantities = helpers.positionQuantities().map(str)
     validCodes = lists(sampled_from(['O', 'C', 'A', 'Ep', 'Ex', 'R', 'P',
                                      'D']),
