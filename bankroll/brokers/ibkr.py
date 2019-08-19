@@ -820,7 +820,7 @@ class IBAccount(AccountData):
         port = settings.get(Settings.TWS_PORT)
 
         tradesSetting = settings.get(Settings.TRADES)
-        trades: Union[Path, int, None]
+        trades: Union[Path, int, None] = None
         if tradesSetting:
             path = Path(tradesSetting)
             if path.is_file():
@@ -829,7 +829,7 @@ class IBAccount(AccountData):
                 trades = int(tradesSetting)
 
         activitySetting = settings.get(Settings.ACTIVITY)
-        activity: Union[Path, int, None]
+        activity: Union[Path, int, None] = None
         if activitySetting:
             path = Path(activitySetting)
             if path.is_file():
