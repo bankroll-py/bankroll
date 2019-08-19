@@ -422,18 +422,24 @@ def _parseTradeConfirm(trade: _IBTradeConfirm) -> Trade:
         instrument = _parseInstrument(trade)
 
         flagsByCode = {
-            'O': TradeFlags.OPEN,
-            'C': TradeFlags.CLOSE,
-            'A': TradeFlags.ASSIGNED_OR_EXERCISED,
-            'Ex': TradeFlags.ASSIGNED_OR_EXERCISED,
-            'Ep': TradeFlags.EXPIRED,
-            'R': TradeFlags.DRIP,
+            'A': TradeFlags.ASSIGNED_OR_EXERCISED, # Assignment
+            'C': TradeFlags.CLOSE, # Closing Trade
+            'Ep': TradeFlags.EXPIRED, # Resulted from an Expired Position
+            'Ex': TradeFlags.ASSIGNED_OR_EXERCISED, # Exercise
+            'O': TradeFlags.OPEN, # Opening Trade
+            'R': TradeFlags.DRIP, # Dividend Reinvestment
+            'T': TradeFlags.OPEN, # Transfer
 
-            # Partial execution
-            'P': TradeFlags.NONE,
-
-            # Unknown code, spotted on a complex futures trade
-            'D': TradeFlags.NONE,
+            # Unsupported/Ignored
+            'B': TradeFlags.NONE, # Automatic Buy-in
+            'Ca': TradeFlags.NONE, # Cancelled
+            'Co': TradeFlags.NONE, # Corrected Trade
+            'D': TradeFlags.NONE, # IB acted as Dual Agent
+            'G': TradeFlags.NONE, # Trade in Guaranteed Account Segment
+            'L': TradeFlags.NONE, # Ordered by IB (Margin Violation, Forced Futures Sell)
+            'M': TradeFlags.NONE, # Entered manually by IB
+            'P': TradeFlags.NONE, # Partial Execution
+            'Si': TradeFlags.NONE, # Solicited Trade (This order was solicited by Interactive Brokers).
         }
 
         codes = trade.code.split(';')
