@@ -110,3 +110,4 @@ mydata/
 *.ini
 !bankroll.default.ini
 !bankroll.test.ini
+.vscode/
