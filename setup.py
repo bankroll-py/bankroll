@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name='bankroll',
-    version='0.3.2',
+    version='0.3.3',
     author='Justin Spahr-Summers',
     author_email='justin@jspahrsummers.com',
     description=
