@@ -422,6 +422,9 @@ def _parseTradeConfirm(trade: _IBTradeConfirm) -> Trade:
         instrument = _parseInstrument(trade)
 
         flagsByCode = {
+            # Codes referenced from:
+            # https://www.interactivebrokers.com/en/software/reportguide/reportguide.htm#reportguide/codestradeconfirm.htm
+
             'A': TradeFlags.ASSIGNED_OR_EXERCISED, # Assignment
             'C': TradeFlags.CLOSE, # Closing Trade
             'Ep': TradeFlags.EXPIRED, # Resulted from an Expired Position
@@ -435,7 +438,7 @@ def _parseTradeConfirm(trade: _IBTradeConfirm) -> Trade:
             'D': TradeFlags.NONE, # IB acted as Dual Agent
             'P': TradeFlags.NONE, # Partial Execution
 
-            # Unsupported
+            # Currently Unsupported
             # 'B': TradeFlags.NONE, # Automatic Buy-in
             # 'Ca': TradeFlags.NONE, # Cancelled
             # 'Co': TradeFlags.NONE, # Corrected Trade
