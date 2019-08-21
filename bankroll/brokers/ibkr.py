@@ -426,13 +426,13 @@ def _parseTradeConfirm(trade: _IBTradeConfirm) -> Trade:
             'C': TradeFlags.CLOSE, # Closing Trade
             'Ep': TradeFlags.EXPIRED, # Resulted from an Expired Position
             'Ex': TradeFlags.ASSIGNED_OR_EXERCISED, # Exercise
+            'L': TradeFlags.LIQUIDATED, # Ordered by IB (Margin Violation, Forced Futures Sell)
             'O': TradeFlags.OPEN, # Opening Trade
             'R': TradeFlags.DRIP, # Dividend Reinvestment
             'T': TradeFlags.OPEN, # Transfer
 
-            #Ignored
+            # Ignored
             'D': TradeFlags.NONE, # IB acted as Dual Agent
-            'L': TradeFlags.NONE, # Ordered by IB (Margin Violation, Forced Futures Sell)
             'P': TradeFlags.NONE, # Partial Execution
 
             # Unsupported

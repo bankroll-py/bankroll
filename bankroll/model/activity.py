@@ -35,6 +35,7 @@ class TradeFlags(Flag):
 
     EXPIRED = auto()
     ASSIGNED_OR_EXERCISED = auto()  # Sign of quantity will indicate which
+    LIQUIDATED = auto()
 
 
 @dataclass(frozen=True)
@@ -59,7 +60,8 @@ class Trade(Activity):
                 TradeFlags.OPEN | TradeFlags.DRIP,
                 TradeFlags.OPEN | TradeFlags.ASSIGNED_OR_EXERCISED,
                 TradeFlags.CLOSE | TradeFlags.EXPIRED,
-                TradeFlags.CLOSE | TradeFlags.ASSIGNED_OR_EXERCISED
+                TradeFlags.CLOSE | TradeFlags.ASSIGNED_OR_EXERCISED,
+                TradeFlags.CLOSE | TradeFlags.LIQUIDATED
         ]:
             raise ValueError(f'Invalid combination of flags: {self.flags}')
 
@@ -78,7 +80,9 @@ class Trade(Activity):
 
     def __str__(self) -> str:
         if self.quantity > 0:
-            action = 'Buy '
+            action = 'Buy   '
+        elif TradeFlags.LIQUIDATED in self.flags:
+            action = 'Sell-L'
         else:
-            action = 'Sell'
+            action = 'Sell  '
         return f'{self.date.date()} {action} {abs(self.quantity):>9} {self.instrument:21} {self.amount.paddedString(padding=10)} (before {self.fees.paddedString(padding=5)} in fees)'
