@@ -430,16 +430,18 @@ def _parseTradeConfirm(trade: _IBTradeConfirm) -> Trade:
             'R': TradeFlags.DRIP, # Dividend Reinvestment
             'T': TradeFlags.OPEN, # Transfer
 
-            # Unsupported/Ignored
-            'B': TradeFlags.NONE, # Automatic Buy-in
-            'Ca': TradeFlags.NONE, # Cancelled
-            'Co': TradeFlags.NONE, # Corrected Trade
+            #Ignored
             'D': TradeFlags.NONE, # IB acted as Dual Agent
-            'G': TradeFlags.NONE, # Trade in Guaranteed Account Segment
             'L': TradeFlags.NONE, # Ordered by IB (Margin Violation, Forced Futures Sell)
-            'M': TradeFlags.NONE, # Entered manually by IB
             'P': TradeFlags.NONE, # Partial Execution
-            'Si': TradeFlags.NONE, # Solicited Trade (This order was solicited by Interactive Brokers).
+
+            # Unsupported
+            # 'B': TradeFlags.NONE, # Automatic Buy-in
+            # 'Ca': TradeFlags.NONE, # Cancelled
+            # 'Co': TradeFlags.NONE, # Corrected Trade
+            # 'G': TradeFlags.NONE, # Trade in Guaranteed Account Segment
+            # 'M': TradeFlags.NONE, # Entered manually by IB
+            # 'Si': TradeFlags.NONE, # Solicited Trade (This order was solicited by Interactive Brokers).
         }
 
         codes = trade.code.split(';')
