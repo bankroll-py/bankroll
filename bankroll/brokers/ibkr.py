@@ -720,7 +720,7 @@ def _forexContract(forex: Forex) -> IB.Contract:
                     exchange=forex.exchange or 'SMART')
 
 
-def _contract(instrument: Instrument) -> IB.Contract:
+def contract(instrument: Instrument) -> IB.Contract:
     if isinstance(instrument, Stock):
         return _stockContract(instrument)
     elif isinstance(instrument, Bond):
@@ -755,7 +755,7 @@ class IBDataProvider(MarketDataProvider):
         # IB.Contract is not guaranteed to be hashable, so we orient the table this way, albeit less useful.
         # TODO: Check uniqueness of instruments
         contractsByInstrument: Dict[Instrument, IB.Contract] = {
-            i: _contract(i)
+            i: contract(i)
             for i in instruments
         }
 
