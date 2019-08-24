@@ -423,7 +423,7 @@ class TestIBKRParsing(unittest.TestCase):
 
     def validateTradeContract(self, tradeConfirm: ibkr._IBTradeConfirm,
                               instrument: Instrument) -> None:
-        contract = ibkr._contract(instrument)
+        contract = ibkr.contract(instrument)
         if tradeConfirm.assetCategory == 'BILL':
             self.assertEqual(contract.secType, 'BOND')
         else:
@@ -456,7 +456,7 @@ class TestIBKRParsing(unittest.TestCase):
 
     def validatePositionContract(self, position: IB.Position,
                                  instrument: Instrument) -> None:
-        contract = ibkr._contract(instrument)
+        contract = ibkr.contract(instrument)
         if position.contract.secType == 'BILL':
             self.assertEqual(contract.secType, 'BOND')
         else:
