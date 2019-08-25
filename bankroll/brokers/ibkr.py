@@ -1,21 +1,33 @@
-from datetime import datetime
-from decimal import Context, Decimal, DivisionByZero, Overflow, InvalidOperation, localcontext
-from enum import Enum, IntEnum, unique
-from itertools import chain, count
-from bankroll.model import AccountBalance, AccountData, Currency, Cash, Instrument, Stock, Bond, Option, OptionType, FutureOption, Future, Forex, Position, TradeFlags, Trade, MarketDataProvider, Quote, Activity, CashPayment
-from bankroll.parsetools import lenientParse
-from pathlib import Path
-from progress.spinner import Spinner
-from random import randint
-from typing import Any, Awaitable, Callable, Dict, Iterable, List, Mapping, NamedTuple, Optional, Sequence, Tuple, Type, TypeVar, Union, no_type_check
-import pandas as pd
-
-import backoff
-import bankroll.configuration as configuration
-import ib_insync as IB
 import logging
 import math
 import re
+from datetime import datetime
+from decimal import (Context, Decimal, DivisionByZero, InvalidOperation,
+                     Overflow, localcontext)
+from enum import Enum, IntEnum, unique
+from itertools import chain, count
+from pathlib import Path
+from random import randint
+from typing import (Any, Awaitable, Callable, Dict, Iterable, List, Mapping,
+                    NamedTuple, Optional, Sequence, Tuple, Type, TypeVar,
+                    Union, no_type_check)
+
+import backoff
+import ib_insync as IB
+import pandas as pd
+import rx
+import rx.scheduler
+import rx.operators as op
+from progress.spinner import Spinner
+from rx.core.typing import Disposable, Observable, Observer, Scheduler
+
+import bankroll.configuration as configuration
+from bankroll.model import (
+    AccountBalance, AccountData, Activity, Bond, Cash, CashPayment, Currency,
+    Forex, Future, FutureOption, Instrument, Option, OptionType, Position,
+    Quote, Stock, StreamingMarketDataProvider, Trade, TradeFlags)
+from bankroll.parsetools import lenientParse
+from bankroll.rx_ext import AnonymousDisposable
 
 
 @unique
@@ -745,9 +757,14 @@ class _MarketDataType(IntEnum):
     DELAYED_FROZEN = 4
 
 
-class IBDataProvider(MarketDataProvider):
-    def __init__(self, client: IB.IB):
+class IBDataProvider(StreamingMarketDataProvider):
+    def __init__(self, client: IB.IB, 
+                    dataType: Optional[_MarketDataType] = _MarketDataType.DELAYED_FROZEN):
         self._client = client
+
+        if dataType is not None:
+            self._client.reqMarketDataType(dataType.value)
+
         super().__init__()
 
     def qualifyContracts(self, instruments: Iterable[Instrument]
@@ -774,13 +791,40 @@ class IBDataProvider(MarketDataProvider):
             useRTH=True,
             formatDate=1)
         return IB.util.df(data)
+    
+    def _quoteFromTicker(self, instrument: Instrument, ticker: IB.Ticker) -> Quote:
+        bid: Optional[Cash] = None
+        ask: Optional[Cash] = None
+        last: Optional[Cash] = None
+        close: Optional[Cash] = None
+
+        factor = 1
+
+        # Tickers are quoted in GBX despite all the other data being in GBP.
+        if instrument.currency == Currency.GBP:
+            factor = 100
+
+        if (ticker.bid
+                and math.isfinite(ticker.bid)) and not ticker.bidSize == 0:
+            bid = Cash(currency=instrument.currency,
+                        quantity=Decimal(ticker.bid) / factor)
+        if (ticker.ask
+                and math.isfinite(ticker.ask)) and not ticker.askSize == 0:
+            ask = Cash(currency=instrument.currency,
+                        quantity=Decimal(ticker.ask) / factor)
+        if (ticker.last and math.isfinite(
+                ticker.last)) and not ticker.lastSize == 0:
+            last = Cash(currency=instrument.currency,
+                        quantity=Decimal(ticker.last) / factor)
+        if ticker.close and math.isfinite(ticker.close):
+            close = Cash(currency=instrument.currency,
+                            quantity=Decimal(ticker.close) / factor)
+        
+        return Quote(bid=bid, ask=ask, last=last, close=close)
 
     def fetchQuotes(self,
                     instruments: Iterable[Instrument],
-                    dataType: _MarketDataType = _MarketDataType.DELAYED_FROZEN
                     ) -> Iterable[Tuple[Instrument, Quote]]:
-        self._client.reqMarketDataType(dataType.value)
-
         contractsByInstrument = self.qualifyContracts(instruments)
 
         # Note: this blocks until all tickers come back. When we want this to be async, we'll need to use reqMktData().
@@ -791,34 +835,34 @@ class IBDataProvider(MarketDataProvider):
             instrument = next((i for (i, c) in contractsByInstrument.items()
                                if c == ticker.contract))
 
-            bid: Optional[Cash] = None
-            ask: Optional[Cash] = None
-            last: Optional[Cash] = None
-            close: Optional[Cash] = None
+            yield (instrument, self._quoteFromTicker(instrument, ticker))
 
-            factor = 1
+    def subscribeToQuotes(self, instruments: Iterable[Instrument]
+                          ) -> Observable[Tuple[Instrument, Quote]]:
+        # TODO: This should be async, then wrapped up in the Observable.
+        contractsByInstrument = self.qualifyContracts(instruments)
 
-            # Tickers are quoted in GBX despite all the other data being in GBP.
-            if instrument.currency == Currency.GBP:
-                factor = 100
+        def _tupleForTicker(ticker: IB.Ticker) -> Tuple[Instrument, Quote]:
+            instrument = next((i for (i, c) in contractsByInstrument.items() if c == ticker.contract))
+            return (instrument, self._quoteFromTicker(instrument, ticker))
+        
+        return rx.from_iterable(self._subscribeToContract(contract) for contract in contractsByInstrument.values()).pipe(
+            op.merge_all(),
+            op.map(_tupleForTicker),
+        )
+    
+    def _subscribeToContract(self, contract: IB.Contract) -> Observable[IB.Ticker]:
+        def _subscribe(observer: Observer[IB.Ticker], scheduler: Optional[Scheduler]) -> Disposable:
+            if scheduler is None:
+                scheduler = rx.scheduler.ImmediateScheduler()
+            
+            ticker = self._client.reqMktData(contract)
+            ticker.updateEvent += lambda ticker: scheduler.schedule(lambda scheduler, _: observer.on_next(ticker))
 
-            if (ticker.bid
-                    and math.isfinite(ticker.bid)) and not ticker.bidSize == 0:
-                bid = Cash(currency=instrument.currency,
-                           quantity=Decimal(ticker.bid) / factor)
-            if (ticker.ask
-                    and math.isfinite(ticker.ask)) and not ticker.askSize == 0:
-                ask = Cash(currency=instrument.currency,
-                           quantity=Decimal(ticker.ask) / factor)
-            if (ticker.last and math.isfinite(
-                    ticker.last)) and not ticker.lastSize == 0:
-                last = Cash(currency=instrument.currency,
-                            quantity=Decimal(ticker.last) / factor)
-            if ticker.close and math.isfinite(ticker.close):
-                close = Cash(currency=instrument.currency,
-                             quantity=Decimal(ticker.close) / factor)
+            # TODO: Use a ConnectableObservable or a Subject, because cancellation does not nest.
+            return AnonymousDisposable(lambda: self._client.cancelMktData(contract))
 
-            yield (instrument, Quote(bid=bid, ask=ask, last=last, close=close))
+        return rx.create(_subscribe)
 
 
 class IBAccount(AccountData):
@@ -931,5 +975,5 @@ class IBAccount(AccountData):
         return _downloadBalance(self.client, self._lenient)
 
     @property
-    def marketDataProvider(self) -> Optional[MarketDataProvider]:
+    def marketDataProvider(self) -> IBDataProvider:
         return IBDataProvider(client=self.client)
