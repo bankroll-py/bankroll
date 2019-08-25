@@ -34,6 +34,7 @@ setup(
         'progress>=1.5',
         'backoff>=1.8',
         'pyfolio>=0.9.0',
+        'rx>=3.0.1',
     ],
     keywords=
     'trading investing finance portfolio ib ibkr tws schwab fidelity vanguard',
