@@ -4,9 +4,11 @@ from decimal import Decimal
 from itertools import permutations
 from typing import Any, Iterable, Optional, Tuple, TypeVar
 
+import pandas as pd
+from rx.core.typing import Observable
+
 from .cash import Cash
 from .instrument import Instrument
-import pandas as pd
 
 _Item = TypeVar('_Item')
 
@@ -60,4 +62,13 @@ class MarketDataProvider(ABC):
         pass
 
     def fetchHistoricalData(self, instrument: Instrument) -> pd.DataFrame:
+        pass
+
+
+class StreamingMarketDataProvider(MarketDataProvider):
+    # Subscribes to live market data for the provided instruments, sending
+    # quotes on whatever interval/resolution the MarketDataProvider decides.
+    @abstractmethod
+    def subscribeToQuotes(self, instruments: Iterable[Instrument]
+                          ) -> Observable[Tuple[Instrument, Quote]]:
         pass
