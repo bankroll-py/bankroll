@@ -35,6 +35,8 @@ setup(
         "bankroll_marketdata @ git+https://github.com/bankroll-py/bankroll-marketdata@master#egg=bankroll_marketdata",
         "bankroll_model @ git+https://github.com/bankroll-py/bankroll-model@master#egg=bankroll_model",
         "bankroll_broker @ git+https://github.com/bankroll-py/bankroll-broker@master#egg=bankroll_broker",
+        "numpy>=1.17.0",
+        "progress>=1.5",
         "pyfolio>=0.9.0",
     ],
     keywords="trading investing finance portfolio",

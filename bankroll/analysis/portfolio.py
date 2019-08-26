@@ -1,12 +1,13 @@
 import math
-import pandas as pd
-import numpy as np
-import pyfolio as pf
+import pandas as pd  # type: ignore
+import numpy as np  # type: ignore
+import pyfolio as pf  # type: ignore
 from typing import Optional, List, Dict, Iterable, Tuple
 from decimal import Decimal
-from .model import *
+from bankroll.model import *
+from bankroll.marketdata import *
 from dataclasses import asdict
-from ib_insync import util
+from ib_insync import util  # type: ignore
 import ib_insync as ibapi
 
 
@@ -130,7 +131,8 @@ def positions_to_history(
     new_positions = []
     for position in filter(is_stock, positions):
         try:
-            barList = provider.fetchHistoricalData(position.instrument)
+            # FIXME: This is specific to IBDataProvider right now
+            barList = provider.fetchHistoricalData(position.instrument)  # type: ignore
         except ValueError:
             print("something bad happened")
             continue

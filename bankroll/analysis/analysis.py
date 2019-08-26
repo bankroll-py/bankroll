@@ -7,22 +7,11 @@ from functools import reduce
 from itertools import groupby
 from typing import Dict, Iterable, Optional, Sequence, Tuple
 
-from progress.bar import Bar
+from progress.bar import Bar  # type: ignore
 
-from .model import (
-    Activity,
-    Cash,
-    CashPayment,
-    Currency,
-    Forex,
-    Instrument,
-    MarketDataProvider,
-    Option,
-    Position,
-    Quote,
-    Stock,
-    Trade,
-)
+from bankroll.marketdata import MarketDataProvider
+from bankroll.model import (Activity, Cash, CashPayment, Currency, Forex,
+                            Instrument, Option, Position, Quote, Stock, Trade)
 
 
 # Different brokers represent "identical" symbols differently, and they can all
