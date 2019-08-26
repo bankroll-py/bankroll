@@ -10,8 +10,19 @@ from typing import Dict, Iterable, Optional, Sequence, Tuple
 from progress.bar import Bar  # type: ignore
 
 from bankroll.marketdata import MarketDataProvider
-from bankroll.model import (Activity, Cash, CashPayment, Currency, Forex,
-                            Instrument, Option, Position, Quote, Stock, Trade)
+from bankroll.model import (
+    Activity,
+    Cash,
+    CashPayment,
+    Currency,
+    Forex,
+    Instrument,
+    Option,
+    Position,
+    Quote,
+    Stock,
+    Trade,
+)
 
 
 # Different brokers represent "identical" symbols differently, and they can all
