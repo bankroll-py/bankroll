@@ -5,14 +5,14 @@ from typing import Callable, Dict, Iterable, List, Optional
 
 from progress.bar import Bar  # type: ignore
 
-from bankroll.analysis import *
+import bankroll.analysis.analysis as analysis
 from bankroll.broker import AccountAggregator
 from bankroll.broker.configuration import (
     Configuration,
     Settings,
     addSettingsToArgumentGroup,
 )
-from bankroll.marketdata import MarketDataProvider
+from bankroll.marketdata import MarketDataProvider, MarketConnectedAccountData
 from bankroll.model import Activity, Cash, Instrument, Position, Stock, Trade
 
 try:
@@ -101,7 +101,14 @@ if vanguard:
 def printPositions(accounts: AccountAggregator, args: Namespace) -> None:
     values: Dict[Position, Cash] = {}
     if args.live_value:
-        dataProvider = accounts.marketDataProvider
+        dataProvider = next(
+            (
+                account.marketDataProvider
+                for account in accounts.accounts
+                if isinstance(account, MarketConnectedAccountData)
+            )
+        )
+
         if dataProvider:
             values = analysis.liveValuesForPositions(
                 accounts.positions(),
