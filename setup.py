@@ -13,8 +13,11 @@ setup(
     long_description_content_type="text/markdown",
     license="MIT",
     url="https://github.com/bankroll-py/bankroll",
-    packages=['bankroll.analysis', 'bankroll.interface'],
-    package_data={"bankroll.analysis", ["py.typed"], "bankroll.interface": ["bankroll.default.ini", "py.typed"]},
+    packages=["bankroll.analysis", "bankroll.interface"],
+    package_data={
+        "bankroll.analysis": ["py.typed"],
+        "bankroll.interface": ["bankroll.default.ini", "py.typed"],
+    },
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Environment :: Console",
