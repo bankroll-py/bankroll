@@ -68,6 +68,7 @@ jobs:
             python3 -m venv --clear venv
             . venv/bin/activate
             pip install .[ibkr]
+            bankroll -h | grep ibkr
 
       - run:
           name: test schwab install
@@ -75,6 +76,7 @@ jobs:
             python3 -m venv --clear venv
             . venv/bin/activate
             pip install .[schwab]
+            bankroll -h | grep schwab
 
       - run:
           name: test fidelity install
@@ -82,6 +84,7 @@ jobs:
             python3 -m venv --clear venv
             . venv/bin/activate
             pip install .[fidelity]
+            bankroll -h | grep fidelity
 
       - run:
           name: test vanguard install
@@ -89,6 +92,7 @@ jobs:
             python3 -m venv --clear venv
             . venv/bin/activate
             pip install .[vanguard]
+            bankroll -h | grep vanguard
       
       - run:
           name: test installing all extras
@@ -96,3 +100,7 @@ jobs:
             python3 -m venv --clear venv
             . venv/bin/activate
             pip install .[ibkr,schwab,fidelity,vanguard]
+            bankroll -h | grep ibkr
+            bankroll -h | grep schwab
+            bankroll -h | grep fidelity
+            bankroll -h | grep vanguard
