@@ -1,19 +1,16 @@
 from argparse import ArgumentParser, Namespace
 from itertools import chain
-from bankroll import (
-    Activity,
-    Instrument,
-    Stock,
-    Position,
-    Trade,
-    Cash,
-    MarketDataProvider,
-    AccountAggregator,
-    analysis,
-)
+from bankroll.model import Activity, Instrument, Stock, Position, Trade, Cash
+from bankroll.marketdata import MarketDataProvider
+from bankroll.analysis import *
 from bankroll.brokers import *
-from bankroll.configuration import Configuration, Settings, addSettingsToArgumentGroup
-from progress.bar import Bar
+from bankroll.broker import AccountAggregator
+from bankroll.broker.configuration import (
+    Configuration,
+    Settings,
+    addSettingsToArgumentGroup,
+)
+from progress.bar import Bar  # type: ignore
 from typing import Dict, Callable, Iterable, List, Optional
 
 import logging
