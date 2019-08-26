@@ -4,7 +4,7 @@ from decimal import Decimal
 from itertools import chain
 from typing import Any, Dict, Iterable, List, Tuple, no_type_check
 
-from bankroll import (
+from bankroll.model import (
     Activity,
     Cash,
     CashPayment,
@@ -12,7 +12,6 @@ from bankroll import (
     Forex,
     FutureOption,
     Instrument,
-    MarketDataProvider,
     Option,
     OptionType,
     Position,
@@ -32,6 +31,7 @@ from bankroll.analysis import (
     realizedBasisForSymbol,
     timelineForSymbol,
 )
+from bankroll.marketdata import MarketDataProvider
 from hypothesis import HealthCheck, given, reproduce_failure, seed, settings
 from hypothesis.strategies import (
     SearchStrategy,

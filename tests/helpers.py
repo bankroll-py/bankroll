@@ -1,49 +1,24 @@
+import os
 from datetime import date, datetime, timedelta
 from decimal import Decimal
-from hypothesis import settings
-from hypothesis.strategies import (
-    builds,
-    dates,
-    datetimes,
-    decimals,
-    from_regex,
-    from_type,
-    just,
-    lists,
-    integers,
-    none,
-    one_of,
-    register_type_strategy,
-    sampled_from,
-    sets,
-    text,
-    SearchStrategy,
-)
-from bankroll import (
-    AccountBalance,
-    AccountData,
-    Activity,
-    Cash,
-    Currency,
-    Instrument,
-    Stock,
-    Bond,
-    Option,
-    OptionType,
-    FutureOption,
-    Future,
-    Forex,
-    Position,
-    CashPayment,
-    Trade,
-    TradeFlags,
-    Quote,
-)
-from bankroll.brokers import *
-from bankroll.configuration import Settings
 from typing import List, Optional, TypeVar
 
-import os
+from hypothesis import settings
+from hypothesis.strategies import (SearchStrategy, builds, dates, datetimes,
+                                   decimals, from_regex, from_type, integers,
+                                   just, lists, none, one_of,
+                                   register_type_strategy, sampled_from, sets,
+                                   text)
+
+import bankroll.brokers.fidelity as fidelity
+import bankroll.brokers.ibkr as ibkr
+import bankroll.brokers.schwab as schwab
+import bankroll.brokers.vanguard as vanguard
+from bankroll.broker import AccountData, configuration
+from bankroll.model import (AccountBalance, Activity, Bond, Cash, CashPayment,
+                            Currency, Forex, Future, FutureOption, Instrument,
+                            Option, OptionType, Position, Quote, Stock, Trade,
+                            TradeFlags)
 
 settings.register_profile("ci", max_examples=1000, deadline=100)
 settings.register_profile("dev", max_examples=10, deadline=100)
@@ -370,7 +345,7 @@ register_type_strategy(
 register_type_strategy(Quote, uniformCurrencyQuotes())
 
 register_type_strategy(
-    Settings, one_of([from_type(s) for s in Settings.__subclasses__()])
+    configuration.Settings, one_of([from_type(s) for s in configuration.Settings.__subclasses__()])
 )
 
 fixtureSettings = {

@@ -5,14 +5,14 @@ from typing import Callable, Dict, Iterable, List, Optional
 
 from progress.bar import Bar  # type: ignore
 
-import bankroll.analysis.analysis as analysis
+import bankroll.analysis as analysis
 from bankroll.broker import AccountAggregator
 from bankroll.broker.configuration import (
     Configuration,
     Settings,
     addSettingsToArgumentGroup,
 )
-from bankroll.marketdata import MarketDataProvider, MarketConnectedAccountData
+from bankroll.marketdata import MarketConnectedAccountData, MarketDataProvider
 from bankroll.model import Activity, Cash, Instrument, Position, Stock, Trade
 
 try:
