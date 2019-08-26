@@ -61,10 +61,38 @@ jobs:
           command: |
             . venv/bin/activate
             black --check bankroll tests
-      
+
       - run:
-          name: test installing
+          name: test ibkr install
           command: |
             python3 -m venv --clear venv
             . venv/bin/activate
-            pip install .
+            pip install .[ibkr]
+
+      - run:
+          name: test schwab install
+          command: |
+            python3 -m venv --clear venv
+            . venv/bin/activate
+            pip install .[schwab]
+
+      - run:
+          name: test fidelity install
+          command: |
+            python3 -m venv --clear venv
+            . venv/bin/activate
+            pip install .[fidelity]
+
+      - run:
+          name: test vanguard install
+          command: |
+            python3 -m venv --clear venv
+            . venv/bin/activate
+            pip install .[vanguard]
+      
+      - run:
+          name: test installing all extras
+          command: |
+            python3 -m venv --clear venv
+            . venv/bin/activate
+            pip install .[ibkr,schwab,fidelity,vanguard]
