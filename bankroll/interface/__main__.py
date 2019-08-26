@@ -1,19 +1,39 @@
+import logging
 from argparse import ArgumentParser, Namespace
 from itertools import chain
-from bankroll.model import Activity, Instrument, Stock, Position, Trade, Cash
-from bankroll.marketdata import MarketDataProvider
+from typing import Callable, Dict, Iterable, List, Optional
+
+from progress.bar import Bar  # type: ignore
+
 from bankroll.analysis import *
-from bankroll.brokers import *
 from bankroll.broker import AccountAggregator
 from bankroll.broker.configuration import (
     Configuration,
     Settings,
     addSettingsToArgumentGroup,
 )
-from progress.bar import Bar  # type: ignore
-from typing import Dict, Callable, Iterable, List, Optional
+from bankroll.marketdata import MarketDataProvider
+from bankroll.model import Activity, Cash, Instrument, Position, Stock, Trade
 
-import logging
+try:
+    import bankroll.brokers.ibkr as ibkr
+except ImportError:
+    ibkr = None  # type: ignore
+
+try:
+    import bankroll.brokers.schwab as schwab
+except ImportError:
+    schwab = None  # type: ignore
+
+try:
+    import bankroll.brokers.fidelity as fidelity
+except ImportError:
+    fidelity = None  # type: ignore
+
+try:
+    import bankroll.brokers.vanguard as vanguard
+except ImportError:
+    vanguard = None  # type: ignore
 
 parser = ArgumentParser(
     prog="bankroll",
@@ -50,28 +70,32 @@ parser.add_argument(
     action="append",
 )
 
-ibGroup = parser.add_argument_group(
-    "IB", "Options for importing data from Interactive Brokers."
-)
-readIBSettings = addSettingsToArgumentGroup(ibkr.Settings, ibGroup)
+if ibkr:
+    ibGroup = parser.add_argument_group(
+        "IB", "Options for importing data from Interactive Brokers."
+    )
+    readIBSettings = addSettingsToArgumentGroup(ibkr.Settings, ibGroup)
 
-fidelityGroup = parser.add_argument_group(
-    "Fidelity",
-    "Options for importing data from local files in Fidelity's CSV export format.",
-)
-readFidelitySettings = addSettingsToArgumentGroup(fidelity.Settings, fidelityGroup)
+if fidelity:
+    fidelityGroup = parser.add_argument_group(
+        "Fidelity",
+        "Options for importing data from local files in Fidelity's CSV export format.",
+    )
+    readFidelitySettings = addSettingsToArgumentGroup(fidelity.Settings, fidelityGroup)
 
-schwabGroup = parser.add_argument_group(
-    "Schwab",
-    "Options for importing data from local files in Charles Schwab's CSV export format.",
-)
-readSchwabSettings = addSettingsToArgumentGroup(schwab.Settings, schwabGroup)
+if schwab:
+    schwabGroup = parser.add_argument_group(
+        "Schwab",
+        "Options for importing data from local files in Charles Schwab's CSV export format.",
+    )
+    readSchwabSettings = addSettingsToArgumentGroup(schwab.Settings, schwabGroup)
 
-vanguardGroup = parser.add_argument_group(
-    "Vanguard",
-    "Options for importing data from local files in Vanguard's CSV export format.",
-)
-readVanguardSettings = addSettingsToArgumentGroup(vanguard.Settings, vanguardGroup)
+if vanguard:
+    vanguardGroup = parser.add_argument_group(
+        "Vanguard",
+        "Options for importing data from local files in Vanguard's CSV export format.",
+    )
+    readVanguardSettings = addSettingsToArgumentGroup(vanguard.Settings, vanguardGroup)
 
 
 def printPositions(accounts: AccountAggregator, args: Namespace) -> None:
