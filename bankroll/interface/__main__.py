@@ -15,6 +15,8 @@ from bankroll.broker.configuration import (
 from bankroll.marketdata import MarketConnectedAccountData, MarketDataProvider
 from bankroll.model import Activity, Cash, Instrument, Position, Stock, Trade
 
+from .configuration import loadConfig
+
 try:
     import bankroll.brokers.ibkr as ibkr
 except ImportError:
@@ -198,7 +200,7 @@ def main() -> None:
     if args.verbose:
         logging.basicConfig(level=logging.INFO)
 
-    config = Configuration(
+    config = loadConfig(
         chain(Configuration.defaultSearchPaths, args.config if args.config else [])
     )
 
