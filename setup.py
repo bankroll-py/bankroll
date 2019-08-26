@@ -4,18 +4,17 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(
-    name='bankroll',
-    version='0.3.3',
-    author='Justin Spahr-Summers',
-    author_email='justin@jspahrsummers.com',
-    description=
-    'Ingest portfolio and other data from multiple brokerages, and analyze it',
+    name="bankroll",
+    version="0.4.0",
+    author="Justin Spahr-Summers",
+    author_email="justin@jspahrsummers.com",
+    description="Ingest portfolio and other data from multiple brokerages, and analyze it",
     long_description=long_description,
-    long_description_content_type='text/markdown',
-    license='MIT',
-    url='https://github.com/jspahrsummers/bankroll',
-    packages=find_packages(),
-    package_data={'bankroll': ['bankroll.default.ini']},
+    long_description_content_type="text/markdown",
+    license="MIT",
+    url="https://github.com/bankroll-py/bankroll",
+    packages=['bankroll.analysis', 'bankroll.interface'],
+    package_data={"bankroll.analysis", ["py.typed"], "bankroll.interface": ["bankroll.default.ini", "py.typed"]},
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Environment :: Console",
@@ -30,11 +29,11 @@ setup(
         "Typing :: Typed",
     ],
     install_requires=[
-        'ib-insync>=0.9.50',
-        'progress>=1.5',
-        'backoff>=1.8',
-        'pyfolio>=0.9.0',
+        "bankroll_marketdata @ git+https://github.com/bankroll-py/bankroll-marketdata@master#egg=bankroll_marketdata",
+        "bankroll_model @ git+https://github.com/bankroll-py/bankroll-model@master#egg=bankroll_model",
+        "bankroll_broker @ git+https://github.com/bankroll-py/bankroll-broker@master#egg=bankroll_broker",
+        "pyfolio>=0.9.0",
     ],
-    keywords=
-    'trading investing finance portfolio ib ibkr tws schwab fidelity vanguard',
-    entry_points={'console_scripts': ['bankroll = bankroll.__main__:main']})
+    keywords="trading investing finance portfolio",
+    entry_points={"console_scripts": ["bankroll = bankroll.interface.__main__:main"]},
+)

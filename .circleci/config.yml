@@ -3,119 +3,68 @@
 # Check https://circleci.com/docs/2.0/language-python/ for more details
 #
 version: 2
-
-defaults: &defaults
-  docker:
-    # https://circleci.com/docs/2.0/circleci-images/
-    - image: circleci/python:3.7.2-stretch
-
-  working_directory: ~/bankroll
-
 jobs:
-  shellcheck:
+  build:
     docker:
-      - image: koalaman/shellcheck-alpine:stable
+      # specify the version you desire here
+      # use `-browsers` prefix for selenium tests, e.g. `3.6.1-browsers`
+      - image: circleci/python:3.7.4
+
+      # Specify service dependencies here if necessary
+      # CircleCI maintains a library of pre-built images
+      # documented at https://circleci.com/docs/2.0/circleci-images/
+      # - image: circleci/postgres:9.4
+
+    working_directory: ~/repo
+
     steps:
       - checkout
-      - run:
-          name: Check Scripts
-          command: shellcheck --external-sources script/*
 
-  test:
-    <<: *defaults
-
-    parallelism: 4
-
-    steps:
-      - checkout
-
-      # Note that race conditions between workflows are possible here:
-      # https://circleci.com/docs/2.0/caching/#writing-to-the-cache-in-workflows
-      #
-      # As long as the caching is deterministic, this _should_ be OK.
-      - restore_cache: &default_restore_cache
+      # Download and cache dependencies
+      - restore_cache:
           keys:
-            # When requirements change, use increasingly general patterns to restore cache.
-            - v2-dependencies-{{ checksum "requirements.txt" }}
-            - v2-dependencies-
+            - v1-dependencies-{{ checksum "requirements.txt" }}
+            # fallback to using the latest cache if no exact match is found
+            - v1-dependencies-
 
-      - run: &bootstrap
+      - run:
           name: install dependencies
-          command: script/bootstrap
+          command: |
+            python3 -m venv venv
+            . venv/bin/activate
+            pip install -r requirements.txt
 
-      - save_cache: &default_save_cache
+      - save_cache:
           paths:
             - ./venv
-          key: v2-dependencies-{{ checksum "requirements.txt" }}
+          key: v1-dependencies-{{ checksum "requirements.txt" }}
+      
+      - run:
+          name: typecheck
+          command: |
+            . venv/bin/activate
+            mypy --namespace-packages --strict --implicit-reexport bankroll
+            mypy --namespace-packages --strict --implicit-reexport -p tests
 
       - run:
           name: run tests
-          command: script/test
+          command: |
+            . venv/bin/activate
+            python -m unittest -v
 
-  test installing:
-    <<: *defaults
+      - store_artifacts:
+          path: test-reports
+          destination: test-reports
 
-    steps:
-      - checkout
+      - run:
+          name: linting
+          command: |
+            . venv/bin/activate
+            black --check bankroll tests
       
       - run:
-          command: script/test_install
-  
-  contribution guidelines:
-    <<: *defaults
-
-    steps:
-      - checkout
-
-      - restore_cache: *default_restore_cache
-      - run: *bootstrap
-      - save_cache: *default_save_cache
-
-      - run:
-          name: typecheck
-          command: script/typecheck
-      
-      - run:
-          name: check formatting
-          when: always
-          command: script/reformat --diff
-  
-  deploy:
-    <<: *defaults
-
-    steps:
-      - checkout
-    
-      - run:
-          name: deploy
-          command: script/deploy
-  
-versiontags: &versiontags
-  tags:
-    only: /^v.*/
-
-workflows:
-  version: 2
-  workflow:
-    jobs:
-      - shellcheck:
-          filters:
-            <<: *versiontags
-      - test:
-          filters:
-            <<: *versiontags
-      - test installing:
-          filters:
-            <<: *versiontags
-      - contribution guidelines:
-          filters:
-            <<: *versiontags
-      - deploy:
-          requires:
-            - test
-            - test installing
-            - contribution guidelines
-          filters:
-            <<: *versiontags
-            branches:
-              ignore: /.*/
+          name: test installing
+          command: |
+            python3 -m venv --clear venv
+            . venv/bin/activate
+            pip install .

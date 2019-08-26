@@ -1,4 +1,4 @@
-# bankroll [![PyPI version](https://badge.fury.io/py/bankroll.svg)](https://badge.fury.io/py/bankroll) [![Coverage Status](https://coveralls.io/repos/github/jspahrsummers/bankroll/badge.svg)](https://coveralls.io/github/jspahrsummers/bankroll) [![CircleCI](https://circleci.com/gh/jspahrsummers/bankroll.svg?style=svg&circle-token=c2eceb857210b420215d7fdba4aa480e72c57fc3)](https://circleci.com/gh/jspahrsummers/bankroll)
+# bankroll [![PyPI version](https://badge.fury.io/py/bankroll.svg)](https://badge.fury.io/py/bankroll) [![CircleCI](https://circleci.com/gh/bankroll-py/bankroll.svg?style=svg&circle-token=c2eceb857210b420215d7fdba4aa480e72c57fc3)](https://circleci.com/gh/bankroll-py/bankroll)
 Ingest portfolio and other data from multiple brokerages, and analyze it.
 
 **Table of contents:**
@@ -111,7 +111,7 @@ python -m bankroll \
 
 ### Querying dividend history
 
-_This workflow [will be simplified](https://github.com/jspahrsummers/bankroll/issues/36) in the future._
+_This workflow [will be simplified](https://github.com/bankroll-py/bankroll/issues/36) in the future._
 
 To incorporate the history of dividend payments in your portfolio, follow the same steps for the [Trade Confirmation Flex Query](#querying-trade-history), but create an Activity Flex Query instead.
 
