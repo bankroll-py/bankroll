@@ -11,22 +11,22 @@ import unittest
 
 @unique
 class TestSettings(Settings):
-    INT_KEY = 'Some integer'
-    STR_KEY = 'String key'
+    INT_KEY = "Some integer"
+    STR_KEY = "String key"
 
     @classmethod
     def sectionName(cls) -> str:
-        return 'Test'
+        return "Test"
 
 
 class TestConfiguration(unittest.TestCase):
     def setUp(self) -> None:
-        self.config = Configuration(['tests/bankroll.test.ini'])
+        self.config = Configuration(["tests/bankroll.test.ini"])
 
     def testSettingsApplied(self) -> None:
         settings = self.config.section(TestSettings)
-        self.assertEqual(settings[TestSettings.INT_KEY], '1234')
-        self.assertEqual(settings[TestSettings.STR_KEY], 'foobar')
+        self.assertEqual(settings[TestSettings.INT_KEY], "1234")
+        self.assertEqual(settings[TestSettings.STR_KEY], "foobar")
 
     # See bankroll.default.ini
     def testDefaultSettings(self) -> None:
@@ -77,19 +77,21 @@ class TestConfiguration(unittest.TestCase):
 
         values = self.config.section(TestSettings)
 
-        self.assertEqual(readSettings(self.config, parser.parse_args([])),
-                         values)
+        self.assertEqual(readSettings(self.config, parser.parse_args([])), values)
 
-        values[TestSettings.INT_KEY] = '5'
+        values[TestSettings.INT_KEY] = "5"
         self.assertEqual(
-            readSettings(self.config,
-                         parser.parse_args(['--test-some-integer', '5'])),
-            values)
+            readSettings(self.config, parser.parse_args(["--test-some-integer", "5"])),
+            values,
+        )
 
-        values[TestSettings.STR_KEY] = 'fuzzbuzz'
+        values[TestSettings.STR_KEY] = "fuzzbuzz"
         self.assertEqual(
             readSettings(
                 self.config,
-                parser.parse_args([
-                    '--test-some-integer', '5', '--test-string-key', 'fuzzbuzz'
-                ])), values)
+                parser.parse_args(
+                    ["--test-some-integer", "5", "--test-string-key", "fuzzbuzz"]
+                ),
+            ),
+            values,
+        )
