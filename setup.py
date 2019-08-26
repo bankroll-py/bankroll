@@ -39,6 +39,20 @@ setup(
         "progress>=1.5",
         "pyfolio>=0.9.0",
     ],
+    extras_require={
+        "ibkr": [
+            "bankroll_broker_ibkr @ git+https://github.com/bankroll-py/bankroll-broker-ibkr@master#egg=bankroll_broker_ibkr"
+        ],
+        "schwab": [
+            "bankroll_broker_schwab @ git+https://github.com/bankroll-py/bankroll-broker-schwab@master#egg=bankroll_broker_schwab"
+        ],
+        "fidelity": [
+            "bankroll_broker_fidelity @ git+https://github.com/bankroll-py/bankroll-broker-fidelity@master#egg=bankroll_broker_fidelity"
+        ],
+        "vanguard": [
+            "bankroll_broker_vanguard @ git+https://github.com/bankroll-py/bankroll-broker-vanguard@master#egg=bankroll_broker_vanguard"
+        ],
+    },
     keywords="trading investing finance portfolio",
     entry_points={"console_scripts": ["bankroll = bankroll.interface.__main__:main"]},
 )
