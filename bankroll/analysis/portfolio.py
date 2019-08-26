@@ -7,8 +7,6 @@ from decimal import Decimal
 from bankroll.model import *
 from bankroll.marketdata import *
 from dataclasses import asdict
-from ib_insync import util  # type: ignore
-import ib_insync as ibapi
 
 
 def etf(portfolio: pd.DataFrame, timezone: str) -> pd.Series:
