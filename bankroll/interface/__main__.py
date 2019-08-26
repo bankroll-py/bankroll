@@ -39,7 +39,7 @@ parser = ArgumentParser(
     prog="bankroll",
     add_help=False,
     description="Ingests portfolio and other data from multiple brokerages, and analyzes it.",
-    epilog="For more information, or to report issues, please visit: https://github.com/jspahrsummers/bankroll",
+    epilog="For more information, or to report issues, please visit: https://github.com/bankroll-py/bankroll",
 )
 
 # Add our own help option for consistent formatting.

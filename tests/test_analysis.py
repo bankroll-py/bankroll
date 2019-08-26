@@ -424,7 +424,7 @@ class TestAnalysis(unittest.TestCase):
 
         # FIXME: This is roughly what it _should_ be, but due to exchange rate
         # truncation, we get the one below.
-        # See https://github.com/jspahrsummers/bankroll/issues/37.
+        # See https://github.com/bankroll-py/bankroll/issues/37.
         # self.assertEqual(cash, helpers.cashUSD(Decimal('1400.9726')))
         self.assertEqual(cash, helpers.cashUSD(Decimal("1400")))
 

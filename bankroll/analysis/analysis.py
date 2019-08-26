@@ -220,7 +220,7 @@ def currencyConversionRates(
                 # FIXME: This unfortunately does not retain much precision when
                 # dividing by JPY in particular (where the integral portion can
                 # be quite large).
-                # See https://github.com/jspahrsummers/bankroll/issues/37.
+                # See https://github.com/bankroll-py/bankroll/issues/37.
                 quantity=Decimal(1) / quote.market.quantity,
             ),
         )
