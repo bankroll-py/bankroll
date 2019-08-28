@@ -20,11 +20,14 @@ jobs:
     steps:
       - checkout
 
-      # Download and cache dependencies
+      - restore_cache:
+          keys:
+            - v1-pip-cache-{{ checksum "setup.py" }}
+            - v1-pip-cache-
+
       - restore_cache:
           keys:
             - v1-dependencies-{{ checksum "requirements.txt" }}
-            # fallback to using the latest cache if no exact match is found
             - v1-dependencies-
 
       - run:
@@ -104,3 +107,8 @@ jobs:
             bankroll -h | grep schwab
             bankroll -h | grep fidelity
             bankroll -h | grep vanguard
+
+      - save_cache:
+          paths:
+            - ~/.cache/pip
+          key: v1-pip-cache-{{ checksum "setup.py" }}
