@@ -29,4 +29,3 @@ def marketDataProvider(accounts: AccountAggregator) -> MarketDataProvider:
             if isinstance(account, MarketConnectedAccountData)
         )
     )
-
