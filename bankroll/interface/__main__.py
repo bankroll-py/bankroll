@@ -15,27 +15,8 @@ from bankroll.broker.configuration import (
 from bankroll.marketdata import MarketConnectedAccountData, MarketDataProvider
 from bankroll.model import Activity, Cash, Instrument, Position, Stock, Trade
 
-from .configuration import loadConfig
-
-try:
-    import bankroll.brokers.ibkr as ibkr
-except ImportError:
-    ibkr = None  # type: ignore
-
-try:
-    import bankroll.brokers.schwab as schwab
-except ImportError:
-    schwab = None  # type: ignore
-
-try:
-    import bankroll.brokers.fidelity as fidelity
-except ImportError:
-    fidelity = None  # type: ignore
-
-try:
-    import bankroll.brokers.vanguard as vanguard
-except ImportError:
-    vanguard = None  # type: ignore
+from .brokers import *
+from .configuration import loadConfig, marketDataProvider
 
 parser = ArgumentParser(
     prog="bankroll",
@@ -103,14 +84,7 @@ if vanguard:
 def printPositions(accounts: AccountAggregator, args: Namespace) -> None:
     values: Dict[Position, Cash] = {}
     if args.live_value:
-        dataProvider = next(
-            (
-                account.marketDataProvider
-                for account in accounts.accounts
-                if isinstance(account, MarketConnectedAccountData)
-            )
-        )
-
+        dataProvider = marketDataProvider(accounts)
         if dataProvider:
             values = analysis.liveValuesForPositions(
                 accounts.positions(),

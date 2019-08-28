@@ -1,4 +1,6 @@
+from bankroll.broker import AccountAggregator
 from bankroll.broker.configuration import Configuration
+from bankroll.marketdata import MarketDataProvider, MarketConnectedAccountData
 from typing import Iterable
 
 import pkg_resources
@@ -17,3 +19,14 @@ def loadConfig(
         defaultConfig=defaultConfig,
         defaultConfigName=defaultConfigName,
     )
+
+
+def marketDataProvider(accounts: AccountAggregator) -> MarketDataProvider:
+    return next(
+        (
+            account.marketDataProvider
+            for account in accounts.accounts
+            if isinstance(account, MarketConnectedAccountData)
+        )
+    )
+
