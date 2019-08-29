@@ -32,26 +32,18 @@ setup(
         "Typing :: Typed",
     ],
     install_requires=[
-        "bankroll_marketdata @ git+https://github.com/bankroll-py/bankroll-marketdata@master#egg=bankroll_marketdata",
-        "bankroll_model @ git+https://github.com/bankroll-py/bankroll-model@master#egg=bankroll_model",
-        "bankroll_broker @ git+https://github.com/bankroll-py/bankroll-broker@master#egg=bankroll_broker",
-        "numpy>=1.17.0",
-        "progress>=1.5",
-        "pyfolio>=0.9.0",
+        "bankroll_marketdata ~= 0.4.0",
+        "bankroll_model ~= 0.4.0",
+        "bankroll_broker ~= 0.4.0",
+        "numpy ~= 1.17.0",
+        "progress ~= 1.5",
+        "pyfolio >= 0.9.2",
     ],
     extras_require={
-        "ibkr": [
-            "bankroll_broker_ibkr @ git+https://github.com/bankroll-py/bankroll-broker-ibkr@master#egg=bankroll_broker_ibkr"
-        ],
-        "schwab": [
-            "bankroll_broker_schwab @ git+https://github.com/bankroll-py/bankroll-broker-schwab@master#egg=bankroll_broker_schwab"
-        ],
-        "fidelity": [
-            "bankroll_broker_fidelity @ git+https://github.com/bankroll-py/bankroll-broker-fidelity@master#egg=bankroll_broker_fidelity"
-        ],
-        "vanguard": [
-            "bankroll_broker_vanguard @ git+https://github.com/bankroll-py/bankroll-broker-vanguard@master#egg=bankroll_broker_vanguard"
-        ],
+        "ibkr": ["bankroll_broker_ibkr ~= 0.4.0"],
+        "schwab": ["bankroll_broker_schwab ~= 0.4.0"],
+        "fidelity": ["bankroll_broker_fidelity ~= 0.4.0"],
+        "vanguard": ["bankroll_broker_vanguard ~= 0.4.0"],
     },
     keywords="trading investing finance portfolio",
     entry_points={"console_scripts": ["bankroll = bankroll.interface.__main__:main"]},
