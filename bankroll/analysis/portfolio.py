@@ -112,8 +112,8 @@ def positions_to_portfolio(
     weights = {}
     components = {}
     for i, row in frame.reset_index().iterrows():
-        weights[row["instrument"].symbol] = row["allocation"]
-        components[row["instrument"].symbol] = historical_data[i]
+        weights[row["instrument"]["symbol"]] = row["allocation"]
+        components[row["instrument"]["symbol"]] = historical_data[i]
 
     return stocks_to_portfolio(components, weights)
 
