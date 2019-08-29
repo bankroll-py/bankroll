@@ -1,9 +1,0 @@
-#!/bin/bash
-
-set -o errexit
-set -o pipefail
-
-# shellcheck disable=SC1091
-. venv/bin/activate
-
-yapf -r "$@" -- *.py tests/

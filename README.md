@@ -1,5 +1,8 @@
-# bankroll [![PyPI version](https://badge.fury.io/py/bankroll.svg)](https://badge.fury.io/py/bankroll) [![Coverage Status](https://coveralls.io/repos/github/jspahrsummers/bankroll/badge.svg)](https://coveralls.io/github/jspahrsummers/bankroll) [![CircleCI](https://circleci.com/gh/jspahrsummers/bankroll.svg?style=svg&circle-token=c2eceb857210b420215d7fdba4aa480e72c57fc3)](https://circleci.com/gh/jspahrsummers/bankroll)
-Ingest portfolio and other data from multiple brokerages, and analyze it.
+# bankroll [![PyPI version](https://badge.fury.io/py/bankroll.svg)](https://badge.fury.io/py/bankroll) [![CircleCI](https://circleci.com/gh/bankroll-py/bankroll.svg?style=svg&circle-token=c2eceb857210b420215d7fdba4aa480e72c57fc3)](https://circleci.com/gh/bankroll-py/bankroll)
+
+Command line interface and notebook utilities to **ingest portfolio and other data from multiple brokerages, and analyze it**.
+
+This is the frontend to the [bankroll](https://github.com/bankroll-py) project, which is comprised of several libraries that can also be used on their own.
 
 **Table of contents:**
 
@@ -15,13 +18,21 @@ Ingest portfolio and other data from multiple brokerages, and analyze it.
 
 # Installation
 
-To install `bankroll` as a Python package, simply run `pip` (or `pip3`, as it may be named on your system) from the repository root:
+To install the `bankroll` command line utility, select from [the list of available brokerage plugins](https://github.com/bankroll-py?q=bankroll-broker-), and run `pip install` with those brokerages listed as [extras](https://packaging.python.org/tutorials/installing-packages/#installing-setuptools-extras).
+
+For example, to install `bankroll` with support for [Interactive Brokers](#interactive-brokers) and [Charles Schwab](#charles-schwab):
 
 ```
-pip install .
+pip3 install bankroll[ibkr,schwab]
 ```
 
-This will also make the command-line tool available directly:
+Or from the repository root, if you have cloned the code:
+
+```
+pip3 install .[ibkr,schwab,fidelity]
+```
+
+Once installed (and presuming your Python path is set up correctly), the command line tool can be invoked directly:
 
 ```
 bankroll --help
@@ -34,7 +45,7 @@ After being set up, `bankroll` can be used from the command line to bring togeth
 For example, to show all positions held in both Interactive Brokers and Charles Schwab:
 
 ```
-python -m bankroll \
+bankroll \
   --ibkr-tws-port 7496 \
   --schwab-positions ~/Positions-2019-01-01.CSV \
   --schwab-transactions ~/Transactions_20190101.CSV \
@@ -44,21 +55,24 @@ python -m bankroll \
 Run with `--help` to see all options:
 
 ```
-python -m bankroll --help
+bankroll --help
 ```
 
 ## Interactive Brokers
 
 [Interactive Brokers](http://interactivebrokers.com) (sometimes abbreviated as IB or IBKR) offers a well-supported [API](https://interactivebrokers.github.io/), which—along with [ib_insync](https://github.com/erdewit/ib_insync)—makes it possible to load up-to-date portfolio data and request real-time information about particular securities.
 
-Because this integration is so useful, **some generic functionality in `bankroll` will require an IB account.**
+For `bankroll`, this functionality is implemented via the [bankroll-broker-ibkr](https://github.com/bankroll-py/bankroll-broker-ibkr) plugin:
+```
+pip3 install bankroll[ibkr]
+```
 
-Unfortunately, [one of IB's trading applications](https://interactivebrokers.github.io/tws-api/initial_setup.html)—Trader Workstation or IB Gateway—must be running and logged-in to accept API connections. You may wish to use [IBC](https://github.com/IbcAlpha/IBC) to automate the startup and login of these applications.
+To load data from Interactive Brokers, [one of IB's trading applications](https://interactivebrokers.github.io/tws-api/initial_setup.html)—Trader Workstation or IB Gateway—must be running and logged-in to accept API connections. You may wish to use [IBC](https://github.com/IbcAlpha/IBC) to automate the startup and login of these applications.
 
 Once Trader Workstation or IB Gateway is running, and [API connections are enabled](https://interactivebrokers.github.io/tws-api/initial_setup.html#enable_api), provide the local port number to `bankroll` like so:
 
 ```
-python -m bankroll \
+bankroll \
   --ibkr-tws-port 7496 \
   [command]
 ```
@@ -103,7 +117,7 @@ Under _Sections_, click _Trade Confirmations_ and enable everything in the dialo
 With the token and the query ID from your account, historical trades can be downloaded:
 
 ```
-python -m bankroll \
+bankroll \
   --ibkr-flex-token [token] \
   --ibkr-trades [query ID] \
   activity
@@ -111,7 +125,7 @@ python -m bankroll \
 
 ### Querying dividend history
 
-_This workflow [will be simplified](https://github.com/jspahrsummers/bankroll/issues/36) in the future._
+_This workflow [will be simplified](https://github.com/bankroll-py/bankroll/issues/36) in the future._
 
 To incorporate the history of dividend payments in your portfolio, follow the same steps for the [Trade Confirmation Flex Query](#querying-trade-history), but create an Activity Flex Query instead.
 
@@ -122,7 +136,7 @@ The only section which needs to be enabled is _Change in Dividend Accruals_:
 Pass your existing token, and the new query's ID, on the command line:
 
 ```
-python -m bankroll \
+bankroll \
   --ibkr-flex-token [token] \
   --ibkr-activity [query ID] \
   activity
@@ -131,6 +145,11 @@ python -m bankroll \
 ## Charles Schwab
 
 [Charles Schwab](https://www.schwab.com) does not offer an API, but it does provide [CSV](https://en.wikipedia.org/wiki/Comma-separated_values) files for export, which `bankroll` can then import.
+
+This functionality is implemented via the [bankroll-broker-schwab](https://github.com/bankroll-py/bankroll-broker-schwab) plugin:
+```
+pip3 install bankroll[schwab]
+```
 
 Browse to the "Positions" and/or "Transactions" screen:
 
@@ -143,7 +162,7 @@ Click the "Export" link in the top-right:
 Then provide the paths of either or both these downloaded files to `bankroll`:
 
 ```
-python -m bankroll \
+bankroll \
   --schwab-positions ~/path/to/Positions.CSV \
   --schwab-transactions ~/path/to/Transactions.CSV \
   [command]
@@ -153,6 +172,11 @@ python -m bankroll \
 
 [Fidelity](https://www.fidelity.com) is supported through a similar facility as [Schwab](#charles-schwab).
 
+This functionality is implemented via the [bankroll-broker-fidelity](https://github.com/bankroll-py/bankroll-broker-fidelity) plugin:
+```
+pip3 install bankroll[fidelity]
+```
+
 * To export position data, [download from the Portfolio Positions page](https://www.fidelity.com/webcontent/ap002390-mlo-content/18.09/help/learn_portfolio_positions.shtml#canidownload).
 * To export transactions data, [download from the History page](https://www.fidelity.com/customer-service/faqs-exporting-account-information#).
 
@@ -160,19 +184,21 @@ More detailed instructions have yet to be written—[contributions welcome](CONT
 
 ## Vanguard
 
-[Vanguard](https://investor.vanguard.com) is a **work in progress**, and may not be as fully-featured as the other brokerages listed here. [Contributions welcome](CONTRIBUTING.md)!
+[Vanguard](https://investor.vanguard.com) is a **work in progress**, and may not be as fully-featured as the other brokerages listed here. Support is being developed in the [bankroll-broker-vanguard](https://github.com/bankroll-py/bankroll-broker-vanguard) plugin:
 
 ## (your broker here)
 
-`bankroll` intends to abstract away broker-specific details as much as possible, to minimize the work required to support each one, so if your broker isn't listed above, please consider [contributing](CONTRIBUTING.md) an implementation for them! We want the list to grow over time, because it's extremely useful to be able to aggregate and analyze data across multiple brokers at once.
+`bankroll` intends to abstract away broker-specific details as much as possible, to minimize the work required to support each one, so if your broker isn't listed above, please consider [building a new brokerage plugin](https://github.com/bankroll-py/bankroll-broker)! We want the list to grow over time, because it's extremely useful to be able to aggregate and analyze data across multiple brokers at once.
 
-To add a new brokerage, create a new subclass of [`AccountData`](bankroll/model/account.py), then implement the methods as required by the interface. As long as the new subclass is loaded at runtime, it will be automatically included in functionality like [data aggregation](bankroll/aggregator.py).
+To add a new brokerage, create a new subclass of [`AccountData`](https://github.com/bankroll-py/bankroll-broker/blob/v0.4.0/bankroll/broker/account.py), then implement the methods as required by the interface. As long as the new subclass is loaded at runtime, it will be automatically included in functionality like [data aggregation](https://github.com/bankroll-py/bankroll-broker/blob/v0.4.0/bankroll/broker/aggregator.py).
+
+If the brokerage offers a facility to load market data, consider extending the [bankroll-marketdata](https://github.com/bankroll-py/bankroll-marketdata) interfaces as well (though this is optional).
 
 # Saving configuration
 
 To preserve settings across runs, all of the command-line arguments demonstrated above can also be saved into an [INI file](https://docs.python.org/3/library/configparser.html#supported-ini-file-structure). The configuration file is especially useful to store default values, because when a setting is specified in a configuration file _as well as_ on the command line, the command-line argument will take precedence.
 
-To create a configuration, copy [`bankroll.default.ini`](bankroll/bankroll.default.ini) to `~/.bankroll.ini`, or leave it in your working directory as `bankroll.ini`, then edit the file to apply your desired settings.
+To create a configuration, copy [`bankroll.default.ini`](bankroll/interface/bankroll.default.ini) to `~/.bankroll.ini`, or leave it in your working directory as `bankroll.ini`, then edit the file to apply your desired settings.
 
 If you would like to store the configuration somewhere else, you can also provide custom paths via the `--config` argument on the command line.
 
