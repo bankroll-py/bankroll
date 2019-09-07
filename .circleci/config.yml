@@ -72,6 +72,7 @@ jobs:
             . venv/bin/activate
             pip install .[ibkr]
             bankroll -h | grep ibkr
+            bankroll positions >/dev/null
 
       - run:
           name: test schwab install
@@ -80,6 +81,7 @@ jobs:
             . venv/bin/activate
             pip install .[schwab]
             bankroll -h | grep schwab
+            bankroll positions >/dev/null
 
       - run:
           name: test fidelity install
@@ -88,6 +90,7 @@ jobs:
             . venv/bin/activate
             pip install .[fidelity]
             bankroll -h | grep fidelity
+            bankroll positions >/dev/null
 
       - run:
           name: test vanguard install
@@ -96,6 +99,7 @@ jobs:
             . venv/bin/activate
             pip install .[vanguard]
             bankroll -h | grep vanguard
+            bankroll positions >/dev/null
       
       - run:
           name: test installing all extras
@@ -107,6 +111,7 @@ jobs:
             bankroll -h | grep schwab
             bankroll -h | grep fidelity
             bankroll -h | grep vanguard
+            bankroll positions >/dev/null
 
       - save_cache:
           paths:
