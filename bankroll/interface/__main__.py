@@ -184,12 +184,16 @@ def main() -> None:
 
     mergedSettings: Dict[Settings, str] = dict(
         chain(
-            readFidelitySettings(config, args).items(),
-            readSchwabSettings(config, args).items(),
-            readVanguardSettings(config, args).items(),
-            readIBSettings(config, args).items(),
+            readFidelitySettings(config, args).items() if fidelity else [],
+            readSchwabSettings(config, args).items() if schwab else [],
+            readVanguardSettings(config, args).items() if vanguard else [],
+            readIBSettings(config, args).items() if ibkr else [],
         )
     )
+
+    if len(mergedSettings) == 0:
+        logging.error("No brokers have been installed. Nothing to do, exiting.")
+        quit(1)
 
     accounts = AccountAggregator.fromSettings(mergedSettings, lenient=args.lenient)
     commands[args.command](accounts, args)
