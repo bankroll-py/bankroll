@@ -184,10 +184,10 @@ def main() -> None:
 
     mergedSettings: Dict[Settings, str] = dict(
         chain(
-            readFidelitySettings(config, args).items(),
-            readSchwabSettings(config, args).items(),
-            readVanguardSettings(config, args).items(),
-            readIBSettings(config, args).items(),
+            readFidelitySettings(config, args).items() if fidelity else [],
+            readSchwabSettings(config, args).items() if schwab else [],
+            readVanguardSettings(config, args).items() if vanguard else [],
+            readIBSettings(config, args).items() if ibkr else [],
         )
     )
 
