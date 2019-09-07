@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="bankroll",
-    version="0.4.0",
+    version="0.4.1",
     author="Justin Spahr-Summers",
     author_email="justin@jspahrsummers.com",
     description="Ingest portfolio and other data from multiple brokerages, and analyze it",
