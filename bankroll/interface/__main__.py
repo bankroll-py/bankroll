@@ -191,10 +191,6 @@ def main() -> None:
         )
     )
 
-    if len(mergedSettings) == 0:
-        logging.error("No brokers have been installed. Nothing to do, exiting.")
-        quit(1)
-
     accounts = AccountAggregator.fromSettings(mergedSettings, lenient=args.lenient)
     commands[args.command](accounts, args)
 
