@@ -34,7 +34,7 @@ setup(
     install_requires=[
         "bankroll_marketdata ~= 0.4.0",
         "bankroll_model ~= 0.4.0",
-        "bankroll_broker ~= 0.4.1",
+        "bankroll_broker ~= 0.4.2",
         "numpy ~= 1.17.0",
         "progress ~= 1.5",
         "pyfolio >= 0.9.2",
