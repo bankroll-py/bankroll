@@ -13,7 +13,8 @@ from bankroll.broker.configuration import (
     addSettingsToArgumentGroup,
 )
 from bankroll.marketdata import MarketConnectedAccountData, MarketDataProvider
-from bankroll.model import Activity, Cash, Instrument, Position, Stock, Trade, ModelConverter
+from bankroll.model import Activity, Cash, Instrument, Position, Stock, Trade
+from bankroll.converter import dataframeForModelObjects
 
 from .brokers import *
 from .configuration import loadConfig, marketDataProvider
@@ -113,7 +114,7 @@ def printPositions(accounts: AccountAggregator, args: Namespace) -> None:
 
 def printActivity(accounts: AccountAggregator, args: Namespace) -> None:
     if args.output_csv:
-        df = ModelConverter.dataframe(list(accounts.activity())).sort_values(by=['Date'])
+        df = dataframeForModelObjects(list(accounts.activity())).sort_values(by=['Date'])
         df.to_csv(args.output_csv, index=False)
         print(f"Activity saved to: {args.output_csv.name}")
     else:
