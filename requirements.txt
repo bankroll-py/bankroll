@@ -8,7 +8,7 @@ bankroll_broker_ibkr==0.4.0
 bankroll_broker_schwab==0.4.0
 bankroll_broker_vanguard==0.4.0
 bankroll_marketdata==0.4.0
-bankroll_model==0.4.0
+bankroll_model==0.4.1
 black==19.3b0
 bleach==3.1.0
 Bottleneck==1.2.1

@@ -1,5 +1,5 @@
 import logging
-from argparse import ArgumentParser, Namespace
+from argparse import ArgumentParser, FileType, Namespace
 from itertools import chain
 from typing import Callable, Dict, Iterable, List, Optional
 
@@ -13,7 +13,7 @@ from bankroll.broker.configuration import (
     addSettingsToArgumentGroup,
 )
 from bankroll.marketdata import MarketConnectedAccountData, MarketDataProvider
-from bankroll.model import Activity, Cash, Instrument, Position, Stock, Trade
+from bankroll.model import Activity, Cash, converter, Instrument, Position, Stock, Trade
 
 from .brokers import *
 from .configuration import loadConfig, marketDataProvider
@@ -112,8 +112,15 @@ def printPositions(accounts: AccountAggregator, args: Namespace) -> None:
 
 
 def printActivity(accounts: AccountAggregator, args: Namespace) -> None:
-    for t in sorted(accounts.activity(), key=lambda t: t.date, reverse=True):
-        print(t)
+    if args.output_csv:
+        df = converter.dataframeForModelObjects(list(accounts.activity())).sort_values(
+            by=["Date"]
+        )
+        df.to_csv(args.output_csv, index=False)
+        print(f"Activity saved to: {args.output_csv}")
+    else:
+        for t in sorted(accounts.activity(), key=lambda t: t.date, reverse=True):
+            print(t)
 
 
 def printBalances(accounts: AccountAggregator, args: Namespace) -> None:
@@ -154,6 +161,9 @@ positionsParser.add_argument(
 
 activityParser = subparsers.add_parser(
     "activity", help="Operations upon imported portfolio activity"
+)
+activityParser.add_argument(
+    "-o", "--output-csv", metavar="out-file", help="Path to output results as csv file"
 )
 
 balancesParser = subparsers.add_parser(
